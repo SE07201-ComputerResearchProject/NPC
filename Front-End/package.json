@@ -1,0 +1,10 @@
+{
+  "name": "ecommerce-starter",
+  "version": "0.1.0",
+  "description": "Starter files for an e-commerce website",
+  "scripts": {
+    "start": "npx http-server -p 8080"
+  },
+  "author": "",
+  "license": "MIT"
+}

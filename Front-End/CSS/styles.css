@@ -1,0 +1,80 @@
+/* Transition for theme change */
+body {
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.footer {
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.sidebar {
+    height: 100vh;
+    position: fixed;
+    top: 56px;
+    left: 0;
+    width: 200px;
+    background-color: #f8f9fa;
+    padding-top: 1rem; 
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 80vh;
+    text-align: center;
+    margin-left: 220px;
+    padding: 20px;
+}
+
+/* Button Styles */
+.btn-start {
+    border-radius: 30px;
+    padding: 12px 30px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    background: linear-gradient(#ff69b4, #f27cbf);
+    color: #fff;
+    border: none;
+    transition: transform 0.2s ease;
+    animation: gradientMove 8s ease infinite;
+}
+
+.btn-start:hover {
+    transform: scale(1.05);
+    color: #fff;
+}
+
+@keyframes gradientMove {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* Dot animation background */
+.dot {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    animation: fall linear infinite;
+}
+
+@keyframes fall {
+    0% {
+        transform: translateY(-10px);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh);
+        opacity: 0;
+    }
+}
