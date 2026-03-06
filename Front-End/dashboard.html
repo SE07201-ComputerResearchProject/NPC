@@ -34,7 +34,21 @@
         <a class="nav-link active" href="dashboard.html">Dashboard (Build PC)</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link" href="products.html">Products</a>
+        <a class="nav-link" href="#" onclick="toggleProductsMenu(event)">Products</a>
+        <div class="products-menu" id="productsMenu" style="display: none;">
+          <a href="products.html?category=cpu" class="menu-item">CPU</a>
+          <a href="products.html?category=gpu" class="menu-item">GPU</a>
+          <a href="products.html?category=motherboard" class="menu-item">Motherboard</a>
+          <a href="products.html?category=ram" class="menu-item">RAM</a>
+          <a href="products.html?category=storage" class="menu-item">Storage</a>
+          <a href="products.html?category=psu" class="menu-item">Power Supply</a>
+          <a href="products.html?category=case" class="menu-item">Case</a>
+          <a href="products.html?category=cooler" class="menu-item">CPU Cooler</a>
+          <a href="products.html?category=monitor" class="menu-item">Monitor</a>
+          <a href="products.html?category=keyboard" class="menu-item">Keyboard</a>
+          <a href="products.html?category=mouse" class="menu-item">Mouse</a>
+          <a href="products.html?category=headphones" class="menu-item">Headphones</a>
+        </div>
       </li>
     </ul>
   </div>
@@ -63,6 +77,8 @@
           <span class="stat-value" id="powerDraw">0W</span>
         </div>
       </div>
+
+      <div id="compatibilityWarnings" style="display: none; margin-top: 10px;"></div>
 
       <div class="action-buttons">
         <button class="btn btn-sm btn-outline-secondary">Share</button>
@@ -98,6 +114,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/typed.js/2.0.12/typed.min.js"></script>
   <!-- Custom JS -->
   <script src="JS/app.js"></script>
+  <script src="JS/dashboard.js"></script>
+  <script src="JS/products-menu.js"></script>
   <script src="JS/dashboard.js"></script>
 </body>
 </html>

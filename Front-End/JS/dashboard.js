@@ -127,7 +127,8 @@ function renderPartsList() {
           `}
         </div>
         <div class="part-actions">
-          <button class="btn btn-sm btn-outline-primary" onclick="showComponentSelector('${category.key}')">+ Add ${category.name}</button>
+          ${selected ? `<button class="btn btn-sm btn-outline-danger me-2" onclick="removeComponent('${category.key}')">Remove</button>` : ''}
+          <button class="btn btn-sm btn-outline-primary" onclick="showComponentSelector('${category.key}')">${selected ? 'Change' : '+ Add'} ${category.name}</button>
         </div>
       </div>
     `;
@@ -186,11 +187,21 @@ function selectComponent(categoryKey, index) {
   closeComponentSelector();
   renderPartsList();
   updateStats();
+  saveBuildToLocalStorage();
+}
+
+function removeComponent(categoryKey) {
+  currentBuild[categoryKey] = null;
+  renderPartsList();
+  updateStats();
+  saveBuildToLocalStorage();
 }
 
 function updateStats() {
   let totalPrice = 0;
   let totalPower = 0;
+  let compatible = true;
+  let warnings = [];
 
   Object.values(currentBuild).forEach(component => {
     if (component) {
@@ -199,10 +210,48 @@ function updateStats() {
     }
   });
 
+  // Check PSU compatibility
+  if (currentBuild.psu && totalPower > currentBuild.psu.power) {
+    compatible = false;
+    warnings.push('Power supply wattage is insufficient');
+  }
+
+  // Check essential components
+  const essentials = ['case', 'cpu', 'motherboard', 'ram', 'storage', 'psu'];
+  essentials.forEach(key => {
+    if (!currentBuild[key]) {
+      compatible = false;
+      warnings.push(`${partsCategories.find(c => c.key === key).name} is required`);
+    }
+  });
+
   document.getElementById('totalPrice').textContent = totalPrice.toLocaleString() + ' VND';
   document.getElementById('powerDraw').textContent = totalPower + 'W';
+  document.getElementById('compatibility').textContent = compatible ? '✓ Compatible' : '✗ Incompatible';
+  document.getElementById('compatibility').className = compatible ? 'stat-value compatible' : 'stat-value incompatible';
+
+  // Show warnings
+  const warningsEl = document.getElementById('compatibilityWarnings');
+  if (warnings.length > 0) {
+    warningsEl.innerHTML = '<h6>Warnings:</h6><ul>' + warnings.map(w => `<li>${w}</li>`).join('') + '</ul>';
+    warningsEl.style.display = 'block';
+  } else {
+    warningsEl.style.display = 'none';
+  }
+}
+
+function saveBuildToLocalStorage() {
+  localStorage.setItem('pcBuild', JSON.stringify(currentBuild));
+}
+
+function loadBuildFromLocalStorage() {
+  const saved = localStorage.getItem('pcBuild');
+  if (saved) {
+    currentBuild = JSON.parse(saved);
+  }
 }
 
 // Initialize
+loadBuildFromLocalStorage();
 renderPartsList();
 updateStats();
