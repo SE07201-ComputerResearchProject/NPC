@@ -73,52 +73,94 @@ body {
 }
 
 /* Products Menu Popup */
-.nav-item {
+.products-nav-item {
     position: relative;
 }
 
 .products-menu {
     position: absolute;
-    top: 100%;
+    top: calc(100% + 8px);
     left: 0;
     background-color: white;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    min-width: 180px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    min-width: 600px;
     z-index: 1000;
-    padding: 8px 0;
+    padding: 20px;
     margin-top: 5px;
-    animation: slideDown 0.2s ease-out;
+    animation: slideDown 0.25s ease-out;
 }
 
 body.bg-dark .products-menu {
     background-color: #1a1a1a;
     border-color: #444;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
 }
 
-.products-menu .menu-item {
-    display: block;
-    padding: 10px 16px;
-    color: #333;
+.products-menu-header {
+    font-size: 12px;
+    font-weight: bold;
+    color: #888;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+body.bg-dark .products-menu-header {
+    color: #999;
+}
+
+.products-menu-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+}
+
+.menu-category {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border: 1px solid #efefef;
+    border-radius: 8px;
     text-decoration: none;
+    color: #333;
     transition: all 0.2s ease;
-    font-size: 14px;
+    cursor: pointer;
 }
 
-body.bg-dark .products-menu .menu-item {
+body.bg-dark .menu-category {
+    background-color: #2a2a2a;
+    border-color: #3a3a3a;
     color: #e0e0e0;
 }
 
-.products-menu .menu-item:hover {
-    background-color: #f0f0f0;
-    padding-left: 20px;
+.menu-category:hover {
+    background-color: #e8f0ff;
+    border-color: #b3d9ff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-body.bg-dark .products-menu .menu-item:hover {
-    background-color: #2a2a2a;
-    padding-left: 20px;
+body.bg-dark .menu-category:hover {
+    background-color: #3a3a3a;
+    border-color: #555;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.category-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+.menu-category span {
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
 }
 
 @keyframes slideDown {
@@ -129,5 +171,15 @@ body.bg-dark .products-menu .menu-item:hover {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .products-menu {
+        min-width: 400px;
+    }
+    
+    .products-menu-grid {
+        grid-template-columns: repeat(3, 1fr);
     }
 }

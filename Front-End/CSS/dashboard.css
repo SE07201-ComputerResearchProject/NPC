@@ -1,10 +1,10 @@
 /* Dashboard specific styles */
 .dashboard-container {
-    margin-left: 220px;
+    margin-left: auto;
+    margin-right: auto;
     margin-top: 76px;
     padding: 20px;
-    max-width: 900px;
-    margin-right: auto;
+    max-width: 800px;
     background-color: white;
     border: 1px solid #ccc;
     border-radius: 8px;
@@ -15,7 +15,6 @@ body.bg-dark .dashboard-container {
     border: 1px solid #444;
     border-radius: 8px;
     margin-bottom: 20px;
-    margin-top: 80px;
 }
 
 body.bg-dark #navbarTop {
@@ -46,9 +45,41 @@ body.bg-dark .build-header {
     margin-bottom: 15px;
 }
 
+.build-name-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .header-top h2 {
     margin: 0;
     font-size: 24px;
+}
+
+.btn-edit-name {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    opacity: 0.7;
+}
+
+.btn-edit-name:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+    color: #007bff;
+    opacity: 1;
+}
+
+body.bg-dark .btn-edit-name {
+    color: #999;
+}
+
+body.bg-dark .btn-edit-name:hover {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: #28a745;
 }
 
 .header-date {
@@ -264,7 +295,8 @@ body.bg-dark .modal-content {
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .dashboard-container {
-        margin-left: 0;
+        margin-left: auto;
+        margin-right: auto;
         margin-top: 100px;
         padding: 15px;
     }

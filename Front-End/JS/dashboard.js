@@ -197,6 +197,10 @@ function removeComponent(categoryKey) {
   saveBuildToLocalStorage();
 }
 
+function saveBuildToLocalStorage() {
+  localStorage.setItem('pcBuild', JSON.stringify(currentBuild));
+}
+
 function updateStats() {
   let totalPrice = 0;
   let totalPower = 0;
@@ -240,8 +244,69 @@ function updateStats() {
   }
 }
 
-function saveBuildToLocalStorage() {
-  localStorage.setItem('pcBuild', JSON.stringify(currentBuild));
+function editBuildName() {
+  const buildNameEl = document.getElementById('buildName');
+  const currentName = buildNameEl.textContent;
+  
+  // Create input field
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = currentName;
+  input.className = 'form-control d-inline-block';
+  input.style.width = '200px';
+  input.style.fontSize = '24px';
+  input.style.fontWeight = 'bold';
+  
+  // Replace h2 with input
+  buildNameEl.parentNode.replaceChild(input, buildNameEl);
+  input.focus();
+  input.select();
+  
+  // Handle save on Enter or blur
+  const saveName = () => {
+    const newName = input.value.trim() || 'New Build';
+    
+    // Replace input back with h2
+    const newH2 = document.createElement('h2');
+    newH2.id = 'buildName';
+    newH2.textContent = newName;
+    input.parentNode.replaceChild(newH2, input);
+    
+    // Save to database (placeholder for future API call)
+    saveBuildNameToDatabase(newName);
+  };
+  
+  input.addEventListener('blur', saveName);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveName();
+    } else if (e.key === 'Escape') {
+      // Cancel edit
+      const cancelH2 = document.createElement('h2');
+      cancelH2.id = 'buildName';
+      cancelH2.textContent = currentName;
+      input.parentNode.replaceChild(cancelH2, input);
+    }
+  });
+}
+
+function saveBuildNameToDatabase(name) {
+  // TODO: Replace with actual API call to save build name to database
+  console.log('Saving build name to database:', name);
+  
+  // Placeholder: In production, this would be an API call
+  // fetch('/api/builds/name', {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ name: name })
+  // })
+  // .then(response => response.json())
+  // .then(data => console.log('Build name saved:', data))
+  // .catch(error => console.error('Error saving build name:', error));
+  
+  // Temporary: still use localStorage for demo, but mark as database placeholder
+  localStorage.setItem('buildName', name);
 }
 
 function loadBuildFromLocalStorage() {
@@ -251,7 +316,29 @@ function loadBuildFromLocalStorage() {
   }
 }
 
+function loadBuildNameFromDatabase() {
+  // TODO: Replace with actual API call to load build name from database
+  console.log('Loading build name from database');
+  
+  // Placeholder: In production, this would be an API call
+  // fetch('/api/builds/name')
+  // .then(response => response.json())
+  // .then(data => {
+  //   if (data.name) {
+  //     document.getElementById('buildName').textContent = data.name;
+  //   }
+  // })
+  // .catch(error => console.error('Error loading build name:', error));
+  
+  // Temporary: still use localStorage for demo, but mark as database placeholder
+  const savedName = localStorage.getItem('buildName');
+  if (savedName) {
+    document.getElementById('buildName').textContent = savedName;
+  }
+}
+
 // Initialize
 loadBuildFromLocalStorage();
+loadBuildNameFromDatabase();
 renderPartsList();
 updateStats();
