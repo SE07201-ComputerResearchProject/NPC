@@ -2,6 +2,7 @@
 const sidebar = document.getElementById('sidebar');
 const navbarTop = document.getElementById('navbarTop');
 const toggleBtn = document.getElementById('toggleTheme');
+const background = document.querySelector('.background');
 toggleBtn.addEventListener('click', () => {
   //Toggle body Classes
   document.body.classList.toggle('bg-dark');
@@ -9,12 +10,6 @@ toggleBtn.addEventListener('click', () => {
   document.body.classList.toggle('bg-light');
   document.body.classList.toggle('text-dark');
 
-  //Toggle Footer Classes
-  document.querySelector('footer').classList.toggle('bg-dark');
-  document.querySelector('footer').classList.toggle('text-white');
-  document.querySelector('footer').classList.toggle('bg-light');
-  document.querySelector('footer').classList.toggle('text-dark');
-  
   //Toggle Navbar Classes
   navbarTop.classList.toggle('bg-dark');
   navbarTop.classList.toggle('navbar-dark');
@@ -24,19 +19,18 @@ toggleBtn.addEventListener('click', () => {
   sidebar.classList.toggle('text-white');
   sidebar.classList.toggle('bg-light');
   sidebar.classList.toggle('text-dark');
+
+  //Toggle Background Classes
+  background.classList.toggle('background-dark');
 });
 
-// Dots Animation
-function createDots(numDots = 20) {
-  const content = document.querySelector('.content');
-  for (let i = 0 ; i < numDots; i++) {
-    const dot = document.createElement('div');
-    dot.classList.add('dot');
-    dot.style.left = Math.random() * 100 + '%';
-    dot.style.animationDuration = (3 + Math.random() * 5) + 's';
-    dot.style.animationDelay = (Math.random() * 5) + 's';
-    content.appendChild(dot);
-  }
-}
-
-createDots(30);
+var typing = new Typed('.typing', {
+  strings: [
+    '<span style ="color: #00f7ff">Compatibility</span>',
+    '<span style ="color: #2af355">Price Comparison</span>',
+    '<span style ="color: #00a2ff">User Reviews</span>',
+  ],
+  typeSpeed: 80,
+  backSpeed: 50,
+  loop: true
+});

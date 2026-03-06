@@ -6,5 +6,8 @@
     "start": "npx http-server -p 8080"
   },
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "animejs": "^4.3.6"
+  }
 }
