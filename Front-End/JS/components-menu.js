@@ -10,11 +10,11 @@ function toggleComponentsMenu(event) {
   }
 
   const categories = [
-    { key: 'case', label: 'Case', icon: 'box' },
+    { key: 'case', label: 'Case', icon: 'pc-case' },
     { key: 'cpu', label: 'CPU', icon: 'cpu' },
     { key: 'motherboard', label: 'Motherboard', icon: 'server' },
-    { key: 'gpu', label: 'GPU', icon: 'monitor' },
-    { key: 'ram', label: 'RAM', icon: 'memory' },
+    { key: 'gpu', label: 'GPU', icon: 'gpu' },
+    { key: 'ram', label: 'RAM', icon: 'memory-stick' },
     { key: 'storage', label: 'Storage', icon: 'hard-drive' },
     { key: 'psu', label: 'Power Supply', icon: 'zap' },
     { key: 'cooler', label: 'Cooler', icon: 'thermometer' },

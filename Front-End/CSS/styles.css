@@ -23,6 +23,27 @@ body {
     background-size: auto, 24px 24px, cover;
 }
 
+/* animated gradient backdrop used in place of retrowave image */
+.background.retrowave {
+    /* radial+linear gradient shifting colors */
+    background: radial-gradient(circle at 50% 50%, rgba(255,20,147,0.2), transparent 70%),
+                linear-gradient(135deg, #300a1e, #440b2f, #300a1e);
+    background-size: 200% 200%;
+    animation: gradientShift 8s ease infinite;
+    filter: blur(4px) brightness(0.6);
+}
+
+@keyframes gradientShift {
+    0%{background-position:0% 50%;}
+    50%{background-position:100% 50%;}
+    100%{background-position:0% 50%;}
+}
+
+body.bg-dark .background.retrowave {
+    background-blend-mode: overlay;
+    background-color: transparent;
+}
+
 .sidebar {
     height: 100vh;
     position: fixed;
@@ -40,7 +61,9 @@ body {
     justify-content: center;
     min-height: 80vh;
     text-align: center;
-    margin-left: 220px;
+    /* horizontal centering for pages without sidebar */
+    margin: 0 auto;
+    max-width: 800px;
     padding: 20px;
     position: relative;
     overflow: hidden;
@@ -70,6 +93,20 @@ body {
 
 .btn-SignUp {
     background-color: #f27cbf;
+}
+
+/* authentication modal buttons use the same pink gradient */
+.auth-form button {
+    background-image: linear-gradient(to right, #CC95C0 0%, #DBD4B4 51%, #CC95C0 100%);
+    background-size: 200% auto;
+    color: white;
+    border: none;
+    transition: 0.5s;
+}
+.auth-form button:hover {
+    background-position: right center;
+    color: #fff;
+    text-decoration: none;
 }
 
 /* ripple animation for theme switch */
@@ -135,6 +172,12 @@ body.bg-dark .components-menu {
     padding: 6px 10px;
     border-radius: 6px;
     transition: background 0.2s;
+}
+.components-item i {
+    /* lucide icons by default inherit size from svg width/height */
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
 }
 
 .components-item:hover {
@@ -381,25 +424,37 @@ body.bg-dark .menu-item:hover{
   height: 100%;
   background: rgba(0,0,0,0.4);
   backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.25s;
   z-index: 1200;
+}
+.auth-backdrop.show {
+  opacity: 1;
 }
 
 .auth-modal {
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  background: var(--popup-bg, #fff);
-  padding: 24px;
-  border-radius: 12px;
-  box-shadow: 0 16px 32px rgba(0,0,0,0.2);
-  width: 320px;
+  transform: translate(-50%, -50%) scale(0.95);
+  background: rgba(196, 196, 196, 0.85);
+  padding: 28px 24px 24px;
+  border-radius: 14px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+  width: 340px;
   max-width: 90vw;
+  opacity: 0;
   z-index: 1210;
+  animation: popIn 0.3s ease-out forwards;
+}
+
+@keyframes popIn {
+  from { transform: translate(-50%, -53%) scale(0.9); opacity: 0; }
+  to   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
 
 body.bg-dark .auth-modal {
-  --popup-bg: #1a1a1a;
+  background: rgba(78, 77, 77, 0.85);
   color: #f1f1f1;
 }
 
@@ -407,8 +462,8 @@ body.bg-dark .auth-modal {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 1.25rem;
-  margin-bottom: 12px;
+  font-size: 1.3rem;
+  margin-bottom: 10px;
 }
 
 .auth-close {
@@ -419,15 +474,74 @@ body.bg-dark .auth-modal {
   cursor: pointer;
 }
 
-.auth-buttons {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
+.auth-subtitle {
+  font-size: 0.95rem;
+  color: #666;
+  margin: 6px 0 18px;
+  line-height: 1.4;
 }
 
-.auth-buttons button {
-  flex: 1;
+body.bg-dark .auth-subtitle {
+  color: #ccc;
 }
+
+.auth-form .form-group {
+  position: relative;
+  margin-bottom: 18px;
+}
+
+.input-icon {
+  position: relative;
+  width: 100%;
+}
+
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-icon i {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #888;
+}
+.password-wrapper .toggle-password {
+  position: absolute;
+  right: 10px;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+  cursor: pointer;
+  color: #888;
+  line-height: 1;
+}
+.input-icon input {
+  padding-left: 32px;
+}
+.password-wrapper input {
+  padding-right: 32px;
+}
+
+.auth-form input {
+  border-radius: 6px;
+  background: rgba(255,255,255,0.9);
+  padding: 8px 12px;
+}
+.auth-form input:focus {
+  border-color: #cc95c0;
+  box-shadow: 0 0 0 0.1rem rgba(204,149,192,0.25);
+}
+
+.auth-footer {
+  margin-top: 20px;
+  font-size: 0.85rem;
+  text-align: center;
+}
+.auth-footer a {color: #007bff; text-decoration: none;}
+.auth-footer a:hover {text-decoration: underline;}
 
 .auth-content {
   /* forms styled by bootstrap already */

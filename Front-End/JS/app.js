@@ -35,6 +35,12 @@ toggleBtn.addEventListener('click', (e) => {
 
   //Toggle Background Classes
   background.classList.toggle('background-dark');
+  // add retrowave image when in dark mode
+  if (document.body.classList.contains('bg-dark')) {
+    background.classList.add('retrowave');
+  } else {
+    background.classList.remove('retrowave');
+  }
 });
 
 // hide/show floating menu on scroll
