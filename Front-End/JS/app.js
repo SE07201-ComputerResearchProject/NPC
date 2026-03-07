@@ -4,6 +4,21 @@ const toggleBtn = document.getElementById('toggleTheme');
 const background = document.querySelector('.background');
 const floatingMenu = document.querySelector('.floating-menu');
 let lastScrollY = window.scrollY;
+
+// helper to switch the toggle icon between moon and sun
+function updateThemeIcon() {
+  if (!toggleBtn) return;
+  if (document.body.classList.contains('bg-dark')) {
+    toggleBtn.innerHTML = '<i data-lucide="sun"></i>';
+  } else {
+    toggleBtn.innerHTML = '<i data-lucide="moon"></i>';
+  }
+  lucide.createIcons(); // re-scan new icon element
+}
+
+// set initial icon on load
+updateThemeIcon();
+
 toggleBtn.addEventListener('click', (e) => {
   // create ripple effect from button location
   const rect = toggleBtn.getBoundingClientRect();
@@ -41,6 +56,9 @@ toggleBtn.addEventListener('click', (e) => {
   } else {
     background.classList.remove('retrowave');
   }
+
+  // update icon at end of click handler
+  updateThemeIcon();
 });
 
 // hide/show floating menu on scroll

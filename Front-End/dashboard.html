@@ -20,7 +20,9 @@
     <div class="container-fluid">
       <a class="navbar-brand" href="index.html">Breaking Bad Builder</a>
       <div class="d-flex ms-auto">
-        <button id="toggleTheme" class="btn btn-outline-light me-2">🌙/☀️</button>
+        <button id="toggleTheme" class="btn btn-outline-light me-2" title="Toggle theme">
+          <i data-lucide="moon"></i> <!-- starts as moon icon because default is light mode -->
+        </button>
         <!-- login/signup moved to account popup -->
       </div>
     </div>
@@ -28,7 +30,8 @@
 
 
   <!-- Main Content -->
-  <div class="background"></div>
+  <!-- background element – animation & blur active only when body has bg-dark -->
+  <div class="background retrowave"></div>
   <div class="container-fluid dashboard-container">
     <!-- Header Stats -->
     <div class="build-header">

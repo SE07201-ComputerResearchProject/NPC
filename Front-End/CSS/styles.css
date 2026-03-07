@@ -11,37 +11,27 @@ body {
     background: radial-gradient(rgba(90, 89, 89, 0.05) 2px, transparent 5px);
     background-size: 24px 24px;
     z-index: -1;
-    transition: background 0.5s ease;
 }
 
-.background-dark {
-    background:
-    radial-gradient(circle at 30% 40%, rgba(255, 0, 221, 0.12), transparent 40%),
-    radial-gradient(rgba(255,255,255,0.05) 2px, transparent 5px),
-    linear-gradient(135deg, #0a0f1c, #111a2e, #0a0f1c);
-
-    background-size: auto, 24px 24px, cover;
-}
-
-/* animated gradient backdrop used in place of retrowave image */
-.background.retrowave {
-    /* radial+linear gradient shifting colors */
-    background: radial-gradient(circle at 50% 50%, rgba(255,20,147,0.2), transparent 70%),
-                linear-gradient(135deg, #300a1e, #440b2f, #300a1e);
-    background-size: 200% 200%;
-    animation: gradientShift 8s ease infinite;
-    filter: blur(4px) brightness(0.6);
-}
-
-@keyframes gradientShift {
-    0%{background-position:0% 50%;}
-    50%{background-position:100% 50%;}
-    100%{background-position:0% 50%;}
-}
-
+/* dark theme overrides enable police‑style flashing radial gradients */
 body.bg-dark .background.retrowave {
+    background: radial-gradient(circle at 50% 50%, rgba(255,0,0,0.6) 0%, transparent 70%),
+                radial-gradient(circle at 50% 50%, rgba(0,0,255,0.6) 0%, transparent 70%);
+    background-size: 200% 200%;
+    animation: policeShift 2s ease-in-out infinite;
+    filter: blur(4px) brightness(0.6);
+
     background-blend-mode: overlay;
     background-color: transparent;
+}
+
+/* new keyframes for police lights */
+@keyframes policeShift {
+    0%   { background-position: 0% 50%; }
+    25%  { background-position: 50% 50%; }
+    50%  { background-position: 100% 50%; }
+    75%  { background-position: 50% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 .sidebar {
@@ -61,7 +51,6 @@ body.bg-dark .background.retrowave {
     justify-content: center;
     min-height: 80vh;
     text-align: center;
-    /* horizontal centering for pages without sidebar */
     margin: 0 auto;
     max-width: 800px;
     padding: 20px;
