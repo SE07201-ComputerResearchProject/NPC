@@ -155,7 +155,7 @@ body.bg-dark #compatibilityWarnings {
 /* Parts Section */
 .parts-section {
     background-color: white;
-    color: #000;
+    color: #000000;
     padding: 20px;
     border-radius: 8px;
     margin-bottom: 20px;
@@ -163,8 +163,8 @@ body.bg-dark #compatibilityWarnings {
 }
 
 body.bg-dark .parts-section {
-    background-color: #222;
-    color: white;
+    background-color: #f1eeee;
+    color: rgb(237, 235, 235);
     border: 1px solid #444;
 }
 
@@ -327,3 +327,107 @@ body.bg-dark .modal-content {
         width: 48%;
     }
 }
+
+/* Floating Menu */
+.floating-menu{
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  display: flex;
+  gap: 10px;
+
+  padding: 10px 14px;
+
+  backdrop-filter: blur(14px);
+
+  border-radius: 40px;
+
+  z-index: 999;
+
+  transition: all 0.3s ease;
+}
+
+/* Light mode */
+body.bg-light .floating-menu{
+  background: rgba(196, 196, 196, 0.85);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+/* Dark mode */
+body.bg-dark .floating-menu{
+  background: rgba(78, 77, 77, 0.85);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* menu item */
+.menu-item{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 10px 14px;
+
+  border-radius: 30px;
+
+  text-decoration: none;
+
+  transition: all 0.25s ease;
+}
+
+/* light mode text */
+body.bg-light .menu-item{
+  color: #333;
+}
+
+/* dark mode text */
+body.bg-dark .menu-item{
+  color: #fff;
+}
+
+/* icon */
+.menu-item svg{
+  width: 20px;
+  height: 20px;
+}
+
+/* label hidden */
+.label{
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+
+  opacity: 0;
+
+  transition: all 0.3s ease;
+}
+
+/* hover */
+.menu-item:hover{
+  transform: translateY(-2px);
+}
+
+/* hover light */
+body.bg-light .menu-item:hover{
+  background: rgba(0,0,0,0.05);
+}
+
+/* hover dark */
+body.bg-dark .menu-item:hover{
+  background: rgba(255,255,255,0.08);
+}
+
+/* show label */
+.menu-item:hover .label{
+  max-width: 120px;
+  opacity: 1;
+}
+
+.floating-menu.hidden{
+  transform: translate(-50%,120%);
+  opacity:0;
+}
+/* End of Floating Menu */

@@ -1,9 +1,22 @@
 // Toggle Dark/Light Mode
-const sidebar = document.getElementById('sidebar');
 const navbarTop = document.getElementById('navbarTop');
 const toggleBtn = document.getElementById('toggleTheme');
 const background = document.querySelector('.background');
-toggleBtn.addEventListener('click', () => {
+const floatingMenu = document.querySelector('.floating-menu');
+let lastScrollY = window.scrollY;
+toggleBtn.addEventListener('click', (e) => {
+  // create ripple effect from button location
+  const rect = toggleBtn.getBoundingClientRect();
+  const x = rect.left + rect.width / 2;
+  const y = rect.top + rect.height / 2;
+
+  const ripple = document.createElement('div');
+  ripple.className = 'mode-ripple';
+  ripple.style.left = x + 'px';
+  ripple.style.top = y + 'px';
+  document.body.appendChild(ripple);
+  ripple.addEventListener('animationend', () => ripple.remove());
+
   //Toggle body Classes
   document.body.classList.toggle('bg-dark');
   document.body.classList.toggle('text-white');
@@ -22,6 +35,22 @@ toggleBtn.addEventListener('click', () => {
 
   //Toggle Background Classes
   background.classList.toggle('background-dark');
+});
+
+// hide/show floating menu on scroll
+window.addEventListener('scroll', () => {
+  if (!floatingMenu) return;
+  const compMenu = document.getElementById('componentsMenu');
+  const authModal = document.getElementById('authModal');
+  if (window.scrollY > lastScrollY) {
+    floatingMenu.classList.add('hidden');
+    if (compMenu) compMenu.classList.add('hidden');
+    if (authModal) closeAuthPopup();
+  } else {
+    floatingMenu.classList.remove('hidden');
+    if (compMenu) compMenu.classList.remove('hidden');
+  }
+  lastScrollY = window.scrollY;
 });
 
 var typing = new Typed('.typing', {
