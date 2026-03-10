@@ -3,21 +3,124 @@ const navbarTop = document.getElementById('navbarTop');
 const toggleBtn = document.getElementById('toggleTheme');
 const background = document.querySelector('.background');
 const floatingMenu = document.querySelector('.floating-menu');
+const themeIcon = document.getElementById('themeIcon');
 let lastScrollY = window.scrollY;
 
-// helper to switch the toggle icon between moon and sun
-function updateThemeIcon() {
-  if (!toggleBtn) return;
-  if (document.body.classList.contains('bg-dark')) {
-    toggleBtn.innerHTML = '<i data-lucide="sun"></i>';
-  } else {
-    toggleBtn.innerHTML = '<i data-lucide="moon"></i>';
+// storage helper functions (currently backed by localStorage, replace with real DB later)
+function getAuthState() {
+  // TODO: query server/session
+  return localStorage.getItem('isLoggedIn') === 'true';
+}
+function setAuthState(val) {
+  // TODO: send to server
+  if (val) localStorage.setItem('isLoggedIn', 'true');
+  else localStorage.removeItem('isLoggedIn');
+}
+function getProfile() {
+  try {
+    return JSON.parse(localStorage.getItem('profile') || '{}');
+  } catch {
+    return {};
   }
-  lucide.createIcons(); // re-scan new icon element
+}
+function saveProfile(p) {
+  // TODO: send to server
+  localStorage.setItem('profile', JSON.stringify(p));
+}
+function getBuild() {
+  try { return JSON.parse(localStorage.getItem('pcBuild')||'{}'); } catch { return {}; }
+}
+function saveBuild(b) {
+  // TODO: persist to database
+  localStorage.setItem('pcBuild', JSON.stringify(b));
+}
+function getBuildName() {
+  return localStorage.getItem('buildName') || '';
+}
+function saveBuildName(name) {
+  localStorage.setItem('buildName', name);
 }
 
-// set initial icon on load
-updateThemeIcon();
+// load authentication state from storage
+window.isLoggedIn = getAuthState();
+
+// welcome message updater
+function updateWelcomeMessage() {
+  const msg = document.getElementById('welcomeMsg');
+  if (!msg) return;
+  if (!window.isLoggedIn) {
+    msg.textContent = '';
+    return;
+  }
+  const profile = getProfile();
+  const name = profile.username || profile.fullName || 'User';
+  msg.textContent = `Welcome "${name}"!`;
+}
+
+// global logout helper
+function logout() {
+  window.isLoggedIn = false;
+  setAuthState(false);
+  if (window.updateAccountDropdown) window.updateAccountDropdown();
+  if (window.updateWelcomeMessage) window.updateWelcomeMessage();
+  // if on account page, redirect to home
+  if (window.location.pathname.endsWith('account.html')) {
+    window.location.href = 'index.html';
+    return; // navigation will reload the page
+  }
+  // otherwise, simply refresh to update UI
+  location.reload();
+}
+
+// navigation helper for account link
+function goToAccount(event) {
+  event.preventDefault();
+  if (window.isLoggedIn) {
+    window.location.href = 'account.html';
+  } else {
+    // not logged in: show login popup and remember where to go afterwards
+    window.redirectAfterLogin = 'account.html';
+    toggleAuthPopup(event);
+  }
+}
+
+// dropdown toggle for floating menu account
+function initAccountDropdown() {
+  const wrapper = document.querySelector('.account-wrapper');
+  if (!wrapper) return;
+  const dropdown = wrapper.querySelector('.account-dropdown');
+
+  // make sure wrapper reflects login state
+  function refreshWrapper() {
+    if (window.isLoggedIn) wrapper.classList.add('logged-in');
+    else wrapper.classList.remove('logged-in');
+  }
+  refreshWrapper();
+
+  // if not logged in, click opens auth popup instead
+  wrapper.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!window.isLoggedIn) {
+      toggleAuthPopup(e);
+      return;
+    }
+    dropdown.classList.toggle('show');
+  });
+
+  document.addEventListener('click', () => {
+    dropdown.classList.remove('show');
+  });
+
+  // expose function to update from elsewhere
+  window.updateAccountDropdown = refreshWrapper;
+}
+
+// call init on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+  initAccountDropdown();
+  updateWelcomeMessage();   // ensure greeting persists across pages
+});
+
 
 toggleBtn.addEventListener('click', (e) => {
   // create ripple effect from button location
@@ -42,23 +145,15 @@ toggleBtn.addEventListener('click', (e) => {
   navbarTop.classList.toggle('bg-dark');
   navbarTop.classList.toggle('navbar-dark');
 
-  //Toggle Sidebar Classes
-  sidebar.classList.toggle('bg-dark');
-  sidebar.classList.toggle('text-white');
-  sidebar.classList.toggle('bg-light');
-  sidebar.classList.toggle('text-dark');
 
-  //Toggle Background Classes
-  background.classList.toggle('background-dark');
-  // add retrowave image when in dark mode
-  if (document.body.classList.contains('bg-dark')) {
-    background.classList.add('retrowave');
+  const isDark = document.body.classList.contains('bg-dark');
+  if (isDark) {
+    themeIcon.setAttribute("data-lucide", "moon");
   } else {
-    background.classList.remove('retrowave');
+    themeIcon.setAttribute("data-lucide", "sun");
   }
 
-  // update icon at end of click handler
-  updateThemeIcon();
+  lucide.createIcons();
 });
 
 // hide/show floating menu on scroll

@@ -76,7 +76,7 @@ function showSignIn() {
   title.textContent = 'Log In';
   subtitle.textContent = 'Enter your credentials to access your account';
   content.innerHTML = `
-    <form class="auth-form">
+    <form class="auth-form" id="loginForm">
       <div class="form-group mb-3">
         <label>Email</label>
         <div class="input-icon">
@@ -98,6 +98,31 @@ function showSignIn() {
   `;
   lucide.createIcons();
   attachPasswordToggle();
+
+  // intercept submit to mark authenticated; also ensure username exists
+  const loginForm = document.getElementById('loginForm');
+  if (loginForm) {
+    loginForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const emailInput = document.getElementById('loginEmail');
+      const emailVal = emailInput ? emailInput.value.trim() : '';
+      let profile = getProfile();
+      if (!profile.username && emailVal) {
+        profile.username = emailVal.split('@')[0];
+        saveProfile(profile);
+      }
+      window.isLoggedIn = true;
+      setAuthState(true);
+      closeAuthPopup();
+      alert('Logged in successfully');
+      if (window.updateAccountDropdown) window.updateAccountDropdown();
+      if (window.updateWelcomeMessage) window.updateWelcomeMessage();
+      if (window.redirectAfterLogin) {
+        window.location.href = window.redirectAfterLogin;
+        delete window.redirectAfterLogin;
+      }
+    });
+  }
 }
 
 function showSignUp() {
@@ -109,17 +134,23 @@ function showSignUp() {
   title.textContent = 'Sign Up';
   subtitle.textContent = 'Save your builds and interact with the community!';
   content.innerHTML = `
-    <form class="auth-form">
+    <form class="auth-form" id="signupForm">
+      <div class="form-group mb-3">
+        <label>Username</label>
+        <div class="input-icon">
+          <input type="text" class="form-control" placeholder="Choose a username" id="signupUsername">
+        </div>
+      </div>
       <div class="form-group mb-3">
         <label>Name</label>
         <div class="input-icon">
-          <input type="text" class="form-control" placeholder="Your name">
+          <input type="text" class="form-control" placeholder="Your name" id="signupName">
         </div>
       </div>
       <div class="form-group mb-3">
         <label>Email</label>
         <div class="input-icon">
-          <input type="email" class="form-control" placeholder="you@example.com">
+          <input type="email" class="form-control" placeholder="you@example.com" id="signupEmail">
         </div>
       </div>
       <div class="form-group mb-3">
@@ -137,6 +168,29 @@ function showSignUp() {
   `;
   lucide.createIcons();
   attachPasswordToggle();
+
+  const signupForm = document.getElementById('signupForm');
+  if (signupForm) {
+    signupForm.addEventListener('submit', e => {
+      e.preventDefault();
+      // gather signup details
+      const u = document.getElementById('signupUsername')?.value.trim() || '';
+      const n = document.getElementById('signupName')?.value.trim() || '';
+      const em = document.getElementById('signupEmail')?.value.trim() || '';
+      const profile = { username: u, fullName: n, email: em };
+      saveProfile(profile);
+      window.isLoggedIn = true;
+      setAuthState(true);
+      closeAuthPopup();
+      alert('Account created and logged in');
+      if (window.updateAccountDropdown) window.updateAccountDropdown();
+      if (window.updateWelcomeMessage) window.updateWelcomeMessage();
+      if (window.redirectAfterLogin) {
+        window.location.href = window.redirectAfterLogin;
+        delete window.redirectAfterLogin;
+      }
+    });
+  }
 }
 
 function attachPasswordToggle() {

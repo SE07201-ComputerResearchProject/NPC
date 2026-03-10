@@ -19,7 +19,8 @@
   <nav class="navbar navbar-expand-lg navbar-secondary bg-secondary fixed-top" id="navbarTop">
     <div class="container-fluid">
       <a class="navbar-brand" href="index.html">Breaking Bad Builder</a>
-      <div class="d-flex ms-auto">
+      <div class="d-flex ms-auto align-items-center">
+        <span id="welcomeMsg" class="text-white me-3"></span>
         <button id="toggleTheme" class="btn btn-outline-light me-2" title="Toggle theme">
           <i data-lucide="moon"></i> <!-- starts as moon icon because default is light mode -->
         </button>
@@ -69,6 +70,7 @@
         <button class="btn btn-sm btn-outline-secondary">Share</button>
         <button class="btn btn-sm btn-outline-secondary">Clone Build</button>
         <button class="btn btn-sm btn-outline-secondary">Build Settings</button>
+        <button id="checkoutBtn" class="btn btn-sm btn-outline-success">Checkout</button>
       </div>
     </div>
 
@@ -115,10 +117,16 @@
       <span class="label">Compare</span>
     </a>
 
-    <a href="#" class="menu-item" onclick="toggleAuthPopup(event)">
-      <i data-lucide="user"></i>
-      <span class="label">Account</span>
-    </a>
+    <div class="account-wrapper">
+      <a href="#" class="menu-item">
+        <i data-lucide="user"></i>
+        <span class="label">Account</span>
+      </a>
+      <div class="account-dropdown">
+        <a href="#" onclick="goToAccount(event)">Account Info</a>
+        <a href="#" onclick="logout()">Logout</a>
+      </div>
+    </div>
 
   </div>
 

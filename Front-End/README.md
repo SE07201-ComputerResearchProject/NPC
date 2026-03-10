@@ -1,19 +1,7 @@
 # E-commerce Website — Starter
 
-Các file cơ bản cho một website khởi tạo.
+Xong HomePage, Build PC Page, SignIn/SignUp Pop-up, Floating Menu
 
-Chạy cục bộ (Port 8080):
-
-Python 3:
-
-```bash
-python -m http.server 8080
-```
-
-Hoặc (nếu có Node.js) dùng `http-server`:
-
-```bash
-npx http-server -p 8080
-```
+Sẽ tiếp tục: Auth Function, Account Information(Thông Tin User, Lưu thông tin build PC), Nâng cấp HomePage, Maybe 3D Models cho PC Components
 
 Mở trình duyệt: http://localhost:8080
