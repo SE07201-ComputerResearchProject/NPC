@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <!-- Custom CSS -->
   <link rel="stylesheet" href="CSS/styles.css" />
+  <link rel="stylesheet" href="CSS/dashboard.css" />
   <title>Breaking Bad Builder - Account</title>
 </head>
 <body class="bg-light text-dark">
@@ -30,31 +31,74 @@
   <div class="background retrowave"></div>
 
   <div class="content">
-    <h1>Account Information</h1>
-    <form id="profileForm">
-      <div class="mb-3">
-        <label for="fullName" class="form-label">Full Name</label>
-        <input type="text" id="fullName" class="form-control">
+    <div class="container-fluid">
+      <div class="row">
+        <!-- left panel: account form -->
+        <div class="col-md-6">
+          <div class="square-panel">
+            <h1>Account Information</h1>
+            <form id="profileForm">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" id="username" class="form-control">
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label for="fullName" class="form-label">Full Name</label>
+                <input type="text" id="fullName" class="form-control">
+              </div>
+              
+              <div class="col-md-6 mb-3">
+                <label for="dob" class="form-label">Date of Birth</label>
+                <input type="date" id="dob" class="form-control">
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="street" class="form-label">Street</label>
+                <input type="text" id="street" class="form-control" placeholder="123 Main St">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="city" class="form-label">City</label>
+                <input type="text" id="city" class="form-control" placeholder="Hometown">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="state" class="form-label">State</label>
+                <input type="text" id="state" class="form-control" placeholder="State">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="zip" class="form-label">ZIP</label>
+                <input type="text" id="zip" class="form-control" placeholder="Postal Code">
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" id="password" class="form-control" placeholder="Change password (leave blank to keep)">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </form>
+            <button id="logoutBtn" class="btn btn-danger mt-3">Log out</button>
+          </div>
+        </div>
+        <!-- right panel: saved build summary -->
+        <div class="col-md-6">
+          <div class="square-panel">
+            <h3>Your Saved Build</h3>
+            <div class="build-panel p-3 border rounded">
+              <p><strong>Name:</strong> <span id="panelBuildName">New Build</span></p>
+              <p><strong>Total:</strong> <span id="panelTotalPrice">₫0</span></p>
+              <p><strong>Compatibility:</strong> <span id="panelCompatibility" class="compatible">✓ Compatible</span></p>
+              <p><strong>Power:</strong> <span id="panelPowerDraw">0W</span></p>
+              <h5>Components</h5>
+              <div class="parts-list" id="panelPartsList"></div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="mb-3">
-        <label for="dob" class="form-label">Date of Birth</label>
-        <input type="date" id="dob" class="form-control">
-      </div>
-      <div class="mb-3">
-        <label for="place" class="form-label">Place</label>
-        <input type="text" id="place" class="form-control">
-      </div>
-      <div class="mb-3">
-        <label for="username" class="form-label">Username</label>
-        <input type="text" id="username" class="form-control">
-      </div>
-      <div class="mb-3">
-        <label for="password" class="form-label">Password</label>
-        <input type="password" id="password" class="form-control" placeholder="Change password (leave blank to keep)">
-      </div>
-      <button type="submit" class="btn btn-primary">Save</button>
-    </form>
-    <button id="logoutBtn" class="btn btn-danger mt-3">Log out</button>
+    </div>
   </div>
 
   <!-- Bottom floating menu -->
@@ -88,6 +132,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script>lucide.createIcons();</script>
   <script src="JS/app.js"></script>
+  <script src="JS/dashboard.js"></script>
   <script src="JS/components-menu.js"></script>
   <script src="JS/auth-popup.js"></script>
   <script>
@@ -113,7 +158,12 @@
         if (p) {
           document.getElementById('fullName').value = p.fullName || '';
           document.getElementById('dob').value = p.dob || '';
-          document.getElementById('place').value = p.place || '';
+          if (p.address) {
+            document.getElementById('street').value = p.address.street || '';
+            document.getElementById('city').value = p.address.city || '';
+            document.getElementById('state').value = p.address.state || '';
+            document.getElementById('zip').value = p.address.zip || '';
+          }
           document.getElementById('username').value = p.username || '';
           // password not filled
         }
@@ -124,13 +174,13 @@
         const p = {
           fullName: document.getElementById('fullName').value,
           dob: document.getElementById('dob').value,
-          place: document.getElementById('place').value,
+          address: document.getElementById('address').value,
           username: document.getElementById('username').value,
           // simply preserve existing password if not changed
           password: document.getElementById('password').value || (prev.password || '')
         };
         saveProfile(p);
-        alert('Profile saved');
+        showPopup('Profile saved');
         // update welcome message if displayed
         if (window.updateWelcomeMessage) window.updateWelcomeMessage();
       }
@@ -138,6 +188,12 @@
         profileForm.addEventListener('submit', saveProfile);
         loadProfile();
       }
+
+      // load build info into panel
+      loadBuildFromLocalStorage();
+      loadBuildNameFromDatabase();
+      renderPartsList();
+      updateStats();
     });
   </script>
 </body>

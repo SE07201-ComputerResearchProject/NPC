@@ -114,7 +114,7 @@ function showSignIn() {
       window.isLoggedIn = true;
       setAuthState(true);
       closeAuthPopup();
-      alert('Logged in successfully');
+      showPopup('Logged in successfully');
       if (window.updateAccountDropdown) window.updateAccountDropdown();
       if (window.updateWelcomeMessage) window.updateWelcomeMessage();
       if (window.redirectAfterLogin) {
@@ -182,7 +182,7 @@ function showSignUp() {
       window.isLoggedIn = true;
       setAuthState(true);
       closeAuthPopup();
-      alert('Account created and logged in');
+      showPopup('Account created and logged in');
       if (window.updateAccountDropdown) window.updateAccountDropdown();
       if (window.updateWelcomeMessage) window.updateWelcomeMessage();
       if (window.redirectAfterLogin) {

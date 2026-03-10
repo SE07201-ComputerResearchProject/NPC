@@ -41,8 +41,62 @@ function saveBuildName(name) {
   localStorage.setItem('buildName', name);
 }
 
+// theme persistence helpers
+function getTheme() {
+  return localStorage.getItem('theme') || 'light';
+}
+function saveTheme(theme) {
+  localStorage.setItem('theme', theme);
+}
+
+function applyTheme(theme) {
+  const isDark = theme === 'dark';
+  document.body.classList.toggle('bg-dark', isDark);
+  document.body.classList.toggle('text-white', isDark);
+  document.body.classList.toggle('bg-light', !isDark);
+  document.body.classList.toggle('text-dark', !isDark);
+
+  navbarTop.classList.toggle('bg-dark', isDark);
+  navbarTop.classList.toggle('navbar-dark', isDark);
+
+  // icon indicates the opposite theme (clicking will switch to it)
+  if (isDark) {
+    themeIcon.setAttribute('data-lucide', 'sun');
+  } else {
+    themeIcon.setAttribute('data-lucide', 'moon');
+  }
+  lucide.createIcons();
+}
+
 // load authentication state from storage
 window.isLoggedIn = getAuthState();
+
+// generic pop-up notification helper
+// options: {duration, center, onClick}
+function showPopup(msg, options = {}) {
+  const { duration = 2000, center = false, onClick = null } = options;
+  const existing = document.getElementById('popupNotification');
+  if (existing) {
+    existing.remove();
+  }
+  const div = document.createElement('div');
+  div.id = 'popupNotification';
+  div.className = 'popup-notification' + (center ? ' center' : '');
+  div.textContent = msg;
+  if (typeof onClick === 'function') {
+    div.style.cursor = 'pointer';
+    div.addEventListener('click', () => {
+      onClick();
+      div.remove();
+    });
+  }
+  document.body.appendChild(div);
+  requestAnimationFrame(() => div.classList.add('show'));
+  setTimeout(() => {
+    div.classList.remove('show');
+    setTimeout(() => div.remove(), 300);
+  }, duration);
+}
 
 // welcome message updater
 function updateWelcomeMessage() {
@@ -119,6 +173,8 @@ function initAccountDropdown() {
 document.addEventListener('DOMContentLoaded', () => {
   initAccountDropdown();
   updateWelcomeMessage();   // ensure greeting persists across pages
+  // restore last theme choice
+  applyTheme(getTheme());
 });
 
 
@@ -135,25 +191,11 @@ toggleBtn.addEventListener('click', (e) => {
   document.body.appendChild(ripple);
   ripple.addEventListener('animationend', () => ripple.remove());
 
-  //Toggle body Classes
-  document.body.classList.toggle('bg-dark');
-  document.body.classList.toggle('text-white');
-  document.body.classList.toggle('bg-light');
-  document.body.classList.toggle('text-dark');
-
-  //Toggle Navbar Classes
-  navbarTop.classList.toggle('bg-dark');
-  navbarTop.classList.toggle('navbar-dark');
-
-
-  const isDark = document.body.classList.contains('bg-dark');
-  if (isDark) {
-    themeIcon.setAttribute("data-lucide", "moon");
-  } else {
-    themeIcon.setAttribute("data-lucide", "sun");
-  }
-
-  lucide.createIcons();
+  // determine new theme and apply
+  const currentlyDark = document.body.classList.contains('bg-dark');
+  const newTheme = currentlyDark ? 'light' : 'dark';
+  applyTheme(newTheme);
+  saveTheme(newTheme);
 });
 
 // hide/show floating menu on scroll

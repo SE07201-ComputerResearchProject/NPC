@@ -163,6 +163,31 @@ function saveBuildToLocalStorage() {
   saveBuild(currentBuild);
 }
 
+function saveCurrentBuild() {
+  if (!window.isLoggedIn) {
+    // show centered popup with delay and click-action
+    let autoId;
+    const clickHandler = () => {
+      clearTimeout(autoId);
+      toggleAuthPopup(new Event('click'));
+    };
+    showPopup('Please log in to save your build. Click to proceed.', {
+      duration: 5000,
+      center: true,
+      onClick: clickHandler
+    });
+    // also schedule automatic open after delay
+    autoId = setTimeout(() => {
+      if (!window.isLoggedIn) toggleAuthPopup(new Event('click'));
+    }, 5000);
+    return;
+  }
+  const profile = getProfile();
+  profile.savedBuild = currentBuild;
+  saveProfile(profile);
+  showPopup('Build saved to your account');
+}
+
 function updateStats() {
   let totalPrice = 0;
   let totalPower = 0;
@@ -314,6 +339,15 @@ loadBuildNameFromDatabase();
 renderPartsList();
 updateStats();
 
+// set header-date to real current date
+function updateHeaderDate() {
+  const dateEl = document.querySelector('.header-date');
+  if (!dateEl) return;
+  const opts = { year: 'numeric', month: 'long', day: 'numeric' };
+  dateEl.textContent = new Date().toLocaleDateString(undefined, opts);
+}
+updateHeaderDate();
+
 // --- payment/checkout support ------------------------------------------------
 function handleCheckout() {
   const totalText = document.getElementById('totalPrice').textContent || '0';
@@ -322,11 +356,11 @@ function handleCheckout() {
   const isCompatible = compatibleEl && compatibleEl.classList.contains('compatible');
 
   if (!isCompatible) {
-    alert('Build is not compatible; please resolve warnings before checking out.');
+    showPopup('Build is not compatible; please resolve warnings before checking out.');
     return;
   }
   if (total === 0) {
-    alert('Your build is empty. Add parts before proceeding to payment.');
+    showPopup('Your build is empty. Add parts before proceeding to payment.');
     return;
   }
 
@@ -379,20 +413,20 @@ function showPaymentModal(amount) {
     if (!window.isLoggedIn) {
       closePaymentModal();
       toggleAuthPopup(new Event('click'));
-      alert('Please log in before paying.');
+      showPopup('Please log in before paying.');
       return;
     }
-    alert('Processing card payment...');
+    showPopup('Processing card payment...');
     closePaymentModal();
   });
   document.getElementById('payPaypal').addEventListener('click', () => {
     if (!window.isLoggedIn) {
       closePaymentModal();
       toggleAuthPopup(new Event('click'));
-      alert('Please log in before paying.');
+      showPopup('Please log in before paying.');
       return;
     }
-    alert('Redirecting to PayPal...');
+    showPopup('Redirecting to PayPal...');
     closePaymentModal();
   });
 }
@@ -413,5 +447,9 @@ document.addEventListener('DOMContentLoaded', () => {
     checkoutBtn.addEventListener('click', handleCheckout);
     // ensure state matches current stats
     checkoutBtn.disabled = document.getElementById('compatibility')?.classList.contains('compatible') ? false : true;
+  }
+  const saveBtn = document.getElementById('saveBuildBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', saveCurrentBuild);
   }
 });
