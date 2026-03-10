@@ -11,37 +11,27 @@ body {
     background: radial-gradient(rgba(90, 89, 89, 0.05) 2px, transparent 5px);
     background-size: 24px 24px;
     z-index: -1;
-    transition: background 0.5s ease;
 }
 
-.background-dark {
-    background:
-    radial-gradient(circle at 30% 40%, rgba(255, 0, 221, 0.12), transparent 40%),
-    radial-gradient(rgba(255,255,255,0.05) 2px, transparent 5px),
-    linear-gradient(135deg, #0a0f1c, #111a2e, #0a0f1c);
-
-    background-size: auto, 24px 24px, cover;
-}
-
-/* animated gradient backdrop used in place of retrowave image */
-.background.retrowave {
-    /* radial+linear gradient shifting colors */
-    background: radial-gradient(circle at 50% 50%, rgba(255,20,147,0.2), transparent 70%),
-                linear-gradient(135deg, #300a1e, #440b2f, #300a1e);
-    background-size: 200% 200%;
-    animation: gradientShift 8s ease infinite;
-    filter: blur(4px) brightness(0.6);
-}
-
-@keyframes gradientShift {
-    0%{background-position:0% 50%;}
-    50%{background-position:100% 50%;}
-    100%{background-position:0% 50%;}
-}
-
+/* dark theme overrides enable police‑style flashing radial gradients */
 body.bg-dark .background.retrowave {
+    background: radial-gradient(circle at 50% 50%, rgba(255,0,0,0.6) 0%, transparent 70%),
+                radial-gradient(circle at 50% 50%, rgba(0,0,255,0.6) 0%, transparent 70%);
+    background-size: 200% 200%;
+    animation: policeShift 2s ease-in-out infinite;
+    filter: blur(4px) brightness(0.6);
+
     background-blend-mode: overlay;
     background-color: transparent;
+}
+
+/* new keyframes for police lights */
+@keyframes policeShift {
+    0%   { background-position: 0% 50%; }
+    25%  { background-position: 50% 50%; }
+    50%  { background-position: 100% 50%; }
+    75%  { background-position: 50% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 .sidebar {
@@ -61,7 +51,6 @@ body.bg-dark .background.retrowave {
     justify-content: center;
     min-height: 80vh;
     text-align: center;
-    /* horizontal centering for pages without sidebar */
     margin: 0 auto;
     max-width: 800px;
     padding: 20px;
@@ -128,6 +117,54 @@ body.bg-dark .mode-ripple {
     opacity: 0.3;
 }
 
+/* popup notification styling */
+.popup-notification {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.8);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 5px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 1050;
+}
+.popup-notification.show {
+  opacity: 1;
+}
+.popup-notification.center {
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+}
+
+/* generic square panel for account sections */
+.square-panel {
+  background: rgba(255,255,255,0.95);
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* dark theme overrides for panel */
+body.bg-dark .square-panel {
+  background: rgba(40,40,40,0.9);
+  border: 1px solid #555;
+  color: #eee;
+}
+body.bg-dark .square-panel input,
+body.bg-dark .square-panel textarea {
+  background: #333;
+  color: #fff;
+  border-color: #555;
+}
+body.bg-dark .square-panel .btn-primary {
+  background-color: #4a90e2;
+  border-color: #4a90e2;
+}
 @keyframes rippleExpand {
     to {
         width: 200vmax;
@@ -330,6 +367,45 @@ body.bg-light .floating-menu{
   background: rgba(196, 196, 196, 0.85);
   box-shadow: 0 8px 25px rgba(0,0,0,0.15);
   border: 1px solid rgba(0,0,0,0.06);
+}
+
+/* account dropdown in floating menu */
+.account-wrapper {
+  position: relative; /* for absolute dropdown */
+}
+.account-dropdown {
+  position: absolute;
+  bottom: 100%; /* show above the icon */
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--popup-bg, rgba(255,255,255,0.9));
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 4px 0;
+  display: none;
+  flex-direction: column;
+  min-width: 120px;
+  z-index: 1100;
+  backdrop-filter: blur(12px); /* frosted glass effect */
+  pointer-events: auto; /* allow clicks inside */
+}
+.account-dropdown.show {
+  display: flex;
+}
+.account-dropdown a {
+  padding: 6px 12px;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.account-dropdown a:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+/* dark theme tweaks */
+body.bg-dark .account-dropdown {
+  background: var(--popup-bg, rgba(78,77,77,0.9));
+  border-color: #444;
 }
 
 /* Dark mode */

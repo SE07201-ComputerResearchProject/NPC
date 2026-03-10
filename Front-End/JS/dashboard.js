@@ -1,5 +1,8 @@
 // Dashboard functionality for PC Builder
 
+// track authentication state (false until user logs in)
+window.isLoggedIn = typeof getAuthState === 'function' ? getAuthState() : false;
+
 const partsCategories = [
   { key: 'case', name: 'Case', power: 0 },
   { key: 'cpu', name: 'CPU', power: 65 },
@@ -9,14 +12,7 @@ const partsCategories = [
   { key: 'cooler', name: 'CPU Cooler', power: 0 },
   { key: 'storage', name: 'Storage', power: 5 },
   { key: 'psu', name: 'Power Supply', power: 0 },
-  { key: 'fan', name: 'Case Fan', power: 0 },
-  { key: 'monitor', name: 'Monitor', power: 50 },
-  { key: 'mouse', name: 'Mouse', power: 1 },
-  { key: 'keyboard', name: 'Keyboard', power: 2 },
-  { key: 'speaker', name: 'Speaker', power: 10 },
-  { key: 'headphones', name: 'Headphones', power: 1 },
-  { key: 'microphone', name: 'Microphone', power: 0 },
-  { key: 'webcam', name: 'Webcam', power: 2 }
+  { key: 'fan', name: 'Case Fan', power: 0 }
 ];
 
 let currentBuild = {
@@ -28,14 +24,7 @@ let currentBuild = {
   cooler: null,
   storage: null,
   psu: null,
-  fan: null,
-  monitor: null,
-  mouse: null,
-  keyboard: null,
-  speaker: null,
-  headphones: null,
-  microphone: null,
-  webcam: null
+  fan: null
 };
 
 const components = {
@@ -76,34 +65,6 @@ const components = {
   fan: [
     { name: 'Corsair ML120 Pro', price: 400000, power: 2 },
     { name: 'Noctua NF-F12', price: 350000, power: 2 }
-  ],
-  monitor: [
-    { name: '27\" 144Hz IPS Panel', price: 3000000, power: 40 },
-    { name: '32\" 4K 144Hz', price: 6000000, power: 60 }
-  ],
-  mouse: [
-    { name: 'Logitech G Pro X', price: 1200000, power: 1 },
-    { name: 'Razer DeathAdder V3', price: 1500000, power: 1 }
-  ],
-  keyboard: [
-    { name: 'Corsair K95 Platinum', price: 2000000, power: 2 },
-    { name: 'ASUS ROG Claymore II', price: 1800000, power: 2 }
-  ],
-  speaker: [
-    { name: 'Corsair SP2500', price: 1500000, power: 25 },
-    { name: 'Razer Leviathan', price: 2000000, power: 15 }
-  ],
-  headphones: [
-    { name: 'SteelSeries Arctis Pro', price: 1500000, power: 1 },
-    { name: 'Corsair VOID RGB', price: 900000, power: 1 }
-  ],
-  microphone: [
-    { name: 'Blue Yeti X', price: 1200000, power: 3 },
-    { name: 'Audio-Technica AT4040', price: 2500000, power: 2 }
-  ],
-  webcam: [
-    { name: 'Logitech C920 Pro', price: 800000, power: 2 },
-    { name: 'Razer Kiyo Pro', price: 1200000, power: 3 }
   ]
 };
 
@@ -198,7 +159,33 @@ function removeComponent(categoryKey) {
 }
 
 function saveBuildToLocalStorage() {
-  localStorage.setItem('pcBuild', JSON.stringify(currentBuild));
+  // keep localStorage for now; move to server/db in future
+  saveBuild(currentBuild);
+}
+
+function saveCurrentBuild() {
+  if (!window.isLoggedIn) {
+    // show centered popup with delay and click-action
+    let autoId;
+    const clickHandler = () => {
+      clearTimeout(autoId);
+      toggleAuthPopup(new Event('click'));
+    };
+    showPopup('Please log in to save your build. Click to proceed.', {
+      duration: 5000,
+      center: true,
+      onClick: clickHandler
+    });
+    // also schedule automatic open after delay
+    autoId = setTimeout(() => {
+      if (!window.isLoggedIn) toggleAuthPopup(new Event('click'));
+    }, 5000);
+    return;
+  }
+  const profile = getProfile();
+  profile.savedBuild = currentBuild;
+  saveProfile(profile);
+  showPopup('Build saved to your account');
 }
 
 function updateStats() {
@@ -207,10 +194,13 @@ function updateStats() {
   let compatible = true;
   let warnings = [];
 
-  Object.values(currentBuild).forEach(component => {
+  Object.entries(currentBuild).forEach(([key, component]) => {
     if (component) {
       totalPrice += component.price;
-      totalPower += component.power || 0;
+      // exclude PSU wattage from power draw
+      if (key !== 'psu') {
+        totalPower += component.power || 0;
+      }
     }
   });
 
@@ -220,7 +210,7 @@ function updateStats() {
     warnings.push('Power supply wattage is insufficient');
   }
 
-  // Check essential components
+  // Check essential components (PSU still required but not counted in power draw)
   const essentials = ['case', 'cpu', 'motherboard', 'ram', 'storage', 'psu'];
   essentials.forEach(key => {
     if (!currentBuild[key]) {
@@ -233,6 +223,12 @@ function updateStats() {
   document.getElementById('powerDraw').textContent = totalPower + 'W';
   document.getElementById('compatibility').textContent = compatible ? '✓ Compatible' : '✗ Incompatible';
   document.getElementById('compatibility').className = compatible ? 'stat-value compatible' : 'stat-value incompatible';
+
+  // enable/disable checkout button based on compatibility and presence of parts
+  const checkoutBtn = document.getElementById('checkoutBtn');
+  if (checkoutBtn) {
+    checkoutBtn.disabled = !compatible || totalPrice === 0;
+  }
 
   // Show warnings
   const warningsEl = document.getElementById('compatibilityWarnings');
@@ -273,7 +269,7 @@ function editBuildName() {
     input.parentNode.replaceChild(newH2, input);
     
     // Save to database (placeholder for future API call)
-    saveBuildNameToDatabase(newName);
+    saveBuildName(newName);
   };
   
   input.addEventListener('blur', saveName);
@@ -305,14 +301,14 @@ function saveBuildNameToDatabase(name) {
   // .then(data => console.log('Build name saved:', data))
   // .catch(error => console.error('Error saving build name:', error));
   
-  // Temporary: still use localStorage for demo, but mark as database placeholder
-  localStorage.setItem('buildName', name);
+  // Temporary: still use helper which itself currently wraps localStorage
+  saveBuildName(name);
 }
 
 function loadBuildFromLocalStorage() {
-  const saved = localStorage.getItem('pcBuild');
+  const saved = getBuild();
   if (saved) {
-    currentBuild = JSON.parse(saved);
+    currentBuild = saved;
   }
 }
 
@@ -330,8 +326,8 @@ function loadBuildNameFromDatabase() {
   // })
   // .catch(error => console.error('Error loading build name:', error));
   
-  // Temporary: still use localStorage for demo, but mark as database placeholder
-  const savedName = localStorage.getItem('buildName');
+  // Temporary: still use helper which itself currently wraps localStorage
+  const savedName = getBuildName();
   if (savedName) {
     document.getElementById('buildName').textContent = savedName;
   }
@@ -342,3 +338,118 @@ loadBuildFromLocalStorage();
 loadBuildNameFromDatabase();
 renderPartsList();
 updateStats();
+
+// set header-date to real current date
+function updateHeaderDate() {
+  const dateEl = document.querySelector('.header-date');
+  if (!dateEl) return;
+  const opts = { year: 'numeric', month: 'long', day: 'numeric' };
+  dateEl.textContent = new Date().toLocaleDateString(undefined, opts);
+}
+updateHeaderDate();
+
+// --- payment/checkout support ------------------------------------------------
+function handleCheckout() {
+  const totalText = document.getElementById('totalPrice').textContent || '0';
+  const total = parseInt(totalText.replace(/[^0-9]/g, ''), 10);
+  const compatibleEl = document.getElementById('compatibility');
+  const isCompatible = compatibleEl && compatibleEl.classList.contains('compatible');
+
+  if (!isCompatible) {
+    showPopup('Build is not compatible; please resolve warnings before checking out.');
+    return;
+  }
+  if (total === 0) {
+    showPopup('Your build is empty. Add parts before proceeding to payment.');
+    return;
+  }
+
+  // show payment options modal (login check occurs when selecting a method)
+  showPaymentModal(total);
+}
+
+function showPaymentModal(amount) {
+  const existing = document.getElementById('paymentModal');
+  if (existing) {
+    closePaymentModal();
+    return;
+  }
+  const backdrop = document.createElement('div');
+  backdrop.id = 'paymentBackdrop';
+  backdrop.className = 'auth-backdrop';
+  backdrop.addEventListener('click', closePaymentModal);
+
+  const modal = document.createElement('div');
+  modal.id = 'paymentModal';
+  modal.className = 'auth-modal';
+
+  const header = document.createElement('div');
+  header.className = 'auth-header';
+  const title = document.createElement('h2');
+  title.textContent = 'Choose payment method';
+  header.appendChild(title);
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'auth-close';
+  closeBtn.innerHTML = '&times;';
+  closeBtn.addEventListener('click', closePaymentModal);
+  header.appendChild(closeBtn);
+
+  const content = document.createElement('div');
+  content.className = 'auth-content';
+  content.innerHTML = `
+    <p>Total: ${amount.toLocaleString()} VND</p>
+    <button class="btn btn-primary w-100 mb-2" id="payCard">Credit/Debit Card</button>
+    <button class="btn btn-secondary w-100 mb-2" id="payPaypal">PayPal</button>
+  `;
+
+  modal.appendChild(header);
+  modal.appendChild(content);
+
+  document.body.appendChild(backdrop);
+  document.body.appendChild(modal);
+  requestAnimationFrame(() => backdrop.classList.add('show'));
+
+  document.getElementById('payCard').addEventListener('click', () => {
+    if (!window.isLoggedIn) {
+      closePaymentModal();
+      toggleAuthPopup(new Event('click'));
+      showPopup('Please log in before paying.');
+      return;
+    }
+    showPopup('Processing card payment...');
+    closePaymentModal();
+  });
+  document.getElementById('payPaypal').addEventListener('click', () => {
+    if (!window.isLoggedIn) {
+      closePaymentModal();
+      toggleAuthPopup(new Event('click'));
+      showPopup('Please log in before paying.');
+      return;
+    }
+    showPopup('Redirecting to PayPal...');
+    closePaymentModal();
+  });
+}
+
+function closePaymentModal() {
+  const modal = document.getElementById('paymentModal');
+  const backdrop = document.getElementById('paymentBackdrop');
+  if (modal) modal.remove();
+  if (backdrop) {
+    backdrop.classList.remove('show');
+    setTimeout(() => backdrop.remove(), 250);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const checkoutBtn = document.getElementById('checkoutBtn');
+  if (checkoutBtn) {
+    checkoutBtn.addEventListener('click', handleCheckout);
+    // ensure state matches current stats
+    checkoutBtn.disabled = document.getElementById('compatibility')?.classList.contains('compatible') ? false : true;
+  }
+  const saveBtn = document.getElementById('saveBuildBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', saveCurrentBuild);
+  }
+});
