@@ -1,5 +1,6 @@
 import express from 'express';
 import Component, { COMPONENT_CATEGORIES } from './Component.js';
+import { requireAdmin } from './adminMiddleware.js';
 
 const router = express.Router();
 
@@ -60,6 +61,86 @@ router.get('/:id', async (req, res) => {
     res.status(200).json(component);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch component', error: error.message });
+  }
+});
+
+router.post('/', requireAdmin, async (req, res) => {
+  try {
+    const { category, name, brand, price, power, stock, description, highlights } = req.body;
+
+    if (!category || !name || price === undefined) {
+      return res.status(400).json({ message: 'category, name, and price are required' });
+    }
+
+    if (!COMPONENT_CATEGORIES.includes(category)) {
+      return res.status(400).json({ message: 'Invalid component category' });
+    }
+
+    const exists = await Component.findOne({ category, name });
+    if (exists) {
+      return res.status(409).json({ message: 'Component already exists in this category' });
+    }
+
+    const component = await Component.create({
+      category,
+      name,
+      brand: brand || '',
+      price: Number(price),
+      power: Number(power || 0),
+      stock: Number(stock || 0),
+      description: description || '',
+      highlights: Array.isArray(highlights) ? highlights : [],
+    });
+
+    res.status(201).json({ message: 'Component created successfully', component });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to create component', error: error.message });
+  }
+});
+
+router.put('/:id', requireAdmin, async (req, res) => {
+  try {
+    const { category, name, brand, price, power, stock, description, highlights } = req.body;
+
+    if (category && !COMPONENT_CATEGORIES.includes(category)) {
+      return res.status(400).json({ message: 'Invalid component category' });
+    }
+
+    const updateData = {};
+    if (category !== undefined) updateData.category = category;
+    if (name !== undefined) updateData.name = name;
+    if (brand !== undefined) updateData.brand = brand;
+    if (price !== undefined) updateData.price = Number(price);
+    if (power !== undefined) updateData.power = Number(power);
+    if (stock !== undefined) updateData.stock = Number(stock);
+    if (description !== undefined) updateData.description = description;
+    if (highlights !== undefined) updateData.highlights = Array.isArray(highlights) ? highlights : [];
+
+    const component = await Component.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!component) {
+      return res.status(404).json({ message: 'Component not found' });
+    }
+
+    res.status(200).json({ message: 'Component updated successfully', component });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update component', error: error.message });
+  }
+});
+
+router.delete('/:id', requireAdmin, async (req, res) => {
+  try {
+    const component = await Component.findByIdAndDelete(req.params.id);
+    if (!component) {
+      return res.status(404).json({ message: 'Component not found' });
+    }
+
+    res.status(200).json({ message: 'Component deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to delete component', error: error.message });
   }
 });
 

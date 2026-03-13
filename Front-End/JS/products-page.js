@@ -18,6 +18,8 @@ const productsState = {
   components: [],
   activeCategory: new URLSearchParams(window.location.search).get('category') || 'all',
   searchText: '',
+  currentPage: 1,
+  pageSize: 9,
 };
 
 function formatPrice(price) {
@@ -34,10 +36,15 @@ function renderCategoryFilters() {
   const filtersEl = document.getElementById('categoryFilters');
   if (!filtersEl) return;
 
-  const allFilter = { key: 'all', total: productsState.categories.reduce((sum, category) => sum + category.total, 0) };
+  const allFilter = {
+    key: 'all',
+    total: productsState.categories.reduce((sum, category) => sum + category.total, 0),
+  };
   const allCategories = [allFilter, ...productsState.categories];
 
-  filtersEl.innerHTML = allCategories.map(category => `
+  filtersEl.innerHTML = allCategories
+    .map(
+      category => `
     <button
       type="button"
       class="filter-chip ${category.key === productsState.activeCategory ? 'active' : ''}"
@@ -46,7 +53,9 @@ function renderCategoryFilters() {
       <span>${CATEGORY_LABELS[category.key] || category.key}</span>
       <strong>${category.total}</strong>
     </button>
-  `).join('');
+  `
+    )
+    .join('');
 
   filtersEl.querySelectorAll('[data-category]').forEach(button => {
     button.addEventListener('click', () => {
@@ -56,24 +65,106 @@ function renderCategoryFilters() {
       window.history.replaceState({}, '', nextUrl);
       updateProductsTitle();
       renderCategoryFilters();
-      loadComponents();
+      loadComponents().catch(error => {
+        console.error(error);
+        const statusEl = document.getElementById('productsStatus');
+        if (statusEl) statusEl.textContent = 'Cannot load components right now.';
+      });
     });
   });
+}
+
+function renderPagination(totalPages) {
+  const paginationEl = document.getElementById('productsPagination');
+  if (!paginationEl) return;
+
+  if (totalPages <= 1) {
+    paginationEl.innerHTML = '';
+    return;
+  }
+
+  const pages = [];
+  for (let page = 1; page <= totalPages; page += 1) {
+    pages.push(`
+      <button type="button" class="page-btn ${page === productsState.currentPage ? 'active' : ''}" data-page="${page}">${page}</button>
+    `);
+  }
+
+  paginationEl.innerHTML = `
+    <button
+      type="button"
+      class="page-nav"
+      data-nav="prev"
+      ${productsState.currentPage === 1 ? 'disabled' : ''}
+      aria-label="Previous page"
+    >
+      <i data-lucide="chevron-left"></i>
+    </button>
+    <div class="page-numbers">${pages.join('')}</div>
+    <button
+      type="button"
+      class="page-nav"
+      data-nav="next"
+      ${productsState.currentPage === totalPages ? 'disabled' : ''}
+      aria-label="Next page"
+    >
+      <i data-lucide="chevron-right"></i>
+    </button>
+  `;
+
+  paginationEl.querySelectorAll('[data-page]').forEach(button => {
+    button.addEventListener('click', () => {
+      productsState.currentPage = Number(button.dataset.page);
+      renderComponents();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+
+  paginationEl.querySelectorAll('[data-nav]').forEach(button => {
+    button.addEventListener('click', () => {
+      if (button.dataset.nav === 'prev' && productsState.currentPage > 1) {
+        productsState.currentPage -= 1;
+      }
+      if (button.dataset.nav === 'next' && productsState.currentPage < totalPages) {
+        productsState.currentPage += 1;
+      }
+      renderComponents();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+
+  if (window.lucide) {
+    lucide.createIcons();
+  }
 }
 
 function renderComponents() {
   const gridEl = document.getElementById('productsGrid');
   const statusEl = document.getElementById('productsStatus');
-  if (!gridEl || !statusEl) return;
+  const paginationEl = document.getElementById('productsPagination');
+  if (!gridEl || !statusEl || !paginationEl) return;
 
   if (productsState.components.length === 0) {
     statusEl.textContent = 'No components found for the current filter.';
     gridEl.innerHTML = '';
+    paginationEl.innerHTML = '';
     return;
   }
 
-  statusEl.textContent = `Showing ${productsState.components.length} component(s)`;
-  gridEl.innerHTML = productsState.components.map(component => `
+  const totalItems = productsState.components.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / productsState.pageSize));
+  if (productsState.currentPage > totalPages) {
+    productsState.currentPage = totalPages;
+  }
+
+  const startIndex = (productsState.currentPage - 1) * productsState.pageSize;
+  const endIndex = Math.min(startIndex + productsState.pageSize, totalItems);
+  const pageItems = productsState.components.slice(startIndex, endIndex);
+
+  statusEl.textContent = `Showing ${startIndex + 1}-${endIndex} of ${totalItems} component(s)`;
+  gridEl.innerHTML = pageItems
+    .map(
+      component => `
     <article class="product-card">
       <div class="product-card-top">
         <span class="product-category">${CATEGORY_LABELS[component.category] || component.category}</span>
@@ -81,6 +172,12 @@ function renderComponents() {
       </div>
       <h3>${component.name}</h3>
       <p class="product-brand">${component.brand || 'Generic'}</p>
+      <div class="product-image-grid" aria-label="Image placeholders for ${component.name}">
+        <div class="image-slot image-slot-main">Add Main Image</div>
+        <div class="image-slot">Add Image</div>
+        <div class="image-slot">Add Image</div>
+        <div class="image-slot">Add Image</div>
+      </div>
       <p class="product-description">${component.description || 'No description yet.'}</p>
       <div class="product-highlights">
         ${(component.highlights || []).map(item => `<span>${item}</span>`).join('')}
@@ -107,7 +204,9 @@ function renderComponents() {
         <a href="dashboard.html" class="btn btn-outline-secondary">View Build</a>
       </div>
     </article>
-  `).join('');
+  `
+    )
+    .join('');
 
   gridEl.querySelectorAll('[data-add-component]').forEach(button => {
     button.addEventListener('click', () => {
@@ -118,6 +217,8 @@ function renderComponents() {
       showPopup(`${component.name} added to your build`);
     });
   });
+
+  renderPagination(totalPages);
 }
 
 async function loadCategories() {
@@ -151,6 +252,7 @@ async function loadComponents() {
   }
 
   productsState.components = await response.json();
+  productsState.currentPage = 1;
   renderComponents();
 }
 
@@ -163,7 +265,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       productsState.searchText = event.target.value.trim();
       loadComponents().catch(error => {
         console.error(error);
-        document.getElementById('productsStatus').textContent = 'Cannot load components right now.';
+        const statusEl = document.getElementById('productsStatus');
+        if (statusEl) {
+          statusEl.textContent = 'Cannot load components right now.';
+        }
       });
     });
   }
