@@ -1,24 +1,22 @@
-// Authentication popup (sign-in / sign-up)
+// auth-popup.js - handles authentication UI
+
 function toggleAuthPopup(event) {
-  event.preventDefault();
+  if (event) event.preventDefault();
   const existing = document.getElementById('authModal');
   if (existing) {
     closeAuthPopup();
     return;
   }
 
-  // create backdrop
   const backdrop = document.createElement('div');
   backdrop.id = 'authBackdrop';
   backdrop.className = 'auth-backdrop';
   backdrop.addEventListener('click', closeAuthPopup);
 
-  // create modal container
   const modal = document.createElement('div');
   modal.id = 'authModal';
   modal.className = 'auth-modal';
 
-  // header with title and close button
   const header = document.createElement('div');
   header.className = 'auth-header';
   const title = document.createElement('h2');
@@ -30,7 +28,6 @@ function toggleAuthPopup(event) {
   closeBtn.addEventListener('click', closeAuthPopup);
   header.appendChild(closeBtn);
 
-  // subtitle/message
   const subtitle = document.createElement('p');
   subtitle.id = 'authSubtitle';
   subtitle.className = 'auth-subtitle';
@@ -50,11 +47,10 @@ function toggleAuthPopup(event) {
 
   document.body.appendChild(backdrop);
   document.body.appendChild(modal);
-  // trigger fade-in
   requestAnimationFrame(() => backdrop.classList.add('show'));
-  lucide.createIcons(); // render any icons (social buttons etc.)
+  if (window.lucide) lucide.createIcons();
 
-  showSignIn(); // default view
+  showSignIn();
 }
 
 function closeAuthPopup() {
@@ -67,12 +63,24 @@ function closeAuthPopup() {
   }
 }
 
+function attachPasswordToggle() {
+  document.querySelectorAll('.toggle-password').forEach(icon => {
+    icon.addEventListener('click', () => {
+      const input = icon.parentElement.querySelector('input');
+      if (input) {
+        input.type = input.type === 'password' ? 'text' : 'password';
+      }
+    });
+  });
+}
+
 function showSignIn() {
   const content = document.getElementById('authContent');
   const title = document.getElementById('authTitle');
   const subtitle = document.getElementById('authSubtitle');
   const footer = document.getElementById('authFooter');
   if (!content || !title || !subtitle || !footer) return;
+  
   title.textContent = 'Log In';
   subtitle.textContent = 'Enter your credentials to access your account';
   content.innerHTML = `
@@ -80,46 +88,62 @@ function showSignIn() {
       <div class="form-group mb-3">
         <label>Email</label>
         <div class="input-icon">
-          <input type="email" class="form-control" placeholder="you@example.com">
+          <input type="email" id="loginEmail" class="form-control" placeholder="you@example.com" required>
         </div>
       </div>
       <div class="form-group mb-3">
         <label>Password</label>
         <div class="input-icon password-wrapper">
-          <input type="password" class="form-control" placeholder="••••••">
+          <input type="password" id="loginPassword" class="form-control" placeholder="••••••" required>
           <i data-lucide="eye" class="toggle-password"></i>
         </div>
       </div>
-      <button class="btn btn-primary w-100">Log in</button>
+      <button type="submit" class="btn btn-primary w-100">Log in</button>
     </form>
   `;
-  footer.innerHTML = `
-    <span>Don't have an account? <a href="#" onclick="showSignUp()">Sign Up</a></span>
-  `;
+  footer.innerHTML = `<span>Don't have an account? <a href="#" onclick="showSignUp()">Sign Up</a></span>`;
   lucide.createIcons();
   attachPasswordToggle();
 
-  // intercept submit to mark authenticated; also ensure username exists
   const loginForm = document.getElementById('loginForm');
   if (loginForm) {
-    loginForm.addEventListener('submit', e => {
+    loginForm.addEventListener('submit', async e => {
       e.preventDefault();
-      const emailInput = document.getElementById('loginEmail');
-      const emailVal = emailInput ? emailInput.value.trim() : '';
-      let profile = getProfile();
-      if (!profile.username && emailVal) {
-        profile.username = emailVal.split('@')[0];
-        saveProfile(profile);
-      }
-      window.isLoggedIn = true;
-      setAuthState(true);
-      closeAuthPopup();
-      showPopup('Logged in successfully');
-      if (window.updateAccountDropdown) window.updateAccountDropdown();
-      if (window.updateWelcomeMessage) window.updateWelcomeMessage();
-      if (window.redirectAfterLogin) {
-        window.location.href = window.redirectAfterLogin;
-        delete window.redirectAfterLogin;
+      const emailVal = document.getElementById('loginEmail').value.trim();
+      const passwordVal = document.getElementById('loginPassword').value.trim();
+
+      try {
+        const response = await fetch('http://localhost:3000/api/users/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailVal, password: passwordVal })
+        });
+        
+        const data = await response.json();
+
+        if (response.ok) {
+          let profile = { 
+            userId: data.user.id,
+            username: data.user.username, 
+            email: data.user.email,
+            fullName: data.user.fullName,
+            dateOfBirth: data.user.dateOfBirth,
+            address: data.user.address
+          };
+          saveProfile(profile);
+          localStorage.setItem('userId', data.user.id);
+          window.isLoggedIn = true;
+          setAuthState(true);
+          closeAuthPopup();
+          showPopup('Logged in successfully');
+          if (window.updateAccountDropdown) window.updateAccountDropdown();
+          if (window.updateWelcomeMessage) window.updateWelcomeMessage();
+        } else {
+          showPopup(data.message || 'Login failed');
+        }
+      } catch (err) {
+        console.error(err);
+        showPopup('Cannot connect to server.');
       }
     });
   }
@@ -131,6 +155,7 @@ function showSignUp() {
   const subtitle = document.getElementById('authSubtitle');
   const footer = document.getElementById('authFooter');
   if (!content || !title || !subtitle || !footer) return;
+  
   title.textContent = 'Sign Up';
   subtitle.textContent = 'Save your builds and interact with the community!';
   content.innerHTML = `
@@ -138,69 +163,107 @@ function showSignUp() {
       <div class="form-group mb-3">
         <label>Username</label>
         <div class="input-icon">
-          <input type="text" class="form-control" placeholder="Choose a username" id="signupUsername">
+          <input type="text" class="form-control" placeholder="Choose a username" id="signupUsername" required>
         </div>
       </div>
       <div class="form-group mb-3">
-        <label>Name</label>
+        <label>Full Name</label>
         <div class="input-icon">
-          <input type="text" class="form-control" placeholder="Your name" id="signupName">
+          <input type="text" class="form-control" placeholder="Your full name" id="signupFullName">
+        </div>
+      </div>
+      <div class="form-group mb-3">
+        <label>Date of Birth</label>
+        <div class="input-icon">
+          <input type="date" class="form-control" id="signupDob">
+        </div>
+      </div>
+      <div class="form-group mb-3">
+        <label>Street</label>
+        <div class="input-icon">
+          <input type="text" class="form-control" placeholder="123 Main St" id="signupStreet">
+        </div>
+      </div>
+      <div class="form-group mb-3">
+        <label>City</label>
+        <div class="input-icon">
+          <input type="text" class="form-control" placeholder="City" id="signupCity">
+        </div>
+      </div>
+      <div class="form-group mb-3">
+        <label>State</label>
+        <div class="input-icon">
+          <input type="text" class="form-control" placeholder="State" id="signupState">
+        </div>
+      </div>
+      <div class="form-group mb-3">
+        <label>ZIP</label>
+        <div class="input-icon">
+          <input type="text" class="form-control" placeholder="ZIP" id="signupZip">
         </div>
       </div>
       <div class="form-group mb-3">
         <label>Email</label>
         <div class="input-icon">
-          <input type="email" class="form-control" placeholder="you@example.com" id="signupEmail">
+          <input type="email" class="form-control" placeholder="you@example.com" id="signupEmail" required>
         </div>
       </div>
       <div class="form-group mb-3">
         <label>Password</label>
         <div class="input-icon password-wrapper">
-          <input type="password" class="form-control" placeholder="••••••">
+          <input type="password" class="form-control" placeholder="••••••" id="signupPassword" required>
           <i data-lucide="eye" class="toggle-password"></i>
         </div>
       </div>
-      <button class="btn btn-success w-100">Create account</button>
+      <button type="submit" class="btn btn-success w-100">Create account</button>
     </form>
   `;
-  footer.innerHTML = `
-    <span>Already have an account? <a href="#" onclick="showSignIn()">Log In</a></span>
-  `;
+  footer.innerHTML = `<span>Already have an account? <a href="#" onclick="showSignIn()">Log In</a></span>`;
   lucide.createIcons();
   attachPasswordToggle();
 
   const signupForm = document.getElementById('signupForm');
   if (signupForm) {
-    signupForm.addEventListener('submit', e => {
+    signupForm.addEventListener('submit', async e => {
       e.preventDefault();
-      // gather signup details
-      const u = document.getElementById('signupUsername')?.value.trim() || '';
-      const n = document.getElementById('signupName')?.value.trim() || '';
-      const em = document.getElementById('signupEmail')?.value.trim() || '';
-      const profile = { username: u, fullName: n, email: em };
-      saveProfile(profile);
-      window.isLoggedIn = true;
-      setAuthState(true);
-      closeAuthPopup();
-      showPopup('Account created and logged in');
-      if (window.updateAccountDropdown) window.updateAccountDropdown();
-      if (window.updateWelcomeMessage) window.updateWelcomeMessage();
-      if (window.redirectAfterLogin) {
-        window.location.href = window.redirectAfterLogin;
-        delete window.redirectAfterLogin;
+      const u = document.getElementById('signupUsername').value.trim();
+      const em = document.getElementById('signupEmail').value.trim();
+      const pw = document.getElementById('signupPassword').value.trim();
+
+      try {
+        const response = await fetch('http://localhost:3000/api/users/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, email: em, password: pw })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          const profile = { 
+            userId: data.user.id,
+            username: data.user.username, 
+            email: data.user.email,
+            fullName: data.user.fullName,
+            dateOfBirth: data.user.dateOfBirth,
+            address: data.user.address
+          };
+          saveProfile(profile);
+          localStorage.setItem('userId', data.user.id);
+          window.isLoggedIn = true;
+          setAuthState(true);
+          closeAuthPopup();
+          showPopup('Account created successfully!');
+          if (window.updateAccountDropdown) window.updateAccountDropdown();
+          if (window.updateWelcomeMessage) window.updateWelcomeMessage();
+        } else {
+          showPopup(data.message || 'Registration failed');
+        }
+      } catch (err) {
+        console.error('Connection error:', err);
+        showPopup('Cannot connect to server.');
       }
     });
   }
 }
 
-function attachPasswordToggle() {
-  const toggles = document.querySelectorAll('.toggle-password');
-  toggles.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const input = btn.parentElement.querySelector('input');
-      if (input) {
-        input.type = input.type === 'password' ? 'text' : 'password';
-      }
-    });
-  });
-}

@@ -65,7 +65,11 @@ function applyTheme(theme) {
   } else {
     themeIcon.setAttribute('data-lucide', 'moon');
   }
-  lucide.createIcons();
+  
+  // reinitialize the icon right away, not all icons
+  if (window.lucide) {
+    lucide.createIcons({ els: [themeIcon] });
+  }
 }
 
 // load authentication state from storage

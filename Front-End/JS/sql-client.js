@@ -16,7 +16,7 @@ async function onInsertFormSubmit(e) {
   }
 
   try {
-    const resp = await fetch('/api/insert', {
+    const resp = await fetch('/api/rows', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, number, gen })
