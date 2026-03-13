@@ -236,10 +236,18 @@ body.bg-dark .components-menu {
 }
 .products-menu {
     position: absolute;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
     left: 0;
     background-color: white;
     border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    min-width: 600px;
+    z-index: 1000;
+    padding: 20px;
+    margin-top: 5px;
+    animation: slideDown 0.25s ease-out;
+}
+
 .products-pagination {
   margin-top: 22px;
   display: flex;
@@ -312,14 +320,6 @@ body.bg-dark .page-btn.active {
   .products-grid {
     grid-template-columns: 1fr;
   }
-}
-    border-radius: 8px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-    min-width: 600px;
-    z-index: 1000;
-    padding: 20px;
-    margin-top: 5px;
-    animation: slideDown 0.25s ease-out;
 }
 
 body.bg-dark .products-menu {
@@ -796,7 +796,7 @@ body.bg-dark .filter-chip.active {
 
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
 }
 
