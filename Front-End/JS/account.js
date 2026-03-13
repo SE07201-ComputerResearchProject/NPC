@@ -1,7 +1,85 @@
 // account.js - handle account profile page
 
+const USER_API_BASE_URL = 'http://localhost:3000/api/users';
+
+function getUserIdFromStorage() {
+  const profile = getProfile();
+  return profile.userId || localStorage.getItem('userId');
+}
+
+function normalizeUserPayload(payload) {
+  return payload && payload.user ? payload.user : payload;
+}
+
+function formatDateForInput(value) {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toISOString().split('T')[0];
+}
+
+function populateProfileForm(user) {
+  document.getElementById('username').value = user.username || '';
+  document.getElementById('email').value = user.email || '';
+  document.getElementById('fullName').value = user.fullName || '';
+  document.getElementById('dob').value = formatDateForInput(user.dateOfBirth);
+
+  const address = user.address || {};
+  document.getElementById('street').value = address.street || '';
+  document.getElementById('city').value = address.city || '';
+  document.getElementById('state').value = address.state || '';
+  document.getElementById('zip').value = address.zip || '';
+}
+
+function syncProfileToStorage(user) {
+  const existingProfile = getProfile();
+  saveProfile({
+    ...existingProfile,
+    userId: user._id || user.id || existingProfile.userId || localStorage.getItem('userId'),
+    username: user.username || '',
+    email: user.email || '',
+    fullName: user.fullName || '',
+    dateOfBirth: user.dateOfBirth || null,
+    address: user.address || { street: '', city: '', state: '', zip: '' },
+  });
+}
+
+function renderSavedBuildSummary() {
+  const savedBuild = getBuild();
+  const buildName = getBuildName() || 'New Build';
+  const parts = Object.entries(savedBuild || {}).filter(([, part]) => part);
+
+  let totalPrice = 0;
+  let powerDraw = 0;
+
+  parts.forEach(([key, part]) => {
+    totalPrice += part.price || 0;
+    if (key !== 'psu') {
+      powerDraw += part.power || 0;
+    }
+  });
+
+  const compatibilityOk = savedBuild?.psu ? powerDraw <= (savedBuild.psu.power || 0) : parts.length === 0;
+  const partsListMarkup = parts.length
+    ? parts.map(([, part]) => `
+        <div class="part-item selected">
+          <div class="part-info">
+            <div class="part-name">${part.name}</div>
+            <div class="part-price">${(part.price || 0).toLocaleString()} VND</div>
+          </div>
+        </div>
+      `).join('')
+    : '<div class="part-name-placeholder">No saved build yet</div>';
+
+  document.getElementById('panelBuildName').textContent = buildName;
+  document.getElementById('panelTotalPrice').textContent = `${totalPrice.toLocaleString()} VND`;
+  document.getElementById('panelPowerDraw').textContent = `${powerDraw}W`;
+  document.getElementById('panelCompatibility').textContent = compatibilityOk ? '✓ Compatible' : '✗ Incompatible';
+  document.getElementById('panelCompatibility').className = compatibilityOk ? 'compatible' : 'incompatible';
+  document.getElementById('panelPartsList').innerHTML = partsListMarkup;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
-  // Check if logged in
   window.isLoggedIn = getAuthState();
   if (!window.isLoggedIn) {
     window.location.href = 'index.html';
@@ -11,14 +89,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const profileForm = document.getElementById('profileForm');
   const logoutBtn = document.getElementById('logoutBtn');
 
-  // Logout handler
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
       logout();
     });
   }
 
-  // Load user profile from backend
   async function loadUserProfile() {
     try {
       const userId = getUserIdFromStorage();
@@ -27,39 +103,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
-      const response = await fetch(`http://localhost:3000/api/users/${userId}`);
+      const response = await fetch(`${USER_API_BASE_URL}/${userId}`);
       const data = await response.json();
 
-      if (response.ok) {
-        // Populate form with user data
-        document.getElementById('username').value = data.user.username || '';
-        document.getElementById('email').value = data.user.email || '';
-        document.getElementById('fullName').value = data.user.fullName || '';
-        
-        // Format date for input[type="date"]
-        if (data.user.dateOfBirth) {
-          const dateObj = new Date(data.user.dateOfBirth);
-          const formattedDate = dateObj.toISOString().split('T')[0];
-          document.getElementById('dob').value = formattedDate;
-        }
-
-        // Address fields
-        if (data.user.address) {
-          document.getElementById('street').value = data.user.address.street || '';
-          document.getElementById('city').value = data.user.address.city || '';
-          document.getElementById('state').value = data.user.address.state || '';
-          document.getElementById('zip').value = data.user.address.zip || '';
-        }
-      } else {
+      if (!response.ok) {
         showPopup(data.message || 'Failed to load profile');
+        return;
       }
+
+      const user = normalizeUserPayload(data);
+      populateProfileForm(user);
+      syncProfileToStorage(user);
+      if (window.updateWelcomeMessage) window.updateWelcomeMessage();
     } catch (error) {
       console.error('Error loading profile:', error);
       showPopup('Cannot connect to server.');
     }
   }
 
-  // Save profile to backend
   async function saveUserProfile(e) {
     e.preventDefault();
 
@@ -82,7 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
       };
 
-      const response = await fetch(`http://localhost:3000/api/users/${userId}`, {
+      const response = await fetch(`${USER_API_BASE_URL}/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),
@@ -90,44 +151,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const data = await response.json();
 
-      if (response.ok) {
-        // Update localStorage with new profile
-        saveProfile({
-          username: data.user.username,
-          email: data.user.email,
-          fullName: data.user.fullName,
-          dateOfBirth: data.user.dateOfBirth,
-          address: data.user.address,
-        });
-        
-        showPopup('Profile updated successfully');
-        if (window.updateWelcomeMessage) window.updateWelcomeMessage();
-      } else {
+      if (!response.ok) {
         showPopup(data.message || 'Failed to update profile');
+        return;
       }
+
+      const user = normalizeUserPayload(data);
+      populateProfileForm(user);
+      syncProfileToStorage(user);
+      showPopup('Profile updated successfully');
+      if (window.updateWelcomeMessage) window.updateWelcomeMessage();
     } catch (error) {
       console.error('Error saving profile:', error);
       showPopup('Cannot connect to server.');
     }
   }
 
-  // Helper to get user ID from storage or profile
-  function getUserIdFromStorage() {
-    const profile = getProfile();
-    return profile.userId || localStorage.getItem('userId');
-  }
-
-  // Load profile on page load
   await loadUserProfile();
 
-  // Form submission
   if (profileForm) {
     profileForm.addEventListener('submit', saveUserProfile);
   }
 
-  // Load build info
-  loadBuildFromLocalStorage();
-  loadBuildNameFromDatabase();
-  renderPartsList();
-  updateStats();
+  renderSavedBuildSummary();
 });

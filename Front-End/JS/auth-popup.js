@@ -157,49 +157,13 @@ function showSignUp() {
   if (!content || !title || !subtitle || !footer) return;
   
   title.textContent = 'Sign Up';
-  subtitle.textContent = 'Save your builds and interact with the community!';
+  subtitle.textContent = 'Create your account first. You can add address details later in Account Information.';
   content.innerHTML = `
     <form class="auth-form" id="signupForm">
       <div class="form-group mb-3">
         <label>Username</label>
         <div class="input-icon">
           <input type="text" class="form-control" placeholder="Choose a username" id="signupUsername" required>
-        </div>
-      </div>
-      <div class="form-group mb-3">
-        <label>Full Name</label>
-        <div class="input-icon">
-          <input type="text" class="form-control" placeholder="Your full name" id="signupFullName">
-        </div>
-      </div>
-      <div class="form-group mb-3">
-        <label>Date of Birth</label>
-        <div class="input-icon">
-          <input type="date" class="form-control" id="signupDob">
-        </div>
-      </div>
-      <div class="form-group mb-3">
-        <label>Street</label>
-        <div class="input-icon">
-          <input type="text" class="form-control" placeholder="123 Main St" id="signupStreet">
-        </div>
-      </div>
-      <div class="form-group mb-3">
-        <label>City</label>
-        <div class="input-icon">
-          <input type="text" class="form-control" placeholder="City" id="signupCity">
-        </div>
-      </div>
-      <div class="form-group mb-3">
-        <label>State</label>
-        <div class="input-icon">
-          <input type="text" class="form-control" placeholder="State" id="signupState">
-        </div>
-      </div>
-      <div class="form-group mb-3">
-        <label>ZIP</label>
-        <div class="input-icon">
-          <input type="text" class="form-control" placeholder="ZIP" id="signupZip">
         </div>
       </div>
       <div class="form-group mb-3">
@@ -212,6 +176,13 @@ function showSignUp() {
         <label>Password</label>
         <div class="input-icon password-wrapper">
           <input type="password" class="form-control" placeholder="••••••" id="signupPassword" required>
+          <i data-lucide="eye" class="toggle-password"></i>
+        </div>
+      </div>
+      <div class="form-group mb-3">
+        <label>Confirm Password</label>
+        <div class="input-icon password-wrapper">
+          <input type="password" class="form-control" placeholder="••••••" id="signupConfirmPassword" required>
           <i data-lucide="eye" class="toggle-password"></i>
         </div>
       </div>
@@ -229,6 +200,12 @@ function showSignUp() {
       const u = document.getElementById('signupUsername').value.trim();
       const em = document.getElementById('signupEmail').value.trim();
       const pw = document.getElementById('signupPassword').value.trim();
+      const confirmPw = document.getElementById('signupConfirmPassword').value.trim();
+
+      if (pw !== confirmPw) {
+        showPopup('Confirm Password does not match');
+        return;
+      }
 
       try {
         const response = await fetch('http://localhost:3000/api/users/register', {
@@ -253,7 +230,7 @@ function showSignUp() {
           window.isLoggedIn = true;
           setAuthState(true);
           closeAuthPopup();
-          showPopup('Account created successfully!');
+          showPopup('Account created successfully! Add your address in Account Information.');
           if (window.updateAccountDropdown) window.updateAccountDropdown();
           if (window.updateWelcomeMessage) window.updateWelcomeMessage();
         } else {

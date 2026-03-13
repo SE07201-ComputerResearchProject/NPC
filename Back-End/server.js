@@ -3,6 +3,9 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import userRoutes from './userRoutes.js';
+import componentRoutes from './componentRoutes.js';
+import Component from './Component.js';
+import { seedComponentsIfNeeded } from './componentData.js';
 
 dotenv.config();
 
@@ -13,15 +16,18 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/npc', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
+const mongoConnectionString = process.env.MONGODB_CONNECTION_STRING || 'mongodb://localhost:27017/npc';
+
+mongoose.connect(mongoConnectionString)
+.then(async () => {
+  console.log('✓ MongoDB connected');
+  await seedComponentsIfNeeded(Component);
 })
-.then(() => console.log('✓ MongoDB connected'))
 .catch(err => console.error('✗ MongoDB connection error:', err.message));
 
 // Routes
 app.use('/api/users', userRoutes);
+app.use('/api/components', componentRoutes);
 
 // Health check
 app.get('/', (req, res) => {
