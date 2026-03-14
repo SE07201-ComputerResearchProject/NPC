@@ -1,8 +1,12 @@
 /* Dashboard specific styles */
+:root {
+    --dashboard-navbar-height: 64px;
+}
+
 .dashboard-container {
     margin-left: auto;
     margin-right: auto;
-    margin-top: 76px;
+    margin-top: calc(var(--dashboard-navbar-height) + 12px);
     padding: 20px;
     max-width: 1320px;
 }
@@ -266,7 +270,10 @@ body.bg-dark .visualizer-list li {
 
 body.bg-dark #navbarTop {
     z-index: 1040;
-    margin-bottom: 20px;
+}
+
+#navbarTop {
+    min-height: var(--dashboard-navbar-height);
 }
 
 /* Build Header */
@@ -587,7 +594,7 @@ body.bg-dark .modal-content {
     .dashboard-container {
         margin-left: auto;
         margin-right: auto;
-        margin-top: 100px;
+        margin-top: calc(var(--dashboard-navbar-height) + 28px);
         padding: 15px;
     }
 

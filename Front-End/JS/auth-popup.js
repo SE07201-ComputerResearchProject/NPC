@@ -135,6 +135,7 @@ function showSignIn() {
           localStorage.setItem('userId', data.user.id);
           window.isLoggedIn = true;
           setAuthState(true);
+          if (data.token) setAuthToken(data.token);
           closeAuthPopup();
           showPopup('Logged in successfully');
           if (window.updateAccountDropdown) window.updateAccountDropdown();
@@ -231,6 +232,7 @@ function showSignUp() {
           localStorage.setItem('userId', data.user.id);
           window.isLoggedIn = true;
           setAuthState(true);
+          if (data.token) setAuthToken(data.token);
           closeAuthPopup();
           showPopup('Account created successfully! Add your address in Account Information.');
           if (window.updateAccountDropdown) window.updateAccountDropdown();

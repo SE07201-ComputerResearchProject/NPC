@@ -1,31 +1,19 @@
-import User from './User.js';
+import jwt from 'jsonwebtoken';
 
-// Temporary role check using x-user-id header until JWT auth is added.
-export async function requireAdmin(req, res, next) {
+export function requireAdmin(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Authorization token required' });
+  }
+  const token = authHeader.slice(7);
   try {
-    const userId = req.headers['x-user-id'];
-
-    if (!userId) {
-      return res.status(401).json({
-        message: 'Missing x-user-id header',
-      });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev_secret_change_in_prod');
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin role required' });
     }
-
-    const user = await User.findById(userId).select('role email username');
-    if (!user) {
-      return res.status(401).json({ message: 'User not found' });
-    }
-
-    if (user.role !== 'admin') {
-      return res.status(403).json({ message: 'Admin role is required' });
-    }
-
-    req.currentUser = user;
+    req.currentUser = decoded;
     next();
-  } catch (error) {
-    return res.status(500).json({
-      message: 'Failed to validate admin permission',
-      error: error.message,
-    });
+  } catch (err) {
+    return res.status(401).json({ message: 'Invalid or expired token' });
   }
 }

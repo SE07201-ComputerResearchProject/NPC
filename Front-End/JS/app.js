@@ -16,6 +16,13 @@ function setAuthState(val) {
   if (val) localStorage.setItem('isLoggedIn', 'true');
   else localStorage.removeItem('isLoggedIn');
 }
+function getAuthToken() {
+  return localStorage.getItem('authToken') || '';
+}
+function setAuthToken(token) {
+  if (token) localStorage.setItem('authToken', token);
+  else localStorage.removeItem('authToken');
+}
 function getProfile() {
   try {
     return JSON.parse(localStorage.getItem('profile') || '{}');
@@ -74,6 +81,60 @@ function getBuildName() {
 }
 function saveBuildName(name) {
   localStorage.setItem('buildName', name);
+}
+
+function getCart() {
+  try {
+    const cart = JSON.parse(localStorage.getItem('shoppingCart') || '[]');
+    return Array.isArray(cart) ? cart : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCart(items) {
+  localStorage.setItem('shoppingCart', JSON.stringify(Array.isArray(items) ? items : []));
+}
+
+function addToCart(component) {
+  if (!component || !component._id) return;
+
+  const cart = getCart();
+  const idx = cart.findIndex(item => item._id === component._id);
+
+  if (idx >= 0) {
+    cart[idx].quantity = Number(cart[idx].quantity || 1) + 1;
+  } else {
+    cart.push({
+      _id: component._id,
+      category: component.category,
+      name: component.name,
+      brand: component.brand || '',
+      price: Number(component.price || 0),
+      power: Number(component.power || 0),
+      quantity: 1,
+    });
+  }
+
+  saveCart(cart);
+}
+
+function removeFromCart(componentId) {
+  const cart = getCart().filter(item => item._id !== componentId);
+  saveCart(cart);
+}
+
+function updateCartQuantity(componentId, quantity) {
+  const safeQty = Math.max(1, Number(quantity) || 1);
+  const cart = getCart().map(item => {
+    if (item._id !== componentId) return item;
+    return { ...item, quantity: safeQty };
+  });
+  saveCart(cart);
+}
+
+function clearCart() {
+  saveCart([]);
 }
 
 // theme persistence helpers
@@ -154,6 +215,7 @@ function updateWelcomeMessage() {
 function logout() {
   window.isLoggedIn = false;
   setAuthState(false);
+  setAuthToken(null);
   if (window.updateAccountDropdown) window.updateAccountDropdown();
   if (window.updateWelcomeMessage) window.updateWelcomeMessage();
   // if on account page, redirect to home

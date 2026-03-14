@@ -227,7 +227,15 @@ function renderComponents() {
         </div>
       </div>
       <div class="product-card-actions">
-        <button type="button" class="btn btn-primary" data-add-component='${JSON.stringify({
+        <button type="button" class="btn btn-primary" data-add-cart='${JSON.stringify({
+          _id: component._id,
+          category: component.category,
+          name: component.name,
+          price: component.price,
+          power: component.power,
+          brand: component.brand,
+        }).replace(/'/g, '&#39;')}'>Add to Cart</button>
+        <button type="button" class="btn btn-outline-secondary" data-add-component='${JSON.stringify({
           _id: component._id,
           category: component.category,
           name: component.name,
@@ -235,12 +243,19 @@ function renderComponents() {
           power: component.power,
           brand: component.brand,
         }).replace(/'/g, '&#39;')}'>Add to Build</button>
-        <a href="dashboard.html" class="btn btn-outline-secondary">View Build</a>
       </div>
     </article>
   `
     )
     .join('');
+
+  gridEl.querySelectorAll('[data-add-cart]').forEach(button => {
+    button.addEventListener('click', () => {
+      const component = JSON.parse(button.dataset.addCart);
+      addToCart(component);
+      showPopup(`${component.name} added to cart`);
+    });
+  });
 
   gridEl.querySelectorAll('[data-add-component]').forEach(button => {
     button.addEventListener('click', () => {
