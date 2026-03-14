@@ -128,6 +128,13 @@ function formatDateForInput(value) {
 }
 
 async function requestJson(url, options = {}) {
+  const token = typeof getAuthToken === 'function' ? getAuthToken() : (localStorage.getItem('authToken') || '');
+  if (token) {
+    options.headers = options.headers || {};
+    if (!options.headers['Authorization'] && !options.headers['authorization']) {
+      options.headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
   const response = await fetch(url, options);
   const contentType = response.headers.get('content-type') || '';
   const payload = contentType.includes('application/json') ? await response.json() : null;
@@ -474,19 +481,13 @@ async function loadProducts() {
 async function submitProductForm(event) {
   event.preventDefault();
 
-  const adminId = ensureAdminUserId();
-  if (!adminId) return;
-
   const payload = readProductForm();
   if (!payload.category || !payload.name || Number.isNaN(payload.price)) {
     setStatus(el.productStatus, 'Category, Name, and Price are required.', 'error');
     return;
   }
 
-  const headers = {
-    'Content-Type': 'application/json',
-    'x-user-id': adminId,
-  };
+  const headers = { 'Content-Type': 'application/json' };
 
   if (!state.editingProductId) {
     setStatus(el.productStatus, 'Creating product...', 'info');
@@ -544,15 +545,9 @@ function handleProductTableClick(event) {
     const ok = window.confirm(`Delete product ${product.name}?`);
     if (!ok) return;
 
-    const adminId = ensureAdminUserId();
-    if (!adminId) return;
-
     setStatus(el.productStatus, 'Deleting product...', 'info');
     requestJson(`${PRODUCT_API_BASE}/${id}`, {
       method: 'DELETE',
-      headers: {
-        'x-user-id': adminId,
-      },
     })
       .then(async () => {
         if (state.editingProductId === id) {

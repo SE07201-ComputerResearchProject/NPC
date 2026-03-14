@@ -3,18 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Animate CSS -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-  <!-- Custom CSS -->
   <link rel="stylesheet" href="CSS/styles.css" />
-  <!-- Title-->
-  <title>Breaking Bad Builder - Home</title>
+  <title>Breaking Bad Builder - Shopping Cart</title>
 </head>
 <body class="bg-light text-dark">
-
-  <!-- Navbar 1 (Top) -->
   <nav class="navbar navbar-expand-lg navbar-secondary bg-secondary fixed-top" id="navbarTop">
     <div class="container-fluid">
       <a class="navbar-brand" href="index.html">Breaking Bad Builder</a>
@@ -25,43 +19,68 @@
         </button>
       </div>
     </div>
-   </nav>
+  </nav>
 
-  <!-- Background (dark theme only animation, blurred so content shows through) -->
   <div class="background retrowave"></div>
-  <!-- Main Content -->
-  <div class="content">
-    <!-- Welcome Message -->
-    <h1>Welcome to Breaking Bad Builder</h1>
-    <p>Build your dream PC with our easy-to-use simulator!
-      <br>Featuring <span class="typing"></span>
-    </p>
-    <a href="dashboard.html" class="btn btn-start">Start Building</a>
-  </div>
 
-  <!-- Bottom floating menu -->
+  <main class="cart-page">
+    <section class="cart-hero">
+      <p class="cart-kicker">Shopping Cart</p>
+      <h1>Your Build Components</h1>
+      <p>Review quantities and checkout securely with VNPay.</p>
+    </section>
+
+    <section class="cart-layout">
+      <div class="cart-items square-panel">
+        <div class="cart-items-header">
+          <h2>Items</h2>
+          <button id="clearCartBtn" class="btn btn-sm btn-outline-danger">Clear Cart</button>
+        </div>
+        <div id="cartItemsContainer" class="cart-items-container"></div>
+      </div>
+
+      <aside class="cart-summary square-panel">
+        <h2>Order Summary</h2>
+        <div class="summary-row">
+          <span>Total Items</span>
+          <strong id="summaryItems">0</strong>
+        </div>
+        <div class="summary-row">
+          <span>Subtotal</span>
+          <strong id="summarySubtotal">0 VND</strong>
+        </div>
+        <div class="summary-row">
+          <span>Shipping</span>
+          <strong id="summaryShipping">0 VND</strong>
+        </div>
+        <div class="summary-row total">
+          <span>Total</span>
+          <strong id="summaryTotal">0 VND</strong>
+        </div>
+
+        <button id="checkoutCartBtn" class="btn btn-success w-100 mt-3">Checkout with VNPay</button>
+        <a href="products.html" class="btn btn-outline-primary w-100 mt-2">Continue Shopping</a>
+      </aside>
+    </section>
+  </main>
+
   <div class="floating-menu">
-
     <a href="index.html" class="menu-item">
       <i data-lucide="home"></i>
       <span class="label">Home</span>
     </a>
-
     <a href="dashboard.html" class="menu-item">
       <i data-lucide="pencil-ruler"></i>
       <span class="label">Build PC</span>
     </a>
-
     <a href="#" class="menu-item" onclick="toggleComponentsMenu(event)">
       <i data-lucide="cpu"></i>
       <span class="label">Components</span>
     </a>
-
     <a href="shopping-cart.html" class="menu-item">
       <i data-lucide="shopping-cart"></i>
       <span class="label">Cart</span>
     </a>
-
     <div class="account-wrapper">
       <a href="#" class="menu-item">
         <i data-lucide="user"></i>
@@ -72,23 +91,14 @@
         <a href="#" onclick="logout()">Logout</a>
       </div>
     </div>
-
   </div>
 
-  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script>
-    lucide.createIcons();
-  </script>
-  <!-- Animate JS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/typed.js/2.0.12/typed.min.js"></script>
-  <!-- Custom JS -->
+  <script>lucide.createIcons();</script>
   <script src="JS/app.js"></script>
-  <script src="JS/products-menu.js"></script>
   <script src="JS/components-menu.js"></script>
   <script src="JS/auth-popup.js"></script>
+  <script src="JS/shopping-cart.js"></script>
 </body>
 </html>
