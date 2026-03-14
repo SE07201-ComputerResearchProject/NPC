@@ -15,3 +15,4 @@ const logSchema = new mongoose.Schema({
     required: true,
   },
 });
+export default mongoose.model('Log', logSchema);
