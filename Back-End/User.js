@@ -13,9 +13,22 @@ const userSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
   },
+  provider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local',
+    index: true,
+  },
+  googleId: {
+    type: String,
+    default: '',
+    index: true,
+  },
   password: {
     type: String,
-    required: true,
+    required: function () {
+      return this.provider !== 'google';
+    },
   },
   role: {
     type: String,
@@ -24,6 +37,11 @@ const userSchema = new mongoose.Schema({
     index: true,
   },
   fullName: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  avatarUrl: {
     type: String,
     trim: true,
     default: '',
@@ -66,7 +84,7 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
+  if (!this.password || !this.isModified('password')) return next();
   try {
     const salt = await bcryptjs.genSalt(10);
     this.password = await bcryptjs.hash(this.password, salt);
@@ -78,6 +96,7 @@ userSchema.pre('save', async function(next) {
 
 // Method to compare passwords
 userSchema.methods.comparePassword = async function(plainPassword) {
+  if (!this.password) return false;
   return await bcryptjs.compare(plainPassword, this.password);
 };
 

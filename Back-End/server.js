@@ -31,6 +31,13 @@ app.use('/api/users', userRoutes);
 app.use('/api/components', componentRoutes);
 app.use('/api/payments', paymentRoutes);
 
+app.get('/api/config/public', (req, res) => {
+  res.status(200).json({
+    recaptchaSiteKey: process.env.RECAPTCHA_SITE_KEY || '',
+    googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+  });
+});
+
 // Health check
 app.get('/', (req, res) => {
   res.json({ message: 'E-Commerce API Server is running...' });
