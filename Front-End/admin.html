@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <link rel="stylesheet" href="CSS/styles.css" />
+  <link rel="stylesheet" href="CSS/admin.css" />
+  <title>Breaking Bad Builder - Admin</title>
+</head>
+<body class="bg-light text-dark">
+  <nav class="navbar navbar-expand-lg navbar-secondary bg-secondary fixed-top" id="navbarTop">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="index.html">Breaking Bad Builder</a>
+      <div class="d-flex ms-auto align-items-center">
+        <span id="welcomeMsg" class="text-white me-3"></span>
+        <button id="toggleTheme" class="btn btn-outline-light me-2" title="Toggle theme">
+          <i id="themeIcon" data-lucide="moon"></i>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="background retrowave"></div>
+
+  <main class="admin-page">
+    <section class="admin-hero-panel square-panel">
+      <p class="products-kicker">Management Console</p>
+      <h1>Admin CRUD Dashboard</h1>
+      <p class="admin-subtitle">Manage Users and Products (Components) from a single dashboard using the main website design language.</p>
+      <div class="admin-hero-actions">
+        <a class="btn btn-outline-primary" href="products.html">Products Page</a>
+        <a class="btn btn-outline-primary" href="dashboard.html">Build Dashboard</a>
+      </div>
+    </section>
+
+    <section id="adminAccessPanel" class="admin-access square-panel">
+      <h2>Admin Access</h2>
+      <p class="muted-note">Enter the Admin User ID to create, update, or delete products. This value is stored in browser storage.</p>
+      <div class="row g-2 align-items-end">
+        <div class="col-lg-8">
+          <label for="adminUserId" class="form-label">Admin User ID (x-user-id)</label>
+          <input id="adminUserId" class="form-control" placeholder="64f..." />
+        </div>
+        <div class="col-lg-4 d-grid">
+          <button id="saveAdminIdBtn" type="button" class="btn btn-success">Save Admin ID</button>
+        </div>
+      </div>
+      <div id="globalStatus" class="status-box" role="status" aria-live="polite"></div>
+    </section>
+
+    <section id="adminUnauthorized" class="square-panel admin-unauthorized d-none">
+      <h2>Admin only</h2>
+      <p>You do not have permission to access this page. Please sign in with an admin account.</p>
+      <a class="btn btn-primary" href="index.html">Back to Home</a>
+    </section>
+
+    <section class="admin-columns" id="adminWorkspace">
+      <article class="square-panel admin-panel" id="usersSection">
+        <div class="panel-head">
+          <h2>User CRUD</h2>
+          <button id="reloadUsersBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Users</button>
+        </div>
+
+        <form id="userForm" class="crud-form">
+          <input type="hidden" id="userId" />
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label for="userUsername" class="form-label">Username</label>
+              <input id="userUsername" class="form-control" required />
+            </div>
+            <div class="col-md-6">
+              <label for="userEmail" class="form-label">Email</label>
+              <input id="userEmail" type="email" class="form-control" required />
+            </div>
+            <div class="col-md-6" id="passwordFieldWrap">
+              <label for="userPassword" class="form-label">Password</label>
+              <input id="userPassword" type="password" class="form-control" minlength="6" />
+            </div>
+            <div class="col-md-6">
+              <label for="userFullName" class="form-label">Full Name</label>
+              <input id="userFullName" class="form-control" />
+            </div>
+            <div class="col-md-6">
+              <label for="userDob" class="form-label">Date of Birth</label>
+              <input id="userDob" type="date" class="form-control" />
+            </div>
+            <div class="col-md-6">
+              <label for="userStreet" class="form-label">Street</label>
+              <input id="userStreet" class="form-control" />
+            </div>
+            <div class="col-md-4">
+              <label for="userCity" class="form-label">City</label>
+              <input id="userCity" class="form-control" />
+            </div>
+            <div class="col-md-4">
+              <label for="userState" class="form-label">State</label>
+              <input id="userState" class="form-control" />
+            </div>
+            <div class="col-md-4">
+              <label for="userZip" class="form-label">ZIP</label>
+              <input id="userZip" class="form-control" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button id="userSubmitBtn" type="submit" class="btn btn-primary">Create User</button>
+            <button id="userResetBtn" type="button" class="btn btn-outline-secondary">Clear</button>
+          </div>
+        </form>
+
+        <div class="toolbar-row">
+          <input id="userSearch" class="form-control" placeholder="Search username, email, full name" />
+        </div>
+
+        <div id="userStatus" class="status-box" role="status" aria-live="polite"></div>
+
+        <div class="table-wrap">
+          <table class="table table-hover align-middle" id="usersTable">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Full Name</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="square-panel admin-panel" id="productsSection">
+        <div class="panel-head">
+          <h2>Products CRUD</h2>
+          <button id="reloadProductsBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Products</button>
+        </div>
+
+        <form id="productForm" class="crud-form">
+          <input type="hidden" id="productId" />
+          <div class="row g-2">
+            <div class="col-md-4">
+              <label for="productCategory" class="form-label">Category</label>
+              <select id="productCategory" class="form-select" required></select>
+            </div>
+            <div class="col-md-8">
+              <label for="productName" class="form-label">Name</label>
+              <input id="productName" class="form-control" required />
+            </div>
+            <div class="col-md-4">
+              <label for="productBrand" class="form-label">Brand</label>
+              <input id="productBrand" class="form-control" />
+            </div>
+            <div class="col-md-4">
+              <label for="productPrice" class="form-label">Price (VND)</label>
+              <input id="productPrice" type="number" min="0" class="form-control" required />
+            </div>
+            <div class="col-md-4">
+              <label for="productPower" class="form-label">Power (W)</label>
+              <input id="productPower" type="number" min="0" class="form-control" />
+            </div>
+            <div class="col-md-4">
+              <label for="productStock" class="form-label">Stock</label>
+              <input id="productStock" type="number" min="0" class="form-control" />
+            </div>
+            <div class="col-md-8">
+              <label for="productHighlights" class="form-label">Highlights (comma separated)</label>
+              <input id="productHighlights" class="form-control" placeholder="DDR5, RGB, PCIe 5.0" />
+            </div>
+            <div class="col-12">
+              <label for="productDescription" class="form-label">Description</label>
+              <textarea id="productDescription" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button id="productSubmitBtn" type="submit" class="btn btn-primary">Create Product</button>
+            <button id="productResetBtn" type="button" class="btn btn-outline-secondary">Clear</button>
+          </div>
+        </form>
+
+        <div class="toolbar-row grid-2">
+          <select id="productCategoryFilter" class="form-select">
+            <option value="all">All categories</option>
+          </select>
+          <input id="productSearch" class="form-control" placeholder="Search name, brand, description" />
+        </div>
+
+        <div id="productStatus" class="status-box" role="status" aria-live="polite"></div>
+
+        <div class="table-wrap">
+          <table class="table table-hover align-middle" id="productsTable">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Name</th>
+                <th>Brand</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <div class="floating-menu">
+    <a href="index.html" class="menu-item">
+      <i data-lucide="home"></i>
+      <span class="label">Home</span>
+    </a>
+    <a href="dashboard.html" class="menu-item">
+      <i data-lucide="pencil-ruler"></i>
+      <span class="label">Build PC</span>
+    </a>
+    <a href="#" class="menu-item" onclick="toggleComponentsMenu(event)">
+      <i data-lucide="cpu"></i>
+      <span class="label">Components</span>
+    </a>
+    <a href="#" class="menu-item">
+      <i data-lucide="shopping-cart"></i>
+      <span class="label">Cart</span>
+    </a>
+    <div class="account-wrapper">
+      <a href="#" class="menu-item">
+        <i data-lucide="user"></i>
+        <span class="label">Account</span>
+      </a>
+      <div class="account-dropdown">
+        <a href="#" onclick="goToAccount(event)">Account Info</a>
+        <a href="#" onclick="logout()">Logout</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>lucide.createIcons();</script>
+  <script src="JS/app.js"></script>
+  <script src="JS/components-menu.js"></script>
+  <script src="JS/auth-popup.js"></script>
+  <script src="JS/admin.js"></script>
+</body>
+</html>

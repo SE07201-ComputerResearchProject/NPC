@@ -23,6 +23,41 @@ function getProfile() {
     return {};
   }
 }
+
+function getCurrentUserRole() {
+  const profile = getProfile();
+  return (profile.role || 'user').toLowerCase();
+}
+
+async function hydrateProfileRoleIfMissing() {
+  if (!window.isLoggedIn) return;
+
+  const profile = getProfile();
+  if (profile.role) return;
+
+  const userId = profile.userId || localStorage.getItem('userId');
+  if (!userId) return;
+
+  try {
+    const response = await fetch(`http://localhost:3000/api/users/${userId}`);
+    if (!response.ok) return;
+
+    const user = await response.json();
+    const normalized = user && user.user ? user.user : user;
+    saveProfile({
+      ...profile,
+      ...normalized,
+      userId: normalized._id || normalized.id || userId,
+      role: normalized.role || 'user',
+    });
+
+    if (window.updateAccountDropdown) window.updateAccountDropdown();
+    if (window.updateWelcomeMessage) window.updateWelcomeMessage();
+  } catch {
+    // Best effort only; role can still be updated by next login/account load.
+  }
+}
+
 function saveProfile(p) {
   // TODO: send to server
   localStorage.setItem('profile', JSON.stringify(p));
@@ -134,6 +169,10 @@ function logout() {
 function goToAccount(event) {
   event.preventDefault();
   if (window.isLoggedIn) {
+    if (getCurrentUserRole() === 'admin') {
+      window.location.href = 'admin.html';
+      return;
+    }
     window.location.href = 'account.html';
   } else {
     // not logged in: show login popup and remember where to go afterwards
@@ -147,11 +186,29 @@ function initAccountDropdown() {
   const wrapper = document.querySelector('.account-wrapper');
   if (!wrapper) return;
   const dropdown = wrapper.querySelector('.account-dropdown');
+  if (!dropdown) return;
+  const accountInfoLink = dropdown.querySelector('a[onclick*="goToAccount"]');
+
+  let adminLink = dropdown.querySelector('.admin-only-link');
+  if (!adminLink) {
+    adminLink = document.createElement('a');
+    adminLink.className = 'admin-only-link';
+    adminLink.href = 'admin.html';
+    adminLink.textContent = 'Admin Panel';
+    dropdown.insertBefore(adminLink, dropdown.firstChild);
+  }
 
   // make sure wrapper reflects login state
   function refreshWrapper() {
     if (window.isLoggedIn) wrapper.classList.add('logged-in');
     else wrapper.classList.remove('logged-in');
+
+    const isAdmin = window.isLoggedIn && getCurrentUserRole() === 'admin';
+    adminLink.style.display = isAdmin ? 'block' : 'none';
+
+    if (accountInfoLink) {
+      accountInfoLink.style.display = isAdmin ? 'none' : 'block';
+    }
   }
   refreshWrapper();
 
@@ -179,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
   updateWelcomeMessage();   // ensure greeting persists across pages
   // restore last theme choice
   applyTheme(getTheme());
+  hydrateProfileRoleIfMissing();
 });
 
 
@@ -218,13 +276,15 @@ window.addEventListener('scroll', () => {
   lastScrollY = window.scrollY;
 });
 
-var typing = new Typed('.typing', {
-  strings: [
-    '<span style ="color: #00f7ff">Compatibility</span>',
-    '<span style ="color: #2af355">Price Comparison</span>',
-    '<span style ="color: #00a2ff">User Reviews</span>',
-  ],
-  typeSpeed: 80,
-  backSpeed: 50,
-  loop: true
-});
+if (window.Typed && document.querySelector('.typing')) {
+  new Typed('.typing', {
+    strings: [
+      '<span style ="color: #00f7ff">Compatibility</span>',
+      '<span style ="color: #2af355">Price Comparison</span>',
+      '<span style ="color: #00a2ff">User Reviews</span>',
+    ],
+    typeSpeed: 80,
+    backSpeed: 50,
+    loop: true,
+  });
+}

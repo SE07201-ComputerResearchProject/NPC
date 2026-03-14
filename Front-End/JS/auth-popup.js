@@ -126,6 +126,7 @@ function showSignIn() {
             userId: data.user.id,
             username: data.user.username, 
             email: data.user.email,
+            role: data.user.role || 'user',
             fullName: data.user.fullName,
             dateOfBirth: data.user.dateOfBirth,
             address: data.user.address
@@ -221,6 +222,7 @@ function showSignUp() {
             userId: data.user.id,
             username: data.user.username, 
             email: data.user.email,
+            role: 'user',
             fullName: data.user.fullName,
             dateOfBirth: data.user.dateOfBirth,
             address: data.user.address

@@ -1,5 +1,9 @@
 const COMPONENT_API_BASE_URL = 'http://localhost:3000/api/components';
 
+const searchParams = new URLSearchParams(window.location.search);
+const initialCategory = searchParams.get('category') || 'all';
+const initialPage = Math.max(1, Number(searchParams.get('page')) || 1);
+
 const CATEGORY_LABELS = {
   all: 'All Components',
   case: 'Case',
@@ -16,11 +20,37 @@ const CATEGORY_LABELS = {
 const productsState = {
   categories: [],
   components: [],
-  activeCategory: new URLSearchParams(window.location.search).get('category') || 'all',
+  activeCategory: initialCategory,
   searchText: '',
-  currentPage: 1,
+  currentPage: initialPage,
   pageSize: 9,
+  currentPageByCategory: {
+    [initialCategory]: initialPage,
+  },
 };
+
+function syncProductsUrl() {
+  const params = new URLSearchParams();
+
+  if (productsState.activeCategory !== 'all') {
+    params.set('category', productsState.activeCategory);
+  }
+
+  if (productsState.currentPage > 1) {
+    params.set('page', String(productsState.currentPage));
+  }
+
+  const queryString = params.toString();
+  const nextUrl = queryString ? `products.html?${queryString}` : 'products.html';
+  window.history.replaceState({}, '', nextUrl);
+}
+
+function setCurrentPage(page) {
+  const safePage = Math.max(1, Number(page) || 1);
+  productsState.currentPage = safePage;
+  productsState.currentPageByCategory[productsState.activeCategory] = safePage;
+  syncProductsUrl();
+}
 
 function formatPrice(price) {
   return `${Number(price || 0).toLocaleString()} VND`;
@@ -60,11 +90,15 @@ function renderCategoryFilters() {
   filtersEl.querySelectorAll('[data-category]').forEach(button => {
     button.addEventListener('click', () => {
       const { category } = button.dataset;
+
+      productsState.currentPageByCategory[productsState.activeCategory] = productsState.currentPage;
       productsState.activeCategory = category;
-      const nextUrl = category === 'all' ? 'products.html' : `products.html?category=${category}`;
-      window.history.replaceState({}, '', nextUrl);
+      productsState.currentPage = productsState.currentPageByCategory[category] || 1;
+
+      syncProductsUrl();
       updateProductsTitle();
       renderCategoryFilters();
+
       loadComponents().catch(error => {
         console.error(error);
         const statusEl = document.getElementById('productsStatus');
@@ -114,7 +148,7 @@ function renderPagination(totalPages) {
 
   paginationEl.querySelectorAll('[data-page]').forEach(button => {
     button.addEventListener('click', () => {
-      productsState.currentPage = Number(button.dataset.page);
+      setCurrentPage(button.dataset.page);
       renderComponents();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
@@ -123,10 +157,10 @@ function renderPagination(totalPages) {
   paginationEl.querySelectorAll('[data-nav]').forEach(button => {
     button.addEventListener('click', () => {
       if (button.dataset.nav === 'prev' && productsState.currentPage > 1) {
-        productsState.currentPage -= 1;
+        setCurrentPage(productsState.currentPage - 1);
       }
       if (button.dataset.nav === 'next' && productsState.currentPage < totalPages) {
-        productsState.currentPage += 1;
+        setCurrentPage(productsState.currentPage + 1);
       }
       renderComponents();
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -154,7 +188,7 @@ function renderComponents() {
   const totalItems = productsState.components.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / productsState.pageSize));
   if (productsState.currentPage > totalPages) {
-    productsState.currentPage = totalPages;
+    setCurrentPage(totalPages);
   }
 
   const startIndex = (productsState.currentPage - 1) * productsState.pageSize;
@@ -252,7 +286,7 @@ async function loadComponents() {
   }
 
   productsState.components = await response.json();
-  productsState.currentPage = 1;
+  productsState.currentPage = productsState.currentPageByCategory[productsState.activeCategory] || 1;
   renderComponents();
 }
 
@@ -263,6 +297,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (searchInput) {
     searchInput.addEventListener('input', event => {
       productsState.searchText = event.target.value.trim();
+      setCurrentPage(1);
+
       loadComponents().catch(error => {
         console.error(error);
         const statusEl = document.getElementById('productsStatus');

@@ -1,5 +1,7 @@
 // Dashboard functionality for PC Builder
 
+const PAYMENT_API_BASE_URL = 'http://localhost:3000/api/payments';
+
 // track authentication state (false until user logs in)
 window.isLoggedIn = typeof getAuthState === 'function' ? getAuthState() : false;
 
@@ -68,6 +70,126 @@ const components = {
   ]
 };
 
+const selectorState = {
+  pageSize: 9,
+  currentPageByCategory: {},
+};
+
+const visualizerLabels = {
+  case: 'Case',
+  cpu: 'CPU',
+  motherboard: 'Motherboard',
+  gpu: 'GPU',
+  ram: 'RAM',
+  cooler: 'Cooler',
+  storage: 'Storage',
+  psu: 'PSU',
+  fan: 'Fan',
+};
+
+function updateBuildVisualizer() {
+  const scene = document.getElementById('buildVisualizerScene');
+  const listEl = document.getElementById('buildVisualizerList');
+  const hintEl = document.getElementById('buildVisualizerHint');
+  const progressEl = document.getElementById('buildProgressValue');
+  const progressTextEl = document.getElementById('buildCompletionText');
+
+  if (!scene || !listEl || !hintEl || !progressEl || !progressTextEl) {
+    return;
+  }
+
+  const selectedCount = partsCategories.reduce((total, part) => {
+    return total + (currentBuild[part.key] ? 1 : 0);
+  }, 0);
+
+  const totalParts = partsCategories.length;
+  const completionRate = Math.round((selectedCount / totalParts) * 100);
+
+  scene.querySelectorAll('.scene-part[data-part]').forEach(partEl => {
+    const key = partEl.dataset.part;
+    const component = currentBuild[key];
+    const valueEl = partEl.querySelector('.scene-part-value');
+
+    partEl.classList.toggle('active', Boolean(component));
+    if (valueEl) {
+      valueEl.textContent = component ? component.name : 'Not added';
+    }
+  });
+
+  if (selectedCount === 0) {
+    hintEl.textContent = 'Select components from the left panel to light up matching parts in the model on the right.';
+  } else {
+    hintEl.textContent = `${selectedCount}/${totalParts} components have been added to the current build.`;
+  }
+
+  progressEl.style.width = `${completionRate}%`;
+  progressTextEl.textContent = `${completionRate}%`;
+
+  listEl.innerHTML = partsCategories
+    .map(part => {
+      const component = currentBuild[part.key];
+      const stateClass = component ? 'is-on' : '';
+      const stateText = component ? component.name : 'Not added';
+
+      return `
+        <li class="${stateClass}">
+          <span class="part-pill">${visualizerLabels[part.key] || part.name}</span>
+          <span class="part-state">${stateText}</span>
+        </li>
+      `;
+    })
+    .join('');
+}
+
+function getSelectorPage(categoryKey) {
+  return selectorState.currentPageByCategory[categoryKey] || 1;
+}
+
+function setSelectorPage(categoryKey, page) {
+  selectorState.currentPageByCategory[categoryKey] = Math.max(1, Number(page) || 1);
+}
+
+function buildSelectorPagination(categoryKey, currentPage, totalPages) {
+  if (totalPages <= 1) {
+    return '';
+  }
+
+  const pageButtons = [];
+  for (let page = 1; page <= totalPages; page += 1) {
+    pageButtons.push(`
+      <button
+        type="button"
+        class="selector-page-btn ${page === currentPage ? 'active' : ''}"
+        onclick="showComponentSelector('${categoryKey}', ${page})"
+      >
+        ${page}
+      </button>
+    `);
+  }
+
+  return `
+    <div class="selector-pagination">
+      <button
+        type="button"
+        class="selector-page-btn"
+        onclick="showComponentSelector('${categoryKey}', ${currentPage - 1})"
+        ${currentPage === 1 ? 'disabled' : ''}
+      >
+        Prev
+      </button>
+      ${pageButtons.join('')}
+      <button
+        type="button"
+        class="selector-page-btn"
+        onclick="showComponentSelector('${categoryKey}', ${currentPage + 1})"
+        ${currentPage === totalPages ? 'disabled' : ''}
+      >
+        Next
+      </button>
+    </div>
+  `;
+}
+
 function renderPartsList() {
   const partsList = document.getElementById('partsList');
   let html = '';
@@ -96,11 +218,30 @@ function renderPartsList() {
   });
 
   partsList.innerHTML = html;
+  updateBuildVisualizer();
 }
 
-function showComponentSelector(categoryKey) {
-  const categoryName = partsCategories.find(c => c.key === categoryKey).name;
-  const categoryComponents = components[categoryKey];
+function showComponentSelector(categoryKey, page = null) {
+  const category = partsCategories.find(c => c.key === categoryKey);
+  if (!category) {
+    return;
+  }
+
+  const categoryName = category.name;
+  const categoryComponents = components[categoryKey] || [];
+
+  closeComponentSelector();
+
+  const totalItems = categoryComponents.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / selectorState.pageSize));
+  const requestedPage = page === null ? getSelectorPage(categoryKey) : page;
+  const currentPage = Math.min(Math.max(1, Number(requestedPage) || 1), totalPages);
+
+  setSelectorPage(categoryKey, currentPage);
+
+  const startIndex = (currentPage - 1) * selectorState.pageSize;
+  const endIndex = Math.min(startIndex + selectorState.pageSize, totalItems);
+  const pageItems = categoryComponents.slice(startIndex, endIndex);
 
   let html = `<div class="modal fade show" id="componentModal" style="display:block" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
@@ -112,7 +253,17 @@ function showComponentSelector(categoryKey) {
         <div class="modal-body">
           <div class="row">`;
 
-  categoryComponents.forEach((component, index) => {
+  if (pageItems.length === 0) {
+    html += `
+      <div class="col-12">
+        <p class="text-muted mb-0">No components available in this category.</p>
+      </div>
+    `;
+  }
+
+  pageItems.forEach((component, index) => {
+    const componentIndex = startIndex + index;
+
     html += `
       <div class="col-md-6 mb-3">
         <div class="card">
@@ -120,14 +271,21 @@ function showComponentSelector(categoryKey) {
             <h6 class="card-title">${component.name}</h6>
             <p class="card-text"><strong>${component.price.toLocaleString()} VND</strong></p>
             <p class="card-text" style="font-size: 12px; color: #666;">Power: ${component.power}W</p>
-            <button class="btn btn-sm btn-primary" onclick="selectComponent('${categoryKey}', ${index})">Select</button>
+            <button class="btn btn-sm btn-primary" onclick="selectComponent('${categoryKey}', ${componentIndex})">Select</button>
           </div>
         </div>
       </div>
     `;
   });
 
-  html += `</div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeComponentSelector()">Close</button></div></div></div></div><div class="modal-backdrop fade show"></div>`;
+  html += '</div>';
+
+  if (totalItems > 0) {
+    html += `<p class="selector-summary">Showing ${startIndex + 1}-${endIndex} of ${totalItems} component(s)</p>`;
+  }
+
+  html += buildSelectorPagination(categoryKey, currentPage, totalPages);
+  html += `</div><div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeComponentSelector()">Close</button></div></div></div></div><div class="modal-backdrop fade show"></div>`;
 
   document.body.insertAdjacentHTML('beforeend', html);
 }
@@ -400,6 +558,7 @@ function showPaymentModal(amount) {
     <p>Total: ${amount.toLocaleString()} VND</p>
     <button class="btn btn-primary w-100 mb-2" id="payCard">Credit/Debit Card</button>
     <button class="btn btn-secondary w-100 mb-2" id="payPaypal">PayPal</button>
+    <button class="btn btn-danger w-100 mb-2" id="payVnpay">VnPay</button>
   `;
 
   modal.appendChild(header);
@@ -429,6 +588,31 @@ function showPaymentModal(amount) {
     showPopup('Redirecting to PayPal...');
     closePaymentModal();
   });
+
+  document.getElementById('payVnpay').addEventListener('click', async () => {
+    if (!window.isLoggedIn) {
+      closePaymentModal();
+      toggleAuthPopup(new Event('click'));
+      showPopup('Please log in before paying.');
+      return;
+    }
+
+    const payVnpayBtn = document.getElementById('payVnpay');
+    if (payVnpayBtn) {
+      payVnpayBtn.disabled = true;
+      payVnpayBtn.textContent = 'Creating payment...';
+    }
+
+    try {
+      await startVnpayPayment(amount);
+    } catch (error) {
+      if (payVnpayBtn) {
+        payVnpayBtn.disabled = false;
+        payVnpayBtn.textContent = 'VnPay';
+      }
+      showPopup(error.message || 'Cannot connect to VnPay API right now.');
+    }
+  });
 }
 
 function closePaymentModal() {
@@ -441,7 +625,50 @@ function closePaymentModal() {
   }
 }
 
+function notifyPaymentResultFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const paymentStatus = params.get('paymentStatus');
+  if (!paymentStatus) {
+    return;
+  }
+
+  const paymentCode = params.get('paymentCode') || 'N/A';
+  if (paymentStatus === 'success') {
+    showPopup(`VnPay payment successful (code: ${paymentCode})`, { duration: 3500, center: true });
+  } else {
+    showPopup(`VnPay payment failed (code: ${paymentCode})`, { duration: 3500, center: true });
+  }
+
+  window.history.replaceState({}, '', window.location.pathname);
+}
+
+async function startVnpayPayment(amount) {
+  const buildName = (typeof getBuildName === 'function' && getBuildName()) || 'New Build';
+
+  const response = await fetch(`${PAYMENT_API_BASE_URL}/vnpay/create`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      amount,
+      orderInfo: `Payment for build ${buildName}`,
+      orderType: 'other',
+      language: 'vn',
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok || !data.paymentUrl) {
+    throw new Error(data.message || 'Cannot create VnPay payment URL');
+  }
+
+  window.location.href = data.paymentUrl;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  notifyPaymentResultFromUrl();
+
   const checkoutBtn = document.getElementById('checkoutBtn');
   if (checkoutBtn) {
     checkoutBtn.addEventListener('click', handleCheckout);

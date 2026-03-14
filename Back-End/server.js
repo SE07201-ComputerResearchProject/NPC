@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import userRoutes from './userRoutes.js';
 import componentRoutes from './componentRoutes.js';
+import paymentRoutes from './paymentRoutes.js';
 import Component from './Component.js';
 import { seedComponentsIfNeeded } from './componentData.js';
 
@@ -28,6 +29,7 @@ mongoose.connect(mongoConnectionString)
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/components', componentRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Health check
 app.get('/', (req, res) => {

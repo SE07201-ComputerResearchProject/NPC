@@ -38,6 +38,7 @@ function syncProfileToStorage(user) {
     userId: user._id || user.id || existingProfile.userId || localStorage.getItem('userId'),
     username: user.username || '',
     email: user.email || '',
+    role: user.role || existingProfile.role || 'user',
     fullName: user.fullName || '',
     dateOfBirth: user.dateOfBirth || null,
     address: user.address || { street: '', city: '', state: '', zip: '' },
@@ -83,6 +84,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.isLoggedIn = getAuthState();
   if (!window.isLoggedIn) {
     window.location.href = 'index.html';
+    return;
+  }
+
+  const profile = getProfile();
+  if ((profile.role || 'user').toLowerCase() === 'admin') {
+    window.location.href = 'admin.html';
     return;
   }
 
