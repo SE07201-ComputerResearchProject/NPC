@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160" viewBox="0 0 240 160" role="img" aria-label="Cooling card image">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#003049" />
+      <stop offset="100%" stop-color="#2a9d8f" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="232" height="152" rx="20" fill="url(#bg)" />
+  <circle cx="120" cy="76" r="34" fill="#e0fbfc" />
+  <circle cx="120" cy="76" r="8" fill="#2a9d8f" />
+  <path d="M120 46 C140 46,146 66,128 70 C122 62,114 56,120 46 Z" fill="#2a9d8f" />
+  <path d="M150 76 C150 96,130 102,126 84 C134 78,140 70,150 76 Z" fill="#2a9d8f" />
+  <path d="M120 106 C100 106,94 86,112 82 C118 90,126 96,120 106 Z" fill="#2a9d8f" />
+  <path d="M90 76 C90 56,110 50,114 68 C106 74,100 82,90 76 Z" fill="#2a9d8f" />
+  <text x="120" y="142" text-anchor="middle" fill="#ffffff" font-size="20" font-family="Segoe UI, Arial" font-weight="700">COOLING</text>
+</svg>

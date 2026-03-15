@@ -204,6 +204,46 @@
           </table>
         </div>
       </article>
+
+      <article class="square-panel admin-panel logs-panel" id="logsSection">
+        <div class="panel-head">
+          <h2>Log Check</h2>
+          <button id="reloadLogsBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Logs</button>
+        </div>
+
+        <div class="toolbar-row logs-toolbar">
+          <input id="logSearch" class="form-control" placeholder="Search user/activity" />
+          <select id="logLimit" class="form-select">
+            <option value="20">20 latest logs</option>
+            <option value="50" selected>50 latest logs</option>
+            <option value="100">100 latest logs</option>
+          </select>
+          <label class="form-check log-check-option">
+            <input id="logSuspiciousOnly" class="form-check-input" type="checkbox" />
+            <span class="form-check-label">Suspicious only</span>
+          </label>
+          <label class="form-check log-check-option">
+            <input id="logAutoRefresh" class="form-check-input" type="checkbox" />
+            <span class="form-check-label">Auto refresh 10s</span>
+          </label>
+        </div>
+
+        <div id="logStatus" class="status-box" role="status" aria-live="polite"></div>
+
+        <div class="table-wrap logs-table-wrap">
+          <table class="table table-hover align-middle" id="logsTable">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>User</th>
+                <th>Activity</th>
+                <th>Flag</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </article>
     </section>
   </main>
 

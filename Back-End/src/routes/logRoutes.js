@@ -1,7 +1,7 @@
 // routes/logs.js
 import express from 'express';
 import mongoose from 'mongoose';
-import Log from './Log.js';
+import Log from '../models/Log.js';
 
 const router = express.Router();
 

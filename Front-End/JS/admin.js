@@ -1,6 +1,7 @@
 const API_BASE = 'http://localhost:3000/api';
 const USER_API_BASE = `${API_BASE}/users`;
 const PRODUCT_API_BASE = `${API_BASE}/components`;
+const LOG_API_BASE = `${API_BASE}/logs`;
 
 const PRODUCT_CATEGORIES = [
   'case',
@@ -17,8 +18,10 @@ const PRODUCT_CATEGORIES = [
 const state = {
   users: [],
   products: [],
+  logs: [],
   editingUserId: null,
   editingProductId: null,
+  logAutoRefreshTimer: null,
 };
 
 const el = {
@@ -65,6 +68,14 @@ const el = {
   reloadProductsBtn: document.getElementById('reloadProductsBtn'),
   productsTableBody: document.querySelector('#productsTable tbody'),
   productStatus: document.getElementById('productStatus'),
+
+  reloadLogsBtn: document.getElementById('reloadLogsBtn'),
+  logSearch: document.getElementById('logSearch'),
+  logLimit: document.getElementById('logLimit'),
+  logSuspiciousOnly: document.getElementById('logSuspiciousOnly'),
+  logAutoRefresh: document.getElementById('logAutoRefresh'),
+  logsTableBody: document.querySelector('#logsTable tbody'),
+  logStatus: document.getElementById('logStatus'),
 };
 
 function setStatus(target, message, type = 'info') {
@@ -77,6 +88,11 @@ function setStatus(target, message, type = 'info') {
 function toErrorMessage(error, fallback) {
   if (!error) return fallback;
   return error.message || fallback;
+}
+
+function isMissingRouteError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return message.includes('404') || message.includes('not found');
 }
 
 function getProfileSafe() {
@@ -125,6 +141,18 @@ function formatDateForInput(value) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return '';
   return parsed.toISOString().split('T')[0];
+}
+
+function formatDateTime(value) {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '-';
+  return parsed.toLocaleString();
+}
+
+function isSuspiciousLog(log) {
+  const content = `${log?.activity || ''} ${log?.user || ''}`.toLowerCase();
+  return /(error|fail|invalid|unauthorized|denied|exception|forbidden)/i.test(content);
 }
 
 async function requestJson(url, options = {}) {
@@ -452,6 +480,112 @@ function renderProductsTable(products) {
     .join('');
 }
 
+function getFilteredLogs() {
+  const keyword = (el.logSearch?.value || '').toLowerCase().trim();
+  const suspiciousOnly = Boolean(el.logSuspiciousOnly?.checked);
+
+  return state.logs.filter(log => {
+    const haystack = `${log?.user || ''} ${log?.activity || ''}`.toLowerCase();
+    const keywordMatch = !keyword || haystack.includes(keyword);
+    const suspiciousMatch = !suspiciousOnly || isSuspiciousLog(log);
+    return keywordMatch && suspiciousMatch;
+  });
+}
+
+function renderLogsTable(logs) {
+  if (!el.logsTableBody) return;
+
+  if (!logs.length) {
+    el.logsTableBody.innerHTML = '<tr><td colspan="4" class="empty-state">No logs found.</td></tr>';
+    return;
+  }
+
+  el.logsTableBody.innerHTML = logs
+    .map(log => {
+      const activity = escapeHtml(log?.activity || '-');
+      const user = escapeHtml(log?.user || '-');
+      const timestamp = escapeHtml(formatDateTime(log?.timeStamp));
+      const suspicious = isSuspiciousLog(log);
+      const badgeClass = suspicious ? 'alert' : 'normal';
+      const badgeText = suspicious ? 'Alert' : 'Normal';
+
+      return `
+        <tr>
+          <td>${timestamp}</td>
+          <td>${user}</td>
+          <td class="log-activity" title="${activity}">${activity}</td>
+          <td><span class="log-badge ${badgeClass}">${badgeText}</span></td>
+        </tr>
+      `;
+    })
+    .join('');
+}
+
+function refreshLogsView() {
+  const filtered = getFilteredLogs();
+  renderLogsTable(filtered);
+  setStatus(el.logStatus, `Showing ${filtered.length}/${state.logs.length} logs.`, 'ok');
+}
+
+async function loadLogs() {
+  if (!el.logStatus) return;
+
+  setStatus(el.logStatus, 'Loading logs...', 'info');
+  try {
+    const limit = Math.max(1, Number(el.logLimit?.value || 50));
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    params.set('page', '1');
+    params.set('sort', '-timeStamp');
+
+    const payload = await requestJson(`${LOG_API_BASE}?${params.toString()}`);
+    const logs = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
+
+    state.logs = logs;
+    refreshLogsView();
+  } catch (error) {
+    if (isMissingRouteError(error)) {
+      clearLogAutoRefresh();
+      if (el.logAutoRefresh) {
+        el.logAutoRefresh.checked = false;
+      }
+
+      setStatus(el.logStatus, 'Log API route is not available yet. Front-end log box is ready.', 'info');
+      if (el.logsTableBody) {
+        el.logsTableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Waiting for Back-End log route.</td></tr>';
+      }
+      return;
+    }
+
+    setStatus(el.logStatus, toErrorMessage(error, 'Failed to load logs.'), 'error');
+    if (el.logsTableBody) {
+      el.logsTableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Cannot load logs.</td></tr>';
+    }
+  }
+}
+
+function clearLogAutoRefresh() {
+  if (state.logAutoRefreshTimer) {
+    clearInterval(state.logAutoRefreshTimer);
+    state.logAutoRefreshTimer = null;
+  }
+}
+
+function toggleLogAutoRefresh() {
+  clearLogAutoRefresh();
+
+  if (!el.logAutoRefresh?.checked) {
+    setStatus(el.logStatus, 'Auto refresh is off.', 'info');
+    return;
+  }
+
+  state.logAutoRefreshTimer = setInterval(() => {
+    loadLogs();
+  }, 10000);
+
+  setStatus(el.logStatus, 'Auto refresh enabled (10s).', 'info');
+}
+
 async function loadProducts() {
   setStatus(el.productStatus, 'Loading products...', 'info');
   try {
@@ -577,6 +711,22 @@ function bindEvents() {
   el.productSearch.addEventListener('input', loadProducts);
   el.productCategoryFilter.addEventListener('change', loadProducts);
   el.productsTableBody.addEventListener('click', handleProductTableClick);
+
+  if (el.reloadLogsBtn) {
+    el.reloadLogsBtn.addEventListener('click', loadLogs);
+  }
+  if (el.logSearch) {
+    el.logSearch.addEventListener('input', refreshLogsView);
+  }
+  if (el.logSuspiciousOnly) {
+    el.logSuspiciousOnly.addEventListener('change', refreshLogsView);
+  }
+  if (el.logLimit) {
+    el.logLimit.addEventListener('change', loadLogs);
+  }
+  if (el.logAutoRefresh) {
+    el.logAutoRefresh.addEventListener('change', toggleLogAutoRefresh);
+  }
 }
 
 async function init() {
@@ -603,7 +753,7 @@ async function init() {
   bindEvents();
 
   setStatus(el.globalStatus, 'Admin page ready.', 'info');
-  await Promise.all([loadUsers(), loadProducts()]);
+  await Promise.all([loadUsers(), loadProducts(), loadLogs()]);
 }
 
 init();

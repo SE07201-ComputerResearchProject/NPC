@@ -56,7 +56,115 @@ body.bg-dark .background.retrowave {
     padding: 20px;
     position: relative;
     overflow: hidden;
+    z-index: 2;
 }
+
+  .components-floating-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+  }
+
+  .floating-chip {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px;
+    border-radius: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.78);
+    color: #1f2933;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+    backdrop-filter: blur(8px);
+    animation: componentFloat 7s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  .floating-chip img {
+    width: 96px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    display: block;
+  }
+
+  .floating-chip span {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  body.bg-dark .floating-chip {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(28, 28, 28, 0.72);
+    color: #f0f3f6;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+  }
+
+  .chip-1 {
+    top: 18%;
+    left: 10%;
+    animation-duration: 7.8s;
+  }
+
+  .chip-2 {
+    top: 26%;
+    right: 11%;
+    animation-duration: 8.6s;
+    animation-delay: -1.2s;
+  }
+
+  .chip-3 {
+    top: 52%;
+    left: 7%;
+    animation-duration: 7.1s;
+    animation-delay: -2.8s;
+  }
+
+  .chip-4 {
+    top: 58%;
+    right: 9%;
+    animation-duration: 8.2s;
+    animation-delay: -3.5s;
+  }
+
+  .chip-5 {
+    top: 72%;
+    left: 18%;
+    animation-duration: 7.4s;
+    animation-delay: -0.9s;
+  }
+
+  .chip-6 {
+    top: 15%;
+    right: 24%;
+    animation-duration: 8.9s;
+    animation-delay: -2.2s;
+  }
+
+  @keyframes componentFloat {
+    0% {
+      transform: translate3d(0, 0, 0) rotate(0deg);
+    }
+    25% {
+      transform: translate3d(10px, -14px, 0) rotate(1deg);
+    }
+    50% {
+      transform: translate3d(-8px, -20px, 0) rotate(-1deg);
+    }
+    75% {
+      transform: translate3d(-14px, -6px, 0) rotate(0.6deg);
+    }
+    100% {
+      transform: translate3d(0, 0, 0) rotate(0deg);
+    }
+  }
 
 /* Button Styles */
 .btn-start {
@@ -411,6 +519,25 @@ body.bg-dark .menu-category:hover {
     
     .products-menu-grid {
         grid-template-columns: repeat(3, 1fr);
+    }
+
+    .floating-chip {
+      padding: 8px;
+      border-radius: 14px;
+    }
+
+    .floating-chip img {
+      width: 78px;
+      height: 52px;
+    }
+
+    .floating-chip span {
+      font-size: 11px;
+    }
+
+    .chip-5,
+    .chip-6 {
+      display: none;
     }
 }
 

@@ -63,6 +63,72 @@ body.bg-dark .admin-hero-panel {
   box-shadow: 0 16px 36px rgba(0,0,0,0.08);
 }
 
+.logs-panel {
+  grid-column: 1 / -1;
+}
+
+.logs-toolbar {
+  grid-template-columns: minmax(240px, 1fr) 170px auto auto;
+  align-items: center;
+}
+
+.log-check-option {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.82);
+}
+
+body.bg-dark .log-check-option {
+  border-color: rgba(255,255,255,0.12);
+  background: rgba(31,31,31,0.9);
+}
+
+.logs-table-wrap {
+  max-height: 360px;
+}
+
+.log-activity {
+  max-width: 720px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.log-badge.normal {
+  background: #e8f6e8;
+  color: #1f6a2a;
+}
+
+.log-badge.alert {
+  background: #ffe9e9;
+  color: #8b1f1f;
+}
+
+body.bg-dark .log-badge.normal {
+  background: rgba(45, 102, 52, 0.35);
+  color: #b9efc1;
+}
+
+body.bg-dark .log-badge.alert {
+  background: rgba(127, 29, 29, 0.42);
+  color: #ffd0d0;
+}
+
 body.bg-dark .admin-panel {
   background: rgba(18,18,18,0.95);
   border-color: rgba(255,255,255,0.1);
@@ -209,5 +275,13 @@ body.bg-dark .empty-state {
 
   .status-box {
     align-items: flex-start;
+  }
+
+  .logs-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .log-activity {
+    max-width: 260px;
   }
 }

@@ -69,35 +69,48 @@ function bindCartEvents() {
   const checkoutBtn = document.getElementById('checkoutCartBtn');
 
   if (container) {
-    container.addEventListener('click', event => {
+    container.addEventListener('click', async event => {
       const removeBtn = event.target.closest('[data-action="remove-item"]');
       if (!removeBtn) return;
 
       const id = removeBtn.dataset.id;
-      removeFromCart(id);
-      renderCart();
-      showPopup('Item removed from cart');
+      try {
+        await removeFromCart(id);
+        renderCart();
+        showPopup('Item removed from cart');
+      } catch (error) {
+        showPopup(error.message || 'Cannot remove item right now.');
+      }
     });
 
-    container.addEventListener('change', event => {
+    container.addEventListener('change', async event => {
       const qtyInput = event.target.closest('[data-action="update-qty"]');
       if (!qtyInput) return;
 
       const id = qtyInput.dataset.id;
       const nextQty = Math.max(1, Number(qtyInput.value) || 1);
-      updateCartQuantity(id, nextQty);
-      renderCart();
+      try {
+        await updateCartQuantity(id, nextQty);
+        renderCart();
+      } catch (error) {
+        showPopup(error.message || 'Cannot update quantity right now.');
+      }
     });
   }
 
   if (clearBtn) {
-    clearBtn.addEventListener('click', () => {
+    clearBtn.addEventListener('click', async () => {
       if (!getCart().length) return;
       const ok = window.confirm('Clear all items in cart?');
       if (!ok) return;
-      clearCart();
-      renderCart();
-      showPopup('Cart cleared');
+
+      try {
+        await clearCart();
+        renderCart();
+        showPopup('Cart cleared');
+      } catch (error) {
+        showPopup(error.message || 'Cannot clear cart right now.');
+      }
     });
   }
 
@@ -107,6 +120,12 @@ function bindCartEvents() {
 }
 
 async function handleCheckout() {
+  if (!getAuthToken()) {
+    showPopup('Please log in before checkout.');
+    toggleAuthPopup(new Event('click'));
+    return;
+  }
+
   const items = getCart();
   if (!items.length) {
     showPopup('Your cart is empty.');
@@ -120,11 +139,18 @@ async function handleCheckout() {
   }
 
   try {
+    const orderPayload = await createCheckoutOrder('cart');
+    const orderId = orderPayload?.order?.id;
+    if (!orderId) {
+      showPopup('Cannot create order from cart.');
+      return;
+    }
+
     const response = await fetch(`${PAYMENT_API_BASE_URL}/vnpay/create`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
-        amount: total,
+        orderId,
         orderInfo: `Thanh toan gio hang (${totalItems} san pham)`,
         orderType: 'other',
         language: 'vn',
@@ -143,13 +169,13 @@ async function handleCheckout() {
   }
 }
 
-function handlePaymentReturn() {
+async function handlePaymentReturn() {
   const params = new URLSearchParams(window.location.search);
   const status = params.get('paymentStatus');
   if (!status) return;
 
   if (status === 'success') {
-    clearCart();
+    await clearCart().catch(() => null);
     renderCart();
     showPopup('Payment successful. Thank you for your order!');
   } else {
@@ -157,8 +183,12 @@ function handlePaymentReturn() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  if (window.awaitCommerceStateReady) {
+    await window.awaitCommerceStateReady();
+  }
+
   renderCart();
   bindCartEvents();
-  handlePaymentReturn();
+  await handlePaymentReturn();
 });

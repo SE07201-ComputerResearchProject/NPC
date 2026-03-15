@@ -12,22 +12,33 @@ let loginRecaptchaId = null;
 let signupRecaptchaId = null;
 
 function applyAuthSuccess(data, fallbackMessage) {
+  const user = data?.user || {};
+  const userId = user.id || user._id || '';
+  const normalizedUsername = user.username || user.fullName || (user.email ? user.email.split('@')[0] : 'User');
+
   const profile = {
-    userId: data.user.id,
-    username: data.user.username,
-    email: data.user.email,
-    role: data.user.role || 'user',
-    fullName: data.user.fullName,
-    dateOfBirth: data.user.dateOfBirth,
-    address: data.user.address,
-    avatarUrl: data.user.avatarUrl,
+    userId,
+    username: normalizedUsername,
+    email: user.email || '',
+    role: user.role || 'user',
+    provider: user.provider || 'local',
+    googleId: user.googleId || '',
+    fullName: user.fullName || '',
+    dateOfBirth: user.dateOfBirth || null,
+    address: user.address || { street: '', city: '', state: '', zip: '' },
+    avatarUrl: user.avatarUrl || '',
   };
 
   saveProfile(profile);
-  localStorage.setItem('userId', data.user.id);
+  if (userId) {
+    localStorage.setItem('userId', userId);
+  }
   window.isLoggedIn = true;
   setAuthState(true);
   if (data.token) setAuthToken(data.token);
+  if (window.hydrateCommerceState) {
+    window.commerceStateReady = window.hydrateCommerceState();
+  }
   closeAuthPopup();
   showPopup(data.message || fallbackMessage);
   if (window.updateAccountDropdown) window.updateAccountDropdown();

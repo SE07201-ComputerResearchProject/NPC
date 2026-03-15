@@ -297,7 +297,7 @@ function closeComponentSelector() {
   }
 }
 
-function selectComponent(categoryKey, index) {
+async function selectComponent(categoryKey, index) {
   const items = componentsCache[categoryKey] || [];
   const component = items[index];
   if (!component) return;
@@ -311,22 +311,25 @@ function selectComponent(categoryKey, index) {
   closeComponentSelector();
   renderPartsList();
   updateStats();
-  saveBuildToLocalStorage();
+  await persistCurrentBuild();
 }
 
-function removeComponent(categoryKey) {
+async function removeComponent(categoryKey) {
   currentBuild[categoryKey] = null;
   renderPartsList();
   updateStats();
-  saveBuildToLocalStorage();
+  await persistCurrentBuild();
 }
 
-function saveBuildToLocalStorage() {
-  // keep localStorage for now; move to server/db in future
-  saveBuild(currentBuild);
+async function persistCurrentBuild() {
+  try {
+    await saveBuild(currentBuild);
+  } catch (error) {
+    showPopup(error.message || 'Cannot sync build right now.');
+  }
 }
 
-function saveCurrentBuild() {
+async function saveCurrentBuild() {
   if (!window.isLoggedIn) {
     // show centered popup with delay and click-action
     let autoId;
@@ -345,10 +348,15 @@ function saveCurrentBuild() {
     }, 5000);
     return;
   }
-  const profile = getProfile();
-  profile.savedBuild = currentBuild;
-  saveProfile(profile);
-  showPopup('Build saved to your account');
+
+  try {
+    const buildName = document.getElementById('buildName')?.textContent || 'New Build';
+    await saveBuildName(buildName);
+    await saveBuild(currentBuild);
+    showPopup('Build saved to your account');
+  } catch (error) {
+    showPopup(error.message || 'Cannot save build right now.');
+  }
 }
 
 function updateStats() {
@@ -432,7 +440,9 @@ function editBuildName() {
     input.parentNode.replaceChild(newH2, input);
     
     // Save to database (placeholder for future API call)
-    saveBuildName(newName);
+    saveBuildName(newName).catch(() => {
+      showPopup('Cannot update build name right now.');
+    });
   };
   
   input.addEventListener('blur', saveName);
@@ -450,57 +460,37 @@ function editBuildName() {
   });
 }
 
-function saveBuildNameToDatabase(name) {
-  // TODO: Replace with actual API call to save build name to database
-  console.log('Saving build name to database:', name);
-  
-  // Placeholder: In production, this would be an API call
-  // fetch('/api/builds/name', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ name: name })
-  // })
-  // .then(response => response.json())
-  // .then(data => console.log('Build name saved:', data))
-  // .catch(error => console.error('Error saving build name:', error));
-  
-  // Temporary: still use helper which itself currently wraps localStorage
-  saveBuildName(name);
-}
-
-function loadBuildFromLocalStorage() {
-  const saved = getBuild();
-  if (saved) {
-    currentBuild = saved;
+async function loadBuildFromApiState() {
+  if (window.awaitCommerceStateReady) {
+    await window.awaitCommerceStateReady();
   }
+
+  currentBuild = getBuild();
 }
 
-function loadBuildNameFromDatabase() {
-  // TODO: Replace with actual API call to load build name from database
-  console.log('Loading build name from database');
-  
-  // Placeholder: In production, this would be an API call
-  // fetch('/api/builds/name')
-  // .then(response => response.json())
-  // .then(data => {
-  //   if (data.name) {
-  //     document.getElementById('buildName').textContent = data.name;
-  //   }
-  // })
-  // .catch(error => console.error('Error loading build name:', error));
-  
-  // Temporary: still use helper which itself currently wraps localStorage
+async function loadBuildNameFromApiState() {
+  if (window.awaitCommerceStateReady) {
+    await window.awaitCommerceStateReady();
+  }
+
   const savedName = getBuildName();
   if (savedName) {
     document.getElementById('buildName').textContent = savedName;
   }
 }
 
-// Initialize
-loadBuildFromLocalStorage();
-loadBuildNameFromDatabase();
-renderPartsList();
-updateStats();
+async function initializeDashboardState() {
+  await loadBuildFromApiState();
+  await loadBuildNameFromApiState();
+  renderPartsList();
+  updateStats();
+}
+
+initializeDashboardState().catch(error => {
+  console.error('Failed to initialize dashboard state:', error);
+  renderPartsList();
+  updateStats();
+});
 
 // set header-date to real current date
 function updateHeaderDate() {
@@ -648,15 +638,19 @@ function notifyPaymentResultFromUrl() {
 }
 
 async function startVnpayPayment(amount) {
+  const orderPayload = await createCheckoutOrder('build');
+  const orderId = orderPayload?.order?.id;
+  if (!orderId) {
+    throw new Error('Cannot create order for this build');
+  }
+
   const buildName = (typeof getBuildName === 'function' && getBuildName()) || 'New Build';
 
   const response = await fetch(`${PAYMENT_API_BASE_URL}/vnpay/create`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({
-      amount,
+      orderId,
       orderInfo: `Payment for build ${buildName}`,
       orderType: 'other',
       language: 'vn',

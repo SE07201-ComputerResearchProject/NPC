@@ -1,5 +1,8 @@
 import crypto from 'crypto';
 import express from 'express';
+import Cart from '../models/Cart.js';
+import Order from '../models/Order.js';
+import { requireAuth } from '../middleware/adminMiddleware.js';
 
 const router = express.Router();
 
@@ -47,7 +50,7 @@ function getClientIp(req) {
   );
 }
 
-router.post('/vnpay/create', async (req, res) => {
+router.post('/vnpay/create', requireAuth, async (req, res) => {
   try {
     const tmnCode = process.env.VNPAY_TMN_CODE;
     const hashSecret = process.env.VNPAY_HASH_SECRET;
@@ -60,16 +63,26 @@ router.post('/vnpay/create', async (req, res) => {
       });
     }
 
-    const amount = Number(req.body.amount || 0);
+    const orderId = String(req.body.orderId || '').trim();
+    if (!orderId) {
+      return res.status(400).json({ message: 'orderId is required' });
+    }
+
+    const order = await Order.findOne({ _id: orderId, user: req.currentUser.userId });
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const amount = Number(order.totalAmount || 0);
     if (!Number.isFinite(amount) || amount <= 0) {
       return res.status(400).json({ message: 'Invalid payment amount' });
     }
 
-    const orderInfo = req.body.orderInfo || 'Thanh toan don hang';
+    const orderInfo = req.body.orderInfo || order.orderInfo || `Thanh toan don hang ${orderId}`;
     const orderType = req.body.orderType || 'other';
     const locale = req.body.language || 'vn';
     const bankCode = req.body.bankCode || '';
-    const txnRef = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const txnRef = `${order._id}-${Date.now()}`;
     const createDate = formatVnpDate();
 
     const vnpParams = {
@@ -101,6 +114,16 @@ router.post('/vnpay/create', async (req, res) => {
     };
 
     const paymentUrl = `${vnpUrl}?${buildQueryString(paymentParams)}`;
+
+    order.orderInfo = orderInfo;
+    order.payment = {
+      ...(order.payment || {}),
+      provider: 'vnpay',
+      txnRef,
+      requestedAt: new Date(),
+    };
+    order.status = 'pending';
+    await order.save();
 
     res.status(200).json({
       message: 'Create VnPay payment URL successfully',
@@ -135,6 +158,28 @@ router.get('/vnpay/return', async (req, res) => {
     const status = isSuccess ? 'success' : 'failed';
     const responseCode = vnpParams.vnp_ResponseCode || '99';
     const txnRef = vnpParams.vnp_TxnRef || '';
+
+    if (txnRef) {
+      const order = await Order.findOne({ 'payment.txnRef': txnRef });
+      if (order) {
+        order.status = isSuccess ? 'paid' : 'failed';
+        order.payment = {
+          ...(order.payment || {}),
+          responseCode,
+          returnedAt: new Date(),
+          paidAt: isSuccess ? new Date() : null,
+        };
+        await order.save();
+
+        if (isSuccess && order.source === 'cart') {
+          await Cart.findOneAndUpdate(
+            { user: order.user },
+            { items: [] },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+          );
+        }
+      }
+    }
 
     const redirectUrl = `${frontendReturnUrl}?paymentStatus=${status}&paymentCode=${responseCode}&txnRef=${encodeURIComponent(txnRef)}`;
     return res.redirect(redirectUrl);

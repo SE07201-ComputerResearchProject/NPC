@@ -1,6 +1,6 @@
 import express from 'express';
-import Component, { COMPONENT_CATEGORIES } from './Component.js';
-import { requireAdmin } from './adminMiddleware.js';
+import Component, { COMPONENT_CATEGORIES } from '../models/Component.js';
+import { requireAdmin } from '../middleware/adminMiddleware.js';
 
 const router = express.Router();
 

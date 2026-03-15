@@ -250,20 +250,40 @@ function renderComponents() {
     .join('');
 
   gridEl.querySelectorAll('[data-add-cart]').forEach(button => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
+      if (!getAuthToken()) {
+        showPopup('Please log in to save items to your cart.');
+        toggleAuthPopup(new Event('click'));
+        return;
+      }
+
       const component = JSON.parse(button.dataset.addCart);
-      addToCart(component);
-      showPopup(`${component.name} added to cart`);
+      try {
+        await addToCart(component);
+        showPopup(`${component.name} added to cart`);
+      } catch (error) {
+        showPopup(error.message || 'Cannot update cart right now.');
+      }
     });
   });
 
   gridEl.querySelectorAll('[data-add-component]').forEach(button => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
+      if (!getAuthToken()) {
+        showPopup('Please log in to save components to your build.');
+        toggleAuthPopup(new Event('click'));
+        return;
+      }
+
       const component = JSON.parse(button.dataset.addComponent);
       const currentBuild = getBuild();
       currentBuild[component.category] = component;
-      saveBuild(currentBuild);
-      showPopup(`${component.name} added to your build`);
+      try {
+        await saveBuild(currentBuild);
+        showPopup(`${component.name} added to your build`);
+      } catch (error) {
+        showPopup(error.message || 'Cannot update build right now.');
+      }
     });
   });
 

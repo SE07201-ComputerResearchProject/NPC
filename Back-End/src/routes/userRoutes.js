@@ -1,10 +1,26 @@
 import express from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
-import User from './User.js';
+import User from '../models/User.js';
+import { requireAuth, requireAdmin, requireSelfOrAdmin } from '../middleware/adminMiddleware.js';
 
 const router = express.Router();
 const googleClient = new OAuth2Client();
+
+function serializeUserForClient(user) {
+  return {
+    id: user._id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    provider: user.provider || 'local',
+    googleId: user.googleId || '',
+    fullName: user.fullName || '',
+    dateOfBirth: user.dateOfBirth || null,
+    address: user.address || { street: '', city: '', state: '', zip: '' },
+    avatarUrl: user.avatarUrl || '',
+  };
+}
 
 function buildJwtForUser(user) {
   return jwt.sign(
@@ -12,6 +28,26 @@ function buildJwtForUser(user) {
     process.env.JWT_SECRET || 'dev_secret_change_in_prod',
     { expiresIn: '7d' }
   );
+}
+
+function buildProfileUpdateData(body = {}) {
+  const { username, fullName, dateOfBirth, address } = body;
+  const updateData = {};
+
+  if (username) updateData.username = username;
+  if (fullName !== undefined) updateData.fullName = fullName;
+  if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth;
+  if (address) {
+    updateData.address = {
+      street: address.street || '',
+      city: address.city || '',
+      state: address.state || '',
+      zip: address.zip || '',
+    };
+  }
+
+  updateData.updatedAt = new Date();
+  return updateData;
 }
 
 async function verifyGoogleIdToken(idToken) {
@@ -121,16 +157,20 @@ router.post('/google', async (req, res) => {
         user.googleId = googleId;
         shouldSave = true;
       }
-      if (!user.provider) {
+      if (user.provider !== 'google') {
         user.provider = 'google';
         shouldSave = true;
       }
-      if (!user.fullName && name) {
+      if (name && user.fullName !== name) {
         user.fullName = name;
         shouldSave = true;
       }
-      if (!user.avatarUrl && avatarUrl) {
+      if (avatarUrl && user.avatarUrl !== avatarUrl) {
         user.avatarUrl = avatarUrl;
+        shouldSave = true;
+      }
+      if (name && user.username !== name) {
+        user.username = name;
         shouldSave = true;
       }
       if (shouldSave) {
@@ -144,14 +184,7 @@ router.post('/google', async (req, res) => {
     return res.status(200).json({
       message: 'Google login successful',
       token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        fullName: user.fullName,
-        avatarUrl: user.avatarUrl,
-      },
+      user: serializeUserForClient(user),
     });
   } catch (error) {
     return res.status(500).json({ message: 'Google login failed', error: error.message });
@@ -192,12 +225,7 @@ router.post('/register', async (req, res) => {
     res.status(201).json({
       message: 'User registered successfully',
       token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-      },
+      user: serializeUserForClient(user),
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -234,12 +262,7 @@ router.post('/login', async (req, res) => {
     res.status(200).json({
       message: 'Login successful',
       token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-      },
+      user: serializeUserForClient(user),
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -248,7 +271,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Get all users (admin only - for testing)
-router.get('/', async (req, res) => {
+router.get('/', requireAdmin, async (req, res) => {
   try {
     const users = await User.find().select('-password');
     res.status(200).json(users);
@@ -257,8 +280,44 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.currentUser.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to fetch current user', error: error.message });
+  }
+});
+
+router.put('/me', requireAuth, async (req, res) => {
+  try {
+    const updateData = buildProfileUpdateData(req.body);
+
+    const user = await User.findByIdAndUpdate(
+      req.currentUser.userId,
+      updateData,
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.status(200).json({
+      message: 'Profile updated successfully',
+      user,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to update current user profile', error: error.message });
+  }
+});
+
 // Get user by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', requireSelfOrAdmin('id'), async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-password');
     if (!user) {
@@ -271,24 +330,9 @@ router.get('/:id', async (req, res) => {
 });
 
 // Update user profile
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireSelfOrAdmin('id'), async (req, res) => {
   try {
-    const { username, fullName, dateOfBirth, address } = req.body;
-    
-    // Build update object - email is NOT updatable
-    const updateData = {};
-    if (username) updateData.username = username;
-    if (fullName !== undefined) updateData.fullName = fullName;
-    if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth;
-    if (address) {
-      updateData.address = {
-        street: address.street || '',
-        city: address.city || '',
-        state: address.state || '',
-        zip: address.zip || '',
-      };
-    }
-    updateData.updatedAt = new Date();
+    const updateData = buildProfileUpdateData(req.body);
 
     const user = await User.findByIdAndUpdate(
       req.params.id,
@@ -310,7 +354,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete user
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireSelfOrAdmin('id'), async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
     if (!user) {

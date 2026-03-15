@@ -1,14 +1,35 @@
 // account.js - handle account profile page
 
 const USER_API_BASE_URL = 'http://localhost:3000/api/users';
+const CURRENT_USER_API_URL = `${USER_API_BASE_URL}/me`;
 
-function getUserIdFromStorage() {
-  const profile = getProfile();
-  return profile.userId || localStorage.getItem('userId');
+function buildAuthHeaders(baseHeaders = {}) {
+  const token = typeof getAuthToken === 'function' ? getAuthToken() : (localStorage.getItem('authToken') || '');
+  if (!token) return baseHeaders;
+
+  return {
+    ...baseHeaders,
+    Authorization: `Bearer ${token}`,
+  };
 }
 
 function normalizeUserPayload(payload) {
   return payload && payload.user ? payload.user : payload;
+}
+
+function hasProfileContent(user) {
+  if (!user || typeof user !== 'object') return false;
+
+  return Boolean(
+    user.username ||
+    user.email ||
+    user.fullName ||
+    user.avatarUrl ||
+    user.address?.street ||
+    user.address?.city ||
+    user.address?.state ||
+    user.address?.zip
+  );
 }
 
 function formatDateForInput(value) {
@@ -31,18 +52,56 @@ function populateProfileForm(user) {
   document.getElementById('zip').value = address.zip || '';
 }
 
+function updateIdentityPanel(user) {
+  const identityEl = document.getElementById('accountIdentity');
+  const providerEl = document.getElementById('accountProvider');
+  const avatarEl = document.getElementById('accountAvatar');
+  if (!identityEl || !providerEl || !avatarEl) return;
+
+  const provider = String(user.provider || 'local').toLowerCase();
+  providerEl.textContent = provider === 'google' ? 'Google Account' : 'Local Account';
+
+  const avatarUrl = user.avatarUrl || '';
+  if (avatarUrl) {
+    avatarEl.src = avatarUrl;
+    avatarEl.style.display = 'block';
+  } else {
+    avatarEl.removeAttribute('src');
+    avatarEl.style.display = 'none';
+  }
+
+  identityEl.style.display = 'flex';
+}
+
 function syncProfileToStorage(user) {
   const existingProfile = getProfile();
+  const provider = user.provider || existingProfile.provider || 'local';
+  const googleId = user.googleId || existingProfile.googleId || '';
+
   saveProfile({
     ...existingProfile,
     userId: user._id || user.id || existingProfile.userId || localStorage.getItem('userId'),
     username: user.username || '',
     email: user.email || '',
     role: user.role || existingProfile.role || 'user',
+    provider,
+    googleId,
     fullName: user.fullName || '',
     dateOfBirth: user.dateOfBirth || null,
     address: user.address || { street: '', city: '', state: '', zip: '' },
+    avatarUrl: user.avatarUrl || existingProfile.avatarUrl || '',
   });
+}
+
+function populateFromCachedProfile() {
+  const cachedProfile = getProfile();
+  if (!hasProfileContent(cachedProfile)) {
+    return false;
+  }
+
+  populateProfileForm(cachedProfile);
+  updateIdentityPanel(cachedProfile);
+  return true;
 }
 
 function renderSavedBuildSummary() {
@@ -81,7 +140,7 @@ function renderSavedBuildSummary() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  window.isLoggedIn = getAuthState();
+  window.isLoggedIn = getAuthState() || Boolean(getAuthToken());
   if (!window.isLoggedIn) {
     window.location.href = 'index.html';
     return;
@@ -104,14 +163,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function loadUserProfile() {
     try {
-      const userId = getUserIdFromStorage();
-      if (!userId) {
-        showPopup('User ID not found. Please login again.');
+      const hasCachedProfile = populateFromCachedProfile();
+
+      const response = await fetch(CURRENT_USER_API_URL, {
+        headers: buildAuthHeaders(),
+      });
+      const data = await response.json();
+
+      if (response.status === 401 || response.status === 403) {
+        showPopup(hasCachedProfile
+          ? 'Cannot refresh account info right now. Please log in again if the data is outdated.'
+          : 'Session expired or unauthorized. Please login again.');
+        if (!hasCachedProfile) {
+          logout();
+        }
         return;
       }
-
-      const response = await fetch(`${USER_API_BASE_URL}/${userId}`);
-      const data = await response.json();
 
       if (!response.ok) {
         showPopup(data.message || 'Failed to load profile');
@@ -120,11 +187,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const user = normalizeUserPayload(data);
       populateProfileForm(user);
+      updateIdentityPanel(user);
       syncProfileToStorage(user);
       if (window.updateWelcomeMessage) window.updateWelcomeMessage();
     } catch (error) {
       console.error('Error loading profile:', error);
-      showPopup('Cannot connect to server.');
+      if (!populateFromCachedProfile()) {
+        showPopup('Cannot connect to server.');
+      }
     }
   }
 
@@ -132,12 +202,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     e.preventDefault();
 
     try {
-      const userId = getUserIdFromStorage();
-      if (!userId) {
-        showPopup('User ID not found. Please login again.');
-        return;
-      }
-
       const userData = {
         username: document.getElementById('username').value.trim(),
         fullName: document.getElementById('fullName').value.trim(),
@@ -150,13 +214,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
       };
 
-      const response = await fetch(`${USER_API_BASE_URL}/${userId}`, {
+      const response = await fetch(CURRENT_USER_API_URL, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(userData),
       });
 
       const data = await response.json();
+
+      if (response.status === 401 || response.status === 403) {
+        showPopup('Session expired or unauthorized. Please login again.');
+        logout();
+        return;
+      }
 
       if (!response.ok) {
         showPopup(data.message || 'Failed to update profile');
@@ -165,6 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const user = normalizeUserPayload(data);
       populateProfileForm(user);
+      updateIdentityPanel(user);
       syncProfileToStorage(user);
       showPopup('Profile updated successfully');
       if (window.updateWelcomeMessage) window.updateWelcomeMessage();
@@ -175,6 +246,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   await loadUserProfile();
+
+  if (window.awaitCommerceStateReady) {
+    await window.awaitCommerceStateReady();
+  }
 
   if (profileForm) {
     profileForm.addEventListener('submit', saveUserProfile);

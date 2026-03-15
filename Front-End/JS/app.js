@@ -6,7 +6,20 @@ const floatingMenu = document.querySelector('.floating-menu');
 const themeIcon = document.getElementById('themeIcon');
 let lastScrollY = window.scrollY;
 
-// storage helper functions (currently backed by localStorage, replace with real DB later)
+const API_BASE_URL = 'http://localhost:3000/api';
+const CART_API_URL = `${API_BASE_URL}/carts/me`;
+const BUILD_API_URL = `${API_BASE_URL}/builds/me/current`;
+const ORDER_API_URL = `${API_BASE_URL}/orders`;
+const COMMERCE_BUILD_CATEGORIES = ['case', 'cpu', 'motherboard', 'gpu', 'ram', 'storage', 'psu', 'cooler', 'fan'];
+const LEGACY_COMMERCE_STORAGE_KEYS = ['pcBuild', 'shoppingCart', 'buildName'];
+
+const commerceState = {
+  cart: [],
+  build: createEmptyBuildState(),
+  buildName: 'New Build',
+};
+
+// Auth/profile/theme state helpers remain in localStorage.
 function getAuthState() {
   // TODO: query server/session
   return localStorage.getItem('isLoggedIn') === 'true';
@@ -23,6 +36,190 @@ function setAuthToken(token) {
   if (token) localStorage.setItem('authToken', token);
   else localStorage.removeItem('authToken');
 }
+
+function createEmptyBuildState() {
+  return {
+    case: null,
+    cpu: null,
+    motherboard: null,
+    gpu: null,
+    ram: null,
+    storage: null,
+    psu: null,
+    cooler: null,
+    fan: null,
+  };
+}
+
+function cloneStateValue(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function cleanupLegacyCommerceStorage() {
+  LEGACY_COMMERCE_STORAGE_KEYS.forEach(key => localStorage.removeItem(key));
+}
+
+function normalizeCartItemsForState(items) {
+  if (!Array.isArray(items)) return [];
+
+  return items
+    .map(item => {
+      if (!item || typeof item !== 'object') return null;
+
+      const id = item._id || item.componentId || '';
+      const category = item.category || '';
+      const name = item.name || '';
+      if (!category || !name) return null;
+
+      return {
+        _id: String(id),
+        category,
+        name,
+        brand: item.brand || '',
+        price: Number(item.price || 0),
+        power: Number(item.power || 0),
+        quantity: Math.max(1, Number(item.quantity || 1)),
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeBuildForState(build) {
+  const normalized = createEmptyBuildState();
+
+  COMMERCE_BUILD_CATEGORIES.forEach(category => {
+    const part = build?.[category];
+    if (!part || typeof part !== 'object') {
+      normalized[category] = null;
+      return;
+    }
+
+    normalized[category] = {
+      _id: String(part._id || part.componentId || ''),
+      category: part.category || category,
+      name: part.name || '',
+      brand: part.brand || '',
+      price: Number(part.price || 0),
+      power: Number(part.power || 0),
+    };
+  });
+
+  return normalized;
+}
+
+function getAuthHeaders(baseHeaders = {}) {
+  const token = getAuthToken();
+  if (!token) return { ...baseHeaders };
+
+  return {
+    ...baseHeaders,
+    Authorization: `Bearer ${token}`,
+  };
+}
+
+async function requestAuthJson(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: getAuthHeaders(options.headers || {}),
+  });
+
+  const contentType = response.headers.get('content-type') || '';
+  const payload = contentType.includes('application/json') ? await response.json() : null;
+
+  if (!response.ok) {
+    throw new Error(payload?.message || `Request failed: ${response.status}`);
+  }
+
+  return payload;
+}
+
+function resetCommerceState() {
+  commerceState.cart = [];
+  commerceState.build = createEmptyBuildState();
+  commerceState.buildName = 'New Build';
+}
+
+async function hydrateCommerceState() {
+  cleanupLegacyCommerceStorage();
+
+  if (!getAuthToken()) {
+    resetCommerceState();
+    return cloneStateValue(commerceState);
+  }
+
+  const [cartPayload, buildPayload] = await Promise.all([
+    requestAuthJson(CART_API_URL).catch(() => ({ items: [] })),
+    requestAuthJson(BUILD_API_URL).catch(() => ({ name: 'New Build', parts: createEmptyBuildState() })),
+  ]);
+
+  commerceState.cart = normalizeCartItemsForState(cartPayload?.items || []);
+  commerceState.build = normalizeBuildForState(buildPayload?.parts || {});
+  commerceState.buildName = String(buildPayload?.name || 'New Build').trim() || 'New Build';
+
+  return cloneStateValue(commerceState);
+}
+
+async function awaitCommerceStateReady() {
+  try {
+    await window.commerceStateReady;
+  } catch {
+    // Keep the UI usable even if the initial sync fails.
+  }
+
+  return cloneStateValue(commerceState);
+}
+
+async function persistCartState() {
+  if (!getAuthToken()) {
+    return { persisted: false, items: getCart() };
+  }
+
+  const payload = await requestAuthJson(CART_API_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: commerceState.cart }),
+  });
+
+  commerceState.cart = normalizeCartItemsForState(payload?.cart?.items || commerceState.cart);
+  return payload;
+}
+
+async function persistBuildState() {
+  if (!getAuthToken()) {
+    return { persisted: false, build: { name: getBuildName(), parts: getBuild() } };
+  }
+
+  const payload = await requestAuthJson(BUILD_API_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: commerceState.buildName || 'New Build',
+      parts: commerceState.build,
+    }),
+  });
+
+  commerceState.build = normalizeBuildForState(payload?.build?.parts || commerceState.build);
+  commerceState.buildName = String(payload?.build?.name || commerceState.buildName || 'New Build').trim() || 'New Build';
+  return payload;
+}
+
+async function createCheckoutOrder(source) {
+  return requestAuthJson(`${ORDER_API_URL}/checkout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source }),
+  });
+}
+
+window.commerceStateReady = hydrateCommerceState();
+window.hydrateCommerceState = async () => {
+  window.commerceStateReady = hydrateCommerceState();
+  return window.commerceStateReady;
+};
+window.awaitCommerceStateReady = awaitCommerceStateReady;
+window.requestAuthJson = requestAuthJson;
+window.createCheckoutOrder = createCheckoutOrder;
+
 function getProfile() {
   try {
     return JSON.parse(localStorage.getItem('profile') || '{}');
@@ -42,11 +239,12 @@ async function hydrateProfileRoleIfMissing() {
   const profile = getProfile();
   if (profile.role) return;
 
-  const userId = profile.userId || localStorage.getItem('userId');
-  if (!userId) return;
-
   try {
-    const response = await fetch(`http://localhost:3000/api/users/${userId}`);
+    const token = getAuthToken();
+    if (!token) return;
+
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await fetch('http://localhost:3000/api/users/me', { headers });
     if (!response.ok) return;
 
     const user = await response.json();
@@ -54,7 +252,7 @@ async function hydrateProfileRoleIfMissing() {
     saveProfile({
       ...profile,
       ...normalized,
-      userId: normalized._id || normalized.id || userId,
+      userId: normalized._id || normalized.id || profile.userId || localStorage.getItem('userId'),
       role: normalized.role || 'user',
     });
 
@@ -70,33 +268,30 @@ function saveProfile(p) {
   localStorage.setItem('profile', JSON.stringify(p));
 }
 function getBuild() {
-  try { return JSON.parse(localStorage.getItem('pcBuild')||'{}'); } catch { return {}; }
+  return cloneStateValue(commerceState.build);
 }
-function saveBuild(b) {
-  // TODO: persist to database
-  localStorage.setItem('pcBuild', JSON.stringify(b));
+async function saveBuild(b) {
+  commerceState.build = normalizeBuildForState(b);
+  return persistBuildState();
 }
 function getBuildName() {
-  return localStorage.getItem('buildName') || '';
+  return commerceState.buildName || 'New Build';
 }
-function saveBuildName(name) {
-  localStorage.setItem('buildName', name);
+async function saveBuildName(name) {
+  commerceState.buildName = String(name || 'New Build').trim() || 'New Build';
+  return persistBuildState();
 }
 
 function getCart() {
-  try {
-    const cart = JSON.parse(localStorage.getItem('shoppingCart') || '[]');
-    return Array.isArray(cart) ? cart : [];
-  } catch {
-    return [];
-  }
+  return cloneStateValue(commerceState.cart);
 }
 
-function saveCart(items) {
-  localStorage.setItem('shoppingCart', JSON.stringify(Array.isArray(items) ? items : []));
+async function saveCart(items) {
+  commerceState.cart = normalizeCartItemsForState(items);
+  return persistCartState();
 }
 
-function addToCart(component) {
+async function addToCart(component) {
   if (!component || !component._id) return;
 
   const cart = getCart();
@@ -116,25 +311,33 @@ function addToCart(component) {
     });
   }
 
-  saveCart(cart);
+  return saveCart(cart);
 }
 
-function removeFromCart(componentId) {
+async function removeFromCart(componentId) {
   const cart = getCart().filter(item => item._id !== componentId);
-  saveCart(cart);
+  return saveCart(cart);
 }
 
-function updateCartQuantity(componentId, quantity) {
+async function updateCartQuantity(componentId, quantity) {
   const safeQty = Math.max(1, Number(quantity) || 1);
   const cart = getCart().map(item => {
     if (item._id !== componentId) return item;
     return { ...item, quantity: safeQty };
   });
-  saveCart(cart);
+  return saveCart(cart);
 }
 
-function clearCart() {
-  saveCart([]);
+async function clearCart() {
+  commerceState.cart = [];
+
+  if (!getAuthToken()) {
+    return { persisted: false, items: [] };
+  }
+
+  return requestAuthJson(CART_API_URL, {
+    method: 'DELETE',
+  });
 }
 
 // theme persistence helpers
@@ -169,7 +372,7 @@ function applyTheme(theme) {
 }
 
 // load authentication state from storage
-window.isLoggedIn = getAuthState();
+window.isLoggedIn = getAuthState() || Boolean(getAuthToken());
 
 // generic pop-up notification helper
 // options: {duration, center, onClick}
@@ -216,6 +419,8 @@ function logout() {
   window.isLoggedIn = false;
   setAuthState(false);
   setAuthToken(null);
+  resetCommerceState();
+  cleanupLegacyCommerceStorage();
   if (window.updateAccountDropdown) window.updateAccountDropdown();
   if (window.updateWelcomeMessage) window.updateWelcomeMessage();
   // if on account page, redirect to home
