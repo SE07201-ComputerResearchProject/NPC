@@ -66,7 +66,19 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', requireAdmin, async (req, res) => {
   try {
-    const { category, name, brand, price, power, stock, description, highlights } = req.body;
+    const {
+      category,
+      name,
+      brand,
+      price,
+      power,
+      stock,
+      description,
+      highlights,
+      imageUrl,
+      specs,
+      aiCompatibility,
+    } = req.body;
 
     if (!category || !name || price === undefined) {
       return res.status(400).json({ message: 'category, name, and price are required' });
@@ -90,6 +102,9 @@ router.post('/', requireAdmin, async (req, res) => {
       stock: Number(stock || 0),
       description: description || '',
       highlights: Array.isArray(highlights) ? highlights : [],
+      imageUrl: imageUrl || '',
+      specs: specs && typeof specs === 'object' ? specs : {},
+      aiCompatibility: aiCompatibility && typeof aiCompatibility === 'object' ? aiCompatibility : {},
     });
 
     res.status(201).json({ message: 'Component created successfully', component });
@@ -100,7 +115,19 @@ router.post('/', requireAdmin, async (req, res) => {
 
 router.put('/:id', requireAdmin, async (req, res) => {
   try {
-    const { category, name, brand, price, power, stock, description, highlights } = req.body;
+    const {
+      category,
+      name,
+      brand,
+      price,
+      power,
+      stock,
+      description,
+      highlights,
+      imageUrl,
+      specs,
+      aiCompatibility,
+    } = req.body;
 
     if (category && !COMPONENT_CATEGORIES.includes(category)) {
       return res.status(400).json({ message: 'Invalid component category' });
@@ -115,6 +142,11 @@ router.put('/:id', requireAdmin, async (req, res) => {
     if (stock !== undefined) updateData.stock = Number(stock);
     if (description !== undefined) updateData.description = description;
     if (highlights !== undefined) updateData.highlights = Array.isArray(highlights) ? highlights : [];
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl || '';
+    if (specs !== undefined) updateData.specs = specs && typeof specs === 'object' ? specs : {};
+    if (aiCompatibility !== undefined) {
+      updateData.aiCompatibility = aiCompatibility && typeof aiCompatibility === 'object' ? aiCompatibility : {};
+    }
 
     const component = await Component.findByIdAndUpdate(req.params.id, updateData, {
       new: true,

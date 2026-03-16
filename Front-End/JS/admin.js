@@ -59,6 +59,7 @@ const el = {
   productPrice: document.getElementById('productPrice'),
   productPower: document.getElementById('productPower'),
   productStock: document.getElementById('productStock'),
+  productImageUrl: document.getElementById('productImageUrl'),
   productHighlights: document.getElementById('productHighlights'),
   productDescription: document.getElementById('productDescription'),
   productSubmitBtn: document.getElementById('productSubmitBtn'),
@@ -420,6 +421,7 @@ function readProductForm() {
     price: Number(el.productPrice.value),
     power: Number(el.productPower.value || 0),
     stock: Number(el.productStock.value || 0),
+    imageUrl: el.productImageUrl.value.trim(),
     description: el.productDescription.value.trim(),
     highlights,
   };
@@ -447,6 +449,7 @@ function fillProductForm(product) {
   el.productPrice.value = product.price ?? 0;
   el.productPower.value = product.power ?? 0;
   el.productStock.value = product.stock ?? 0;
+  el.productImageUrl.value = product.imageUrl || '';
   el.productDescription.value = product.description || '';
   el.productHighlights.value = Array.isArray(product.highlights) ? product.highlights.join(', ') : '';
   setProductFormMode(true);

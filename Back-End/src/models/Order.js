@@ -90,7 +90,7 @@ const orderSchema = new mongoose.Schema(
     payment: {
       provider: {
         type: String,
-        default: 'vnpay',
+        default: 'momo',
         trim: true,
       },
       txnRef: {

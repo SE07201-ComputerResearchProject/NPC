@@ -54,6 +54,19 @@ const componentSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    imageUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    specs: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    aiCompatibility: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
   },
   {
     timestamps: true,

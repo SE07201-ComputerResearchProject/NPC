@@ -9,6 +9,7 @@ import buildRoutes from './routes/buildRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import logRoutes from './routes/logRoutes.js';
+import compatibilityRoutes from './routes/compatibilityRoutes.js';
 import Component from './models/Component.js';
 import { seedComponentsIfNeeded } from './utils/componentData.js';
 
@@ -23,13 +24,6 @@ app.use(express.json());
 // MongoDB Connection
 const mongoConnectionString = process.env.MONGODB_CONNECTION_STRING || 'mongodb://localhost:27017/npc';
 
-mongoose.connect(mongoConnectionString)
-.then(async () => {
-  console.log('✓ MongoDB connected');
-  await seedComponentsIfNeeded(Component);
-})
-.catch(err => console.error('✗ MongoDB connection error:', err.message));
-
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/components', componentRoutes);
@@ -38,6 +32,7 @@ app.use('/api/builds', buildRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/logs', logRoutes);
+app.use('/api/compatibility', compatibilityRoutes);
 
 app.get('/api/config/public', (req, res) => {
   res.status(200).json({
@@ -51,9 +46,15 @@ app.get('/', (req, res) => {
   res.json({ message: 'E-Commerce API Server is running...' });
 });
 
-// Start server
+// Start server only after MongoDB is connected
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`✓ Server running on port ${PORT}`);
-  console.log(`Ready to process requests...`);
-});
+mongoose.connect(mongoConnectionString)
+.then(async () => {
+  console.log('✓ MongoDB connected');
+  await seedComponentsIfNeeded(Component);
+  app.listen(PORT, () => {
+    console.log(`✓ Server running on port ${PORT}`);
+    console.log(`Ready to process requests...`);
+  });
+})
+.catch(err => console.error('✗ MongoDB connection error:', err.message));

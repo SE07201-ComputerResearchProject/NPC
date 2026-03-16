@@ -395,6 +395,37 @@ body.bg-dark #compatibilityWarnings {
     margin-bottom: 5px;
 }
 
+#compatibilityWarnings .compatibility-summary {
+    margin: 4px 0 10px;
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+#compatibilityWarnings .compatibility-checks {
+    margin: 0;
+    padding-left: 18px;
+}
+
+#compatibilityWarnings .compatibility-check {
+    margin-bottom: 8px;
+}
+
+#compatibilityWarnings .compatibility-check.fail {
+    color: #b42318;
+}
+
+#compatibilityWarnings .compatibility-check.warn {
+    color: #9a6700;
+}
+
+body.bg-dark #compatibilityWarnings .compatibility-check.fail {
+    color: #ff9f8f;
+}
+
+body.bg-dark #compatibilityWarnings .compatibility-check.warn {
+    color: #ffe082;
+}
+
 /* Action Buttons */
 .action-buttons {
     display: flex;

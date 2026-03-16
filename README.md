@@ -21,7 +21,7 @@
 - `carts`: persistent cart by user
 - `builds`: persistent PC build by user
 - `orders`: checkout order creation and history
-- `payments`: VNPay integration
+- `payments`: MoMo integration
 
 ## Run
 
@@ -47,4 +47,4 @@ Open: `http://localhost:8080`
 
 - Cart/Build/Order are now API-backed (no localStorage persistence for commerce data).
 - JWT-protected routes require `Authorization: Bearer <token>`.
-- VNPay create endpoint now expects an `orderId`.
+- MoMo create endpoint now expects an `orderId`.

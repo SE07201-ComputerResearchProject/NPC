@@ -12,6 +12,8 @@ const BUILD_API_URL = `${API_BASE_URL}/builds/me/current`;
 const ORDER_API_URL = `${API_BASE_URL}/orders`;
 const COMMERCE_BUILD_CATEGORIES = ['case', 'cpu', 'motherboard', 'gpu', 'ram', 'storage', 'psu', 'cooler', 'fan'];
 const LEGACY_COMMERCE_STORAGE_KEYS = ['pcBuild', 'shoppingCart', 'buildName'];
+const GUEST_BUILD_STORAGE_KEY = 'guestPcBuild';
+const GUEST_BUILD_NAME_STORAGE_KEY = 'guestBuildName';
 
 const commerceState = {
   cart: [],
@@ -57,6 +59,25 @@ function cloneStateValue(value) {
 
 function cleanupLegacyCommerceStorage() {
   LEGACY_COMMERCE_STORAGE_KEYS.forEach(key => localStorage.removeItem(key));
+}
+
+function readGuestBuildFromStorage() {
+  try {
+    const rawBuild = JSON.parse(localStorage.getItem(GUEST_BUILD_STORAGE_KEY) || '{}');
+    return normalizeBuildForState(rawBuild);
+  } catch {
+    return createEmptyBuildState();
+  }
+}
+
+function readGuestBuildNameFromStorage() {
+  const value = localStorage.getItem(GUEST_BUILD_NAME_STORAGE_KEY) || 'New Build';
+  return String(value).trim() || 'New Build';
+}
+
+function persistGuestBuildState() {
+  localStorage.setItem(GUEST_BUILD_STORAGE_KEY, JSON.stringify(commerceState.build));
+  localStorage.setItem(GUEST_BUILD_NAME_STORAGE_KEY, commerceState.buildName || 'New Build');
 }
 
 function normalizeCartItemsForState(items) {
@@ -143,7 +164,9 @@ async function hydrateCommerceState() {
   cleanupLegacyCommerceStorage();
 
   if (!getAuthToken()) {
-    resetCommerceState();
+    commerceState.cart = [];
+    commerceState.build = readGuestBuildFromStorage();
+    commerceState.buildName = readGuestBuildNameFromStorage();
     return cloneStateValue(commerceState);
   }
 
@@ -186,6 +209,7 @@ async function persistCartState() {
 
 async function persistBuildState() {
   if (!getAuthToken()) {
+    persistGuestBuildState();
     return { persisted: false, build: { name: getBuildName(), parts: getBuild() } };
   }
 

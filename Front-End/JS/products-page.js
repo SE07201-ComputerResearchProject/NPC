@@ -17,6 +17,19 @@ const CATEGORY_LABELS = {
   fan: 'Case Fan',
 };
 
+const CATEGORY_HERO_IMAGES = {
+  all: 'Assets/Floating/motherboard-card.svg',
+  case: 'Assets/Floating/case-card.svg',
+  cpu: 'Assets/Floating/cpu-card.svg',
+  motherboard: 'Assets/Floating/motherboard-card.svg',
+  gpu: 'Assets/Floating/gpu-card.svg',
+  ram: 'Assets/Floating/ram-card.svg',
+  storage: 'Assets/Floating/storage-card.svg',
+  psu: 'Assets/Floating/power-card.svg',
+  cooler: 'Assets/Floating/cooling-card.svg',
+  fan: 'Assets/Floating/fan-card.svg',
+};
+
 const productsState = {
   categories: [],
   components: [],
@@ -28,6 +41,75 @@ const productsState = {
     [initialCategory]: initialPage,
   },
 };
+
+let pendingProductsRequests = 0;
+let productCardRevealObserver = null;
+let productDetailsEscHandler = null;
+
+function setProductsLoaderVisible(isVisible) {
+  const overlay = document.getElementById('productsLoaderOverlay');
+  if (!overlay) return;
+
+  overlay.classList.toggle('hidden', !isVisible);
+}
+
+function beginProductsLoading() {
+  pendingProductsRequests += 1;
+  setProductsLoaderVisible(true);
+}
+
+function endProductsLoading() {
+  pendingProductsRequests = Math.max(0, pendingProductsRequests - 1);
+  if (pendingProductsRequests === 0) {
+    setProductsLoaderVisible(false);
+  }
+}
+
+function scrollProductsPageToTop() {
+  const productsPageEl = document.querySelector('.products-page');
+  if (!productsPageEl) return;
+
+  const top = productsPageEl.getBoundingClientRect().top + window.scrollY - 88;
+  window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+}
+
+function observeProductCardReveal() {
+  const cards = document.querySelectorAll('.product-card');
+  if (!cards.length) return;
+
+  if (productCardRevealObserver) {
+    productCardRevealObserver.disconnect();
+  }
+
+  const canObserve = 'IntersectionObserver' in window;
+  if (!canObserve) {
+    cards.forEach(card => {
+      card.classList.add('reveal-card', 'is-visible');
+    });
+    return;
+  }
+
+  productCardRevealObserver = new IntersectionObserver(
+    entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+
+        entry.target.classList.add('is-visible');
+        productCardRevealObserver.unobserve(entry.target);
+      });
+    },
+    {
+      threshold: 0.12,
+      rootMargin: '0px 0px -40px 0px',
+    }
+  );
+
+  cards.forEach((card, index) => {
+    card.classList.add('reveal-card');
+    card.style.transitionDelay = `${Math.min(index * 45, 220)}ms`;
+    productCardRevealObserver.observe(card);
+  });
+}
 
 function syncProductsUrl() {
   const params = new URLSearchParams();
@@ -56,10 +138,259 @@ function formatPrice(price) {
   return `${Number(price || 0).toLocaleString()} VND`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatSpecLabel(label) {
+  const text = String(label || '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .trim();
+
+  if (!text) return 'Spec';
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function formatSpecValue(value) {
+  if (Array.isArray(value)) {
+    return value.map(formatSpecValue).join(', ');
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.entries(value)
+      .map(([key, nested]) => `${formatSpecLabel(key)}: ${formatSpecValue(nested)}`)
+      .join(' | ');
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+
+  return String(value ?? '-');
+}
+
+function isPerformanceSpecKey(key) {
+  return /(clock|speed|rpm|airflow|pressure|latency|tdp|power|wattage|read|write|boost|cores|threads|vram|cache)/i.test(String(key || ''));
+}
+
+function buildSpecsSections(component) {
+  const specsEntries = Object.entries(component?.specs || {});
+  const generalRows = [];
+  const performanceRows = [];
+
+  specsEntries.forEach(([label, value]) => {
+    const row = [formatSpecLabel(label), formatSpecValue(value)];
+    if (isPerformanceSpecKey(label)) {
+      performanceRows.push(row);
+    } else {
+      generalRows.push(row);
+    }
+  });
+
+  const productInfoRows = [
+    ['Manufacturer', component.brand || 'Generic'],
+    ['Product Name', component.name || 'Unknown'],
+    ['Category', CATEGORY_LABELS[component.category] || component.category || 'Unknown'],
+    ['Price', formatPrice(component.price)],
+    ['Stock', component.stock ?? 0],
+  ];
+
+  return {
+    productInfoRows,
+    generalRows,
+    performanceRows,
+  };
+}
+
+function renderSpecsTable(rows, emptyMessage) {
+  if (!rows.length) {
+    return `<p class="product-spec-empty">${escapeHtml(emptyMessage)}</p>`;
+  }
+
+  return `
+    <div class="product-spec-table">
+      ${rows
+        .map(
+          ([label, value]) => `
+        <div class="product-spec-row">
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value)}</strong>
+        </div>
+      `
+        )
+        .join('')}
+    </div>
+  `;
+}
+
+async function addComponentToBuild(component) {
+  const currentBuild = getBuild();
+  currentBuild[component.category] = component;
+  await saveBuild(currentBuild);
+  showPopup(getAuthToken()
+    ? `${component.name} added to your build`
+    : `${component.name} added to your guest build`);
+}
+
+async function buyComponentNow(component) {
+  if (!getAuthToken()) {
+    showPopup('Please log in to continue with Buy Now.');
+    toggleAuthPopup(new Event('click'));
+    return;
+  }
+
+  await addToCart(component);
+  showPopup(`${component.name} added to cart`);
+  window.location.href = 'shopping-cart.html';
+}
+
+function closeProductDetailsModal() {
+  const backdrop = document.getElementById('productSpecsBackdrop');
+  if (backdrop) {
+    backdrop.remove();
+  }
+
+  if (productDetailsEscHandler) {
+    document.removeEventListener('keydown', productDetailsEscHandler);
+    productDetailsEscHandler = null;
+  }
+
+  document.body.classList.remove('modal-open-lite');
+}
+
+function openProductDetailsModal(component) {
+  if (!component) return;
+
+  closeProductDetailsModal();
+
+  const { productInfoRows, generalRows, performanceRows } = buildSpecsSections(component);
+  const highlights = Array.isArray(component.highlights) ? component.highlights : [];
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'productSpecsBackdrop';
+  backdrop.className = 'product-spec-backdrop';
+  // TODO: Replace this placeholder with real per-product illustration URL when your image assets are ready.
+  const hasIllustration = typeof component.imageUrl === 'string' && component.imageUrl.trim().length > 0;
+  const illustrationHtml = hasIllustration
+    ? `<img src="${escapeHtml(component.imageUrl)}" alt="${escapeHtml(component.name)} illustration" />`
+    : `<div class="product-illustration-placeholder">Illustration image placeholder<br />Add product image later</div>`;
+
+  backdrop.innerHTML = `
+    <section class="product-spec-modal" role="dialog" aria-modal="true" aria-label="${escapeHtml(component.name)} specs">
+      <header class="product-spec-header">
+        <div>
+          <p class="product-spec-kicker">Part Details</p>
+          <h3>${escapeHtml(component.name)}</h3>
+        </div>
+        <button type="button" class="product-spec-close" data-close-product-spec aria-label="Close">&times;</button>
+      </header>
+      <div class="product-spec-body">
+        <aside class="product-detail-left">
+          <div class="product-image-panel">
+            <div class="product-image-main">
+              ${illustrationHtml}
+            </div>
+            <div class="product-image-thumbs" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+
+          <section class="product-detail-section">
+            <h4>Product Information</h4>
+            ${renderSpecsTable(productInfoRows, 'No product information yet.')}
+          </section>
+
+          <section class="product-detail-section">
+            <h4>General Specifications</h4>
+            ${renderSpecsTable(generalRows, 'No general specifications yet.')}
+          </section>
+
+          <section class="product-detail-section">
+            <h4>Performance</h4>
+            ${renderSpecsTable(performanceRows, 'No performance data yet.')}
+          </section>
+        </aside>
+
+        <div class="product-detail-right">
+          <div class="product-detail-top">
+            <span class="product-detail-category">${escapeHtml(CATEGORY_LABELS[component.category] || component.category)}</span>
+            <p class="product-detail-price-label">Best Price</p>
+            <p class="product-detail-price">${formatPrice(component.price)}</p>
+            <p class="product-detail-description">${escapeHtml(component.description || 'No description yet.')}</p>
+          </div>
+
+          <div class="product-detail-actions">
+            <button type="button" class="btn btn-outline-secondary" data-popup-add-build>Add To Build</button>
+            <button type="button" class="btn btn-primary" data-popup-buy-now>Buy Now</button>
+          </div>
+
+          ${highlights.length
+            ? `<div class="product-spec-highlights">${highlights
+                .map(item => `<span>${escapeHtml(item)}</span>`)
+                .join('')}</div>`
+            : ''}
+        </div>
+      </div>
+    </section>
+  `;
+
+  backdrop.addEventListener('click', event => {
+    if (event.target === backdrop || event.target.closest('[data-close-product-spec]')) {
+      closeProductDetailsModal();
+    }
+  });
+
+  productDetailsEscHandler = event => {
+    if (event.key === 'Escape') {
+      closeProductDetailsModal();
+    }
+  };
+  document.addEventListener('keydown', productDetailsEscHandler);
+
+  const addBuildButton = backdrop.querySelector('[data-popup-add-build]');
+  if (addBuildButton) {
+    addBuildButton.addEventListener('click', async () => {
+      try {
+        await addComponentToBuild(component);
+      } catch (error) {
+        showPopup(error.message || 'Cannot update build right now.');
+      }
+    });
+  }
+
+  const buyNowButton = backdrop.querySelector('[data-popup-buy-now]');
+  if (buyNowButton) {
+    buyNowButton.addEventListener('click', async () => {
+      try {
+        await buyComponentNow(component);
+      } catch (error) {
+        showPopup(error.message || 'Cannot complete Buy Now right now.');
+      }
+    });
+  }
+
+  document.body.appendChild(backdrop);
+  document.body.classList.add('modal-open-lite');
+}
+
 function updateProductsTitle() {
   const title = document.getElementById('productsTitle');
   if (!title) return;
   title.textContent = CATEGORY_LABELS[productsState.activeCategory] || 'Browse Components';
+
+  const heroEl = document.querySelector('.products-hero');
+  if (!heroEl) return;
+
+  const imagePath = CATEGORY_HERO_IMAGES[productsState.activeCategory] || CATEGORY_HERO_IMAGES.all;
+  heroEl.style.setProperty('--hero-image', `url('${imagePath}')`);
 }
 
 function renderCategoryFilters() {
@@ -96,6 +427,7 @@ function renderCategoryFilters() {
       productsState.currentPage = productsState.currentPageByCategory[category] || 1;
 
       syncProductsUrl();
+      scrollProductsPageToTop();
       updateProductsTitle();
       renderCategoryFilters();
 
@@ -194,6 +526,7 @@ function renderComponents() {
   const startIndex = (productsState.currentPage - 1) * productsState.pageSize;
   const endIndex = Math.min(startIndex + productsState.pageSize, totalItems);
   const pageItems = productsState.components.slice(startIndex, endIndex);
+  const pageItemsMap = new Map(pageItems.map(item => [String(item._id), item]));
 
   statusEl.textContent = `Showing ${startIndex + 1}-${endIndex} of ${totalItems} component(s)`;
   gridEl.innerHTML = pageItems
@@ -206,11 +539,10 @@ function renderComponents() {
       </div>
       <h3>${component.name}</h3>
       <p class="product-brand">${component.brand || 'Generic'}</p>
-      <div class="product-image-grid" aria-label="Image placeholders for ${component.name}">
-        <div class="image-slot image-slot-main">Add Main Image</div>
-        <div class="image-slot">Add Image</div>
-        <div class="image-slot">Add Image</div>
-        <div class="image-slot">Add Image</div>
+      <div class="product-image-grid product-image-single" aria-label="Product image for ${component.name}">
+        <div class="image-slot image-slot-photo">
+          <img src="${escapeHtml((component.imageUrl && component.imageUrl.trim()) || CATEGORY_HERO_IMAGES[component.category] || CATEGORY_HERO_IMAGES.all)}" alt="${escapeHtml(component.name)}" loading="lazy" />
+        </div>
       </div>
       <p class="product-description">${component.description || 'No description yet.'}</p>
       <div class="product-highlights">
@@ -243,6 +575,7 @@ function renderComponents() {
           power: component.power,
           brand: component.brand,
         }).replace(/'/g, '&#39;')}'>Add to Build</button>
+        <button type="button" class="btn btn-outline-dark" data-view-more="${String(component._id)}">View More</button>
       </div>
     </article>
   `
@@ -269,38 +602,46 @@ function renderComponents() {
 
   gridEl.querySelectorAll('[data-add-component]').forEach(button => {
     button.addEventListener('click', async () => {
-      if (!getAuthToken()) {
-        showPopup('Please log in to save components to your build.');
-        toggleAuthPopup(new Event('click'));
-        return;
-      }
-
       const component = JSON.parse(button.dataset.addComponent);
-      const currentBuild = getBuild();
-      currentBuild[component.category] = component;
       try {
-        await saveBuild(currentBuild);
-        showPopup(`${component.name} added to your build`);
+        await addComponentToBuild(component);
       } catch (error) {
         showPopup(error.message || 'Cannot update build right now.');
       }
     });
   });
 
+  gridEl.querySelectorAll('[data-view-more]').forEach(button => {
+    button.addEventListener('click', () => {
+      const component = pageItemsMap.get(button.dataset.viewMore);
+      openProductDetailsModal(component);
+    });
+  });
+
+  observeProductCardReveal();
   renderPagination(totalPages);
 }
 
 async function loadCategories() {
-  const response = await fetch(`${COMPONENT_API_BASE_URL}/categories`);
-  if (!response.ok) {
-    throw new Error('Failed to load categories');
-  }
+  beginProductsLoading();
 
-  productsState.categories = await response.json();
-  renderCategoryFilters();
+  try {
+    const response = await fetch(`${COMPONENT_API_BASE_URL}/categories`);
+    if (!response.ok) {
+      throw new Error('Failed to load categories');
+    }
+
+    productsState.categories = await response.json();
+    renderCategoryFilters();
+  } finally {
+    endProductsLoading();
+  }
 }
 
 async function loadComponents() {
+  beginProductsLoading();
+
+  try {
   const statusEl = document.getElementById('productsStatus');
   if (statusEl) {
     statusEl.textContent = 'Loading components...';
@@ -323,6 +664,9 @@ async function loadComponents() {
   productsState.components = await response.json();
   productsState.currentPage = productsState.currentPageByCategory[productsState.activeCategory] || 1;
   renderComponents();
+  } finally {
+    endProductsLoading();
+  }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -333,6 +677,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     searchInput.addEventListener('input', event => {
       productsState.searchText = event.target.value.trim();
       setCurrentPage(1);
+      scrollProductsPageToTop();
 
       loadComponents().catch(error => {
         console.error(error);

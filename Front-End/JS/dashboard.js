@@ -1,6 +1,7 @@
 // Dashboard functionality for PC Builder
 
 const PAYMENT_API_BASE_URL = 'http://localhost:3000/api/payments';
+const COMPATIBILITY_API_BASE_URL = 'http://localhost:3000/api/compatibility';
 
 // track authentication state (false until user logs in)
 window.isLoggedIn = typeof getAuthState === 'function' ? getAuthState() : false;
@@ -31,6 +32,19 @@ let currentBuild = {
 
 const COMPONENT_API_BASE_URL = 'http://localhost:3000/api/components';
 const componentsCache = {};
+const compatibilityState = {
+  requestId: 0,
+  debounceTimer: null,
+};
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 async function fetchComponentsByCategory(categoryKey) {
   if (componentsCache[categoryKey]) return componentsCache[categoryKey];
@@ -359,6 +373,105 @@ async function saveCurrentBuild() {
   }
 }
 
+function applyCompatibilityStatus(compatible, totalPrice, score = null, source = 'local') {
+  const compatibilityEl = document.getElementById('compatibility');
+  if (!compatibilityEl) return;
+
+  if (source === 'ai' && Number.isFinite(score)) {
+    compatibilityEl.textContent = compatible
+      ? `AI ✓ Compatible (${Math.round(score)}%)`
+      : `AI ✗ Incompatible (${Math.round(score)}%)`;
+  } else {
+    compatibilityEl.textContent = compatible ? '✓ Compatible' : '✗ Incompatible';
+  }
+
+  compatibilityEl.className = compatible ? 'stat-value compatible' : 'stat-value incompatible';
+
+  const checkoutBtn = document.getElementById('checkoutBtn');
+  if (checkoutBtn) {
+    checkoutBtn.disabled = !compatible || totalPrice === 0;
+  }
+}
+
+function renderCompatibilityWarnings(analysis, fallbackWarnings = []) {
+  const warningsEl = document.getElementById('compatibilityWarnings');
+  if (!warningsEl) return;
+
+  const aiChecks = Array.isArray(analysis?.checks)
+    ? analysis.checks.filter(check => check.status === 'fail' || check.status === 'warn')
+    : [];
+
+  if (aiChecks.length > 0) {
+    warningsEl.innerHTML = `
+      <h6>AI Analysis</h6>
+      <p class="compatibility-summary">${escapeHtml(analysis.summary || '')}</p>
+      <ul class="compatibility-checks">
+        ${aiChecks
+          .map(check => `<li class="compatibility-check ${check.status}"><strong>${escapeHtml(check.title)}:</strong> ${escapeHtml(check.detail)}</li>`)
+          .join('')}
+      </ul>
+    `;
+    warningsEl.style.display = 'block';
+    return;
+  }
+
+  if (fallbackWarnings.length > 0) {
+    warningsEl.innerHTML = '<h6>Warnings:</h6><ul>' + fallbackWarnings.map(w => `<li>${escapeHtml(w)}</li>`).join('') + '</ul>';
+    warningsEl.style.display = 'block';
+    return;
+  }
+
+  warningsEl.style.display = 'none';
+}
+
+async function runCompatibilityAnalysis(totalPrice, fallbackPowerDraw, fallbackWarnings) {
+  const currentRequestId = ++compatibilityState.requestId;
+
+  try {
+    const response = await fetch(`${COMPATIBILITY_API_BASE_URL}/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parts: currentBuild }),
+    });
+
+    const analysis = await response.json();
+    if (!response.ok) {
+      throw new Error(analysis?.message || 'Failed to analyze compatibility');
+    }
+
+    if (currentRequestId !== compatibilityState.requestId) {
+      return;
+    }
+
+    const powerDrawEl = document.getElementById('powerDraw');
+    if (powerDrawEl) {
+      const serverPowerDraw = Number(analysis.totalPowerDrawW);
+      powerDrawEl.textContent = `${Number.isFinite(serverPowerDraw) ? serverPowerDraw : fallbackPowerDraw}W`;
+    }
+
+    applyCompatibilityStatus(Boolean(analysis.compatible), totalPrice, Number(analysis.score), 'ai');
+    renderCompatibilityWarnings(analysis, fallbackWarnings);
+  } catch (error) {
+    if (currentRequestId !== compatibilityState.requestId) {
+      return;
+    }
+
+    console.warn('AI compatibility check fallback to local rules:', error.message);
+    applyCompatibilityStatus(fallbackWarnings.length === 0, totalPrice);
+    renderCompatibilityWarnings(null, fallbackWarnings);
+  }
+}
+
+function scheduleCompatibilityAnalysis(totalPrice, fallbackPowerDraw, fallbackWarnings) {
+  if (compatibilityState.debounceTimer) {
+    clearTimeout(compatibilityState.debounceTimer);
+  }
+
+  compatibilityState.debounceTimer = setTimeout(() => {
+    runCompatibilityAnalysis(totalPrice, fallbackPowerDraw, fallbackWarnings);
+  }, 220);
+}
+
 function updateStats() {
   let totalPrice = 0;
   let totalPower = 0;
@@ -392,23 +505,10 @@ function updateStats() {
 
   document.getElementById('totalPrice').textContent = totalPrice.toLocaleString() + ' VND';
   document.getElementById('powerDraw').textContent = totalPower + 'W';
-  document.getElementById('compatibility').textContent = compatible ? '✓ Compatible' : '✗ Incompatible';
-  document.getElementById('compatibility').className = compatible ? 'stat-value compatible' : 'stat-value incompatible';
 
-  // enable/disable checkout button based on compatibility and presence of parts
-  const checkoutBtn = document.getElementById('checkoutBtn');
-  if (checkoutBtn) {
-    checkoutBtn.disabled = !compatible || totalPrice === 0;
-  }
-
-  // Show warnings
-  const warningsEl = document.getElementById('compatibilityWarnings');
-  if (warnings.length > 0) {
-    warningsEl.innerHTML = '<h6>Warnings:</h6><ul>' + warnings.map(w => `<li>${w}</li>`).join('') + '</ul>';
-    warningsEl.style.display = 'block';
-  } else {
-    warningsEl.style.display = 'none';
-  }
+  applyCompatibilityStatus(compatible, totalPrice);
+  renderCompatibilityWarnings(null, warnings);
+  scheduleCompatibilityAnalysis(totalPrice, totalPower, warnings);
 }
 
 function editBuildName() {
@@ -553,7 +653,7 @@ function showPaymentModal(amount) {
     <p>Total: ${amount.toLocaleString()} VND</p>
     <button class="btn btn-primary w-100 mb-2" id="payCard">Credit/Debit Card</button>
     <button class="btn btn-secondary w-100 mb-2" id="payPaypal">PayPal</button>
-    <button class="btn btn-danger w-100 mb-2" id="payVnpay">VnPay</button>
+    <button class="btn btn-danger w-100 mb-2" id="payMomo">MoMo</button>
   `;
 
   modal.appendChild(header);
@@ -584,7 +684,7 @@ function showPaymentModal(amount) {
     closePaymentModal();
   });
 
-  document.getElementById('payVnpay').addEventListener('click', async () => {
+  document.getElementById('payMomo').addEventListener('click', async () => {
     if (!window.isLoggedIn) {
       closePaymentModal();
       toggleAuthPopup(new Event('click'));
@@ -592,20 +692,20 @@ function showPaymentModal(amount) {
       return;
     }
 
-    const payVnpayBtn = document.getElementById('payVnpay');
-    if (payVnpayBtn) {
-      payVnpayBtn.disabled = true;
-      payVnpayBtn.textContent = 'Creating payment...';
+    const payMomoBtn = document.getElementById('payMomo');
+    if (payMomoBtn) {
+      payMomoBtn.disabled = true;
+      payMomoBtn.textContent = 'Creating payment...';
     }
 
     try {
-      await startVnpayPayment(amount);
+      await startMomoPayment(amount);
     } catch (error) {
-      if (payVnpayBtn) {
-        payVnpayBtn.disabled = false;
-        payVnpayBtn.textContent = 'VnPay';
+      if (payMomoBtn) {
+        payMomoBtn.disabled = false;
+        payMomoBtn.textContent = 'MoMo';
       }
-      showPopup(error.message || 'Cannot connect to VnPay API right now.');
+      showPopup(error.message || 'Cannot connect to MoMo API right now.');
     }
   });
 }
@@ -629,15 +729,15 @@ function notifyPaymentResultFromUrl() {
 
   const paymentCode = params.get('paymentCode') || 'N/A';
   if (paymentStatus === 'success') {
-    showPopup(`VnPay payment successful (code: ${paymentCode})`, { duration: 3500, center: true });
+    showPopup(`MoMo payment successful (code: ${paymentCode})`, { duration: 3500, center: true });
   } else {
-    showPopup(`VnPay payment failed (code: ${paymentCode})`, { duration: 3500, center: true });
+    showPopup(`MoMo payment failed (code: ${paymentCode})`, { duration: 3500, center: true });
   }
 
   window.history.replaceState({}, '', window.location.pathname);
 }
 
-async function startVnpayPayment(amount) {
+async function startMomoPayment(amount) {
   const orderPayload = await createCheckoutOrder('build');
   const orderId = orderPayload?.order?.id;
   if (!orderId) {
@@ -646,7 +746,7 @@ async function startVnpayPayment(amount) {
 
   const buildName = (typeof getBuildName === 'function' && getBuildName()) || 'New Build';
 
-  const response = await fetch(`${PAYMENT_API_BASE_URL}/vnpay/create`, {
+  const response = await fetch(`${PAYMENT_API_BASE_URL}/momo/create`, {
     method: 'POST',
     headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({
@@ -659,7 +759,7 @@ async function startVnpayPayment(amount) {
 
   const data = await response.json();
   if (!response.ok || !data.paymentUrl) {
-    throw new Error(data.message || 'Cannot create VnPay payment URL');
+    throw new Error(data.message || 'Cannot create MoMo payment URL');
   }
 
   window.location.href = data.paymentUrl;

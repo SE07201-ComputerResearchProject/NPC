@@ -88,7 +88,7 @@ router.post('/checkout', requireAuth, validateCheckoutSource, async (req, res) =
       status: 'pending',
       orderInfo,
       payment: {
-        provider: 'vnpay',
+        provider: 'momo',
       },
     });
 
