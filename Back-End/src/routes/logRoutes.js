@@ -5,33 +5,19 @@ import Log from '../models/Log.js';
 
 const router = express.Router();
 
-/**
- * POST /logs
- * Create a system activity log.
- * Accepts JSON body: { user: string, activity?: string, timeStamp?: ISODate|string|number }
- */
-router.post('/', async (req, res) => {
+//creating a system log entry
+router.post('/create', async (req, res) => {
   try {
-    const { user, activity = '', timeStamp } = req.body;
+    const { user, activity = '' } = req.body;
 
     // Basic validation
     if (!user || typeof user !== 'string' || user.trim() === '') {
       return res.status(400).json({ error: 'user is required and must be a non-empty string' });
     }
 
-    // Normalize timestamp if provided
-    let ts;
-    if (timeStamp !== undefined && timeStamp !== null && timeStamp !== '') {
-      ts = new Date(timeStamp);
-      if (Number.isNaN(ts.getTime())) {
-        return res.status(400).json({ error: 'timeStamp must be a valid date or ISO string' });
-      }
-    }
-
     const log = new Log({
       user: user.trim(),
       activity: typeof activity === 'string' ? activity.trim() : String(activity),
-      timeStamp: ts, // if undefined, schema default Date.now will apply
     });
 
     const saved = await log.save();

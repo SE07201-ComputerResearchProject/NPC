@@ -14,6 +14,7 @@ import Component from './models/Component.js';
 import Log from './models/Log.js'
 import { seedComponentsIfNeeded } from './utils/componentData.js';
 import { seedLogsIfNeeded } from './utils/logData.js';
+import { createLog } from './utils/logData.js';
 
 dotenv.config();
 
@@ -55,6 +56,7 @@ mongoose.connect(mongoConnectionString)
   console.log('✓ MongoDB connected');
   await seedComponentsIfNeeded(Component);
   await seedLogsIfNeeded(Log);
+  await createLog('test', 'anon');
   app.listen(PORT, () => {
     console.log(`✓ Server running on port ${PORT}`);
     console.log(`Ready to process requests...`);
