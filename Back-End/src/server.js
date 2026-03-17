@@ -11,7 +11,9 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import logRoutes from './routes/logRoutes.js';
 import compatibilityRoutes from './routes/compatibilityRoutes.js';
 import Component from './models/Component.js';
+import Log from './models/Log.js'
 import { seedComponentsIfNeeded } from './utils/componentData.js';
+import { seedLogsIfNeeded } from './utils/logData.js';
 
 dotenv.config();
 
@@ -52,6 +54,7 @@ mongoose.connect(mongoConnectionString)
 .then(async () => {
   console.log('✓ MongoDB connected');
   await seedComponentsIfNeeded(Component);
+  await seedLogsIfNeeded(Log);
   app.listen(PORT, () => {
     console.log(`✓ Server running on port ${PORT}`);
     console.log(`Ready to process requests...`);
