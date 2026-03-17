@@ -317,6 +317,7 @@ async function selectComponent(categoryKey, index) {
   if (!component) return;
   currentBuild[categoryKey] = {
     _id: component._id,
+    category: component.category || categoryKey,
     name: component.name,
     price: component.price,
     power: component.power || 0,
@@ -426,12 +427,25 @@ function renderCompatibilityWarnings(analysis, fallbackWarnings = []) {
 
 async function runCompatibilityAnalysis(totalPrice, fallbackPowerDraw, fallbackWarnings) {
   const currentRequestId = ++compatibilityState.requestId;
+  const normalizedParts = {};
+
+  Object.entries(currentBuild).forEach(([categoryKey, part]) => {
+    if (!part) {
+      normalizedParts[categoryKey] = null;
+      return;
+    }
+
+    normalizedParts[categoryKey] = {
+      ...part,
+      category: part.category || categoryKey,
+    };
+  });
 
   try {
     const response = await fetch(`${COMPATIBILITY_API_BASE_URL}/check`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ parts: currentBuild }),
+      body: JSON.stringify({ parts: normalizedParts }),
     });
 
     const analysis = await response.json();

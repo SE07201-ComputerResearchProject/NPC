@@ -848,6 +848,15 @@ body.bg-dark .auth-subtitle {
   pointer-events: none;
 }
 
+.home-preloader {
+  background: #f8f9fa;
+  backdrop-filter: none;
+}
+
+body.bg-dark .home-preloader {
+  background: #0f0f0f;
+}
+
 body.bg-dark .products-loader-overlay {
   background: rgba(15, 15, 15, 0.7);
 }

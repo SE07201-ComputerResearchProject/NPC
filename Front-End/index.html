@@ -14,6 +14,31 @@
 </head>
 <body class="bg-light text-dark">
 
+  <div id="homePreloader" class="products-loader-overlay home-preloader" aria-live="polite" aria-label="Loading homepage">
+    <div class="loader"></div>
+  </div>
+  <script>
+    (function () {
+      const preloader = document.getElementById('homePreloader');
+      if (!preloader) return;
+
+      try {
+        const preloaderCooldownMs = 20 * 60 * 1000;
+        const lastShownAt = Number(localStorage.getItem('homePreloaderLastShownAt') || '0');
+        const stillInCooldown = Number.isFinite(lastShownAt) && (Date.now() - lastShownAt) < preloaderCooldownMs;
+
+        window.__showHomePreloader = !stillInCooldown;
+
+        if (stillInCooldown) {
+          preloader.classList.add('hidden');
+        }
+      } catch {
+        // If storage is unavailable, fallback to showing preloader.
+        window.__showHomePreloader = true;
+      }
+    })();
+  </script>
+
   <!-- Navbar 1 (Top) -->
   <nav class="navbar navbar-expand-lg navbar-secondary bg-secondary fixed-top" id="navbarTop">
     <div class="container-fluid">
@@ -118,5 +143,26 @@
   <script src="JS/products-menu.js"></script>
   <script src="JS/components-menu.js"></script>
   <script src="JS/auth-popup.js"></script>
+  <script>
+    (function () {
+      const preloader = document.getElementById('homePreloader');
+      if (!preloader) return;
+
+      if (!window.__showHomePreloader) {
+        preloader.classList.add('hidden');
+        return;
+      }
+
+      setTimeout(() => {
+        preloader.classList.add('hidden');
+        try {
+          localStorage.setItem('homePreloaderLastShownAt', String(Date.now()));
+          localStorage.removeItem('homePreloaderShown');
+        } catch {
+          // Ignore storage write errors.
+        }
+      }, 2000);
+    })();
+  </script>
 </body>
 </html>

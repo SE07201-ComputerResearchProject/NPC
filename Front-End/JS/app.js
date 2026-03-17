@@ -3,7 +3,6 @@ const navbarTop = document.getElementById('navbarTop');
 const toggleBtn = document.getElementById('toggleTheme');
 const background = document.querySelector('.background');
 const floatingMenu = document.querySelector('.floating-menu');
-const themeIcon = document.getElementById('themeIcon');
 let lastScrollY = window.scrollY;
 
 const API_BASE_URL = 'http://localhost:3000/api';
@@ -379,19 +378,21 @@ function applyTheme(theme) {
   document.body.classList.toggle('bg-light', !isDark);
   document.body.classList.toggle('text-dark', !isDark);
 
-  navbarTop.classList.toggle('bg-dark', isDark);
-  navbarTop.classList.toggle('navbar-dark', isDark);
+  if (navbarTop) {
+    navbarTop.classList.toggle('bg-dark', isDark);
+    navbarTop.classList.toggle('navbar-dark', isDark);
+  }
 
   // icon indicates the opposite theme (clicking will switch to it)
-  if (isDark) {
-    themeIcon.setAttribute('data-lucide', 'sun');
-  } else {
-    themeIcon.setAttribute('data-lucide', 'moon');
+  if (toggleBtn) {
+    const nextThemeIcon = isDark ? 'sun' : 'moon';
+    // Recreate icon host so Lucide can render a fresh SVG every toggle.
+    toggleBtn.innerHTML = `<i id="themeIcon" data-lucide="${nextThemeIcon}"></i>`;
   }
   
-  // reinitialize the icon right away, not all icons
+  // Re-render icons after replacing the toggle icon host element.
   if (window.lucide) {
-    lucide.createIcons({ els: [themeIcon] });
+    lucide.createIcons();
   }
 }
 
@@ -531,25 +532,27 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-toggleBtn.addEventListener('click', (e) => {
-  // create ripple effect from button location
-  const rect = toggleBtn.getBoundingClientRect();
-  const x = rect.left + rect.width / 2;
-  const y = rect.top + rect.height / 2;
+if (toggleBtn) {
+  toggleBtn.addEventListener('click', (e) => {
+    // create ripple effect from button location
+    const rect = toggleBtn.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
 
-  const ripple = document.createElement('div');
-  ripple.className = 'mode-ripple';
-  ripple.style.left = x + 'px';
-  ripple.style.top = y + 'px';
-  document.body.appendChild(ripple);
-  ripple.addEventListener('animationend', () => ripple.remove());
+    const ripple = document.createElement('div');
+    ripple.className = 'mode-ripple';
+    ripple.style.left = x + 'px';
+    ripple.style.top = y + 'px';
+    document.body.appendChild(ripple);
+    ripple.addEventListener('animationend', () => ripple.remove());
 
-  // determine new theme and apply
-  const currentlyDark = document.body.classList.contains('bg-dark');
-  const newTheme = currentlyDark ? 'light' : 'dark';
-  applyTheme(newTheme);
-  saveTheme(newTheme);
-});
+    // determine new theme and apply
+    const currentlyDark = document.body.classList.contains('bg-dark');
+    const newTheme = currentlyDark ? 'light' : 'dark';
+    applyTheme(newTheme);
+    saveTheme(newTheme);
+  });
+}
 
 // hide/show floating menu on scroll
 window.addEventListener('scroll', () => {
