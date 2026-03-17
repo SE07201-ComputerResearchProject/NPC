@@ -39,58 +39,310 @@
     })();
   </script>
 
-  <!-- Navbar 1 (Top) -->
-  <nav class="navbar navbar-expand-lg navbar-secondary bg-secondary fixed-top" id="navbarTop">
-    <div class="container-fluid">
+  <!-- Navbar (Glass Blur) -->
+  <nav class="navbar navbar-expand-lg navbar-glass fixed-top" id="navbarTop">
+    <div class="container">
       <a class="navbar-brand" href="index.html">Breaking Bad Builder</a>
-      <div class="d-flex ms-auto align-items-center">
-        <span id="welcomeMsg" class="text-white me-3"></span>
-        <button id="toggleTheme" class="btn btn-outline-light me-2" title="Toggle theme">
-          <i id="themeIcon" data-lucide="moon"></i>
-        </button>
+      <button class="navbar-toggler navbar-glass-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navCollapse" aria-controls="navCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <i data-lucide="menu"></i>
+      </button>
+      <div class="collapse navbar-collapse" id="navCollapse">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
+          <li class="nav-item"><a href="#highlights" class="navbar-link nav-link">Features</a></li>
+          <li class="nav-item"><a href="#about" class="navbar-link nav-link">About</a></li>
+          <li class="nav-item"><a href="#contact" class="navbar-link nav-link">Contact</a></li>
+          <li class="nav-item ms-lg-2">
+            <span id="welcomeMsg" class="navbar-welcome me-2"></span>
+          </li>
+          <li class="nav-item">
+            <button id="toggleTheme" class="btn btn-glass-theme" title="Toggle theme">
+              <i id="themeIcon" data-lucide="moon"></i>
+            </button>
+          </li>
+        </ul>
       </div>
     </div>
-   </nav>
+  </nav>
 
   <!-- Background (dark theme only animation, blurred so content shows through) -->
   <div class="background retrowave"></div>
 
-  <div class="components-floating-layer" id="floatingComponentsLayer" aria-hidden="true">
-    <div class="floating-chip chip-1">
-      <img src="Assets/Floating/cpu-card.svg" alt="CPU" loading="lazy">
-      <span>CPU</span>
-    </div>
-    <div class="floating-chip chip-2">
-      <img src="Assets/Floating/motherboard-card.svg" alt="Motherboard" loading="lazy">
-      <span>Motherboard</span>
-    </div>
-    <div class="floating-chip chip-3">
-      <img src="Assets/Floating/ram-card.svg" alt="RAM" loading="lazy">
-      <span>RAM</span>
-    </div>
-    <div class="floating-chip chip-4">
-      <img src="Assets/Floating/storage-card.svg" alt="Storage" loading="lazy">
-      <span>Storage</span>
-    </div>
-    <div class="floating-chip chip-5">
-      <img src="Assets/Floating/cooling-card.svg" alt="Cooling" loading="lazy">
-      <span>Cooling</span>
-    </div>
-    <div class="floating-chip chip-6">
-      <img src="Assets/Floating/power-card.svg" alt="Power" loading="lazy">
-      <span>Power</span>
-    </div>
-  </div>
+  <!-- ====================== HERO SECTION ====================== -->
+  <section id="hero" class="hero-section">
 
-  <!-- Main Content -->
-  <div class="content">
-    <!-- Welcome Message -->
-    <h1>Welcome to Breaking Bad Builder</h1>
-    <p>Build your dream PC with our easy-to-use simulator!
-      <br>Featuring <span class="typing"></span>
-    </p>
-    <a href="dashboard.html" class="btn btn-start">Start Building</a>
-  </div>
+    <div class="components-floating-layer" id="floatingComponentsLayer" aria-hidden="true">
+      <div class="floating-chip chip-1">
+        <img src="Assets/Floating/cpu-card.svg" alt="CPU" loading="lazy">
+        <span>CPU</span>
+      </div>
+      <div class="floating-chip chip-2">
+        <img src="Assets/Floating/motherboard-card.svg" alt="Motherboard" loading="lazy">
+        <span>Motherboard</span>
+      </div>
+      <div class="floating-chip chip-3">
+        <img src="Assets/Floating/ram-card.svg" alt="RAM" loading="lazy">
+        <span>RAM</span>
+      </div>
+      <div class="floating-chip chip-4">
+        <img src="Assets/Floating/storage-card.svg" alt="Storage" loading="lazy">
+        <span>Storage</span>
+      </div>
+      <div class="floating-chip chip-5">
+        <img src="Assets/Floating/cooling-card.svg" alt="Cooling" loading="lazy">
+        <span>Cooling</span>
+      </div>
+      <div class="floating-chip chip-6">
+        <img src="Assets/Floating/power-card.svg" alt="Power" loading="lazy">
+        <span>Power</span>
+      </div>
+    </div>
+
+    <!-- Hero Content -->
+    <div class="content">
+      <h1>Welcome to Breaking Bad Builder</h1>
+      <p>Build your dream PC with our easy-to-use simulator!
+        <br>Featuring <span class="typing"></span>
+      </p>
+      <div class="d-flex gap-3 flex-wrap justify-content-center mt-2">
+        <a href="dashboard.html" class="btn btn-start">Start Building</a>
+        <a href="#highlights" class="btn btn-outline-glass">Learn More</a>
+      </div>
+    </div>
+
+    <!-- Scroll down indicator -->
+    <a href="#highlights" class="hero-scroll-indicator" aria-label="Scroll to features">
+      <i data-lucide="chevrons-down"></i>
+    </a>
+
+  </section>
+
+  <!-- ====================== HIGHLIGHTS SECTION ====================== -->
+  <section id="highlights" class="home-section section-highlights">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="section-badge">Why Us</span>
+        <h2 class="section-title">Everything you need to build the perfect PC</h2>
+        <p class="section-subtitle">From browsing components to checking compatibility and checking out — it all lives here.</p>
+      </div>
+      <div class="row g-4 justify-content-center">
+        <div class="col-md-4">
+          <div class="highlight-card">
+            <div class="highlight-icon">
+              <i data-lucide="pencil-ruler"></i>
+            </div>
+            <h3>Visual PC Builder</h3>
+            <p>Pick from 40+ real components across 9 categories. The builder updates in real time as you swap parts, so you always know what your rig looks like.</p>
+            <a href="dashboard.html" class="highlight-link">Start Building <i data-lucide="arrow-right"></i></a>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="highlight-card">
+            <div class="highlight-icon">
+              <i data-lucide="shield-check"></i>
+            </div>
+            <h3>Compatibility Engine</h3>
+            <p>Our built-in checker validates CPU socket, RAM type (DDR4/DDR5), and PSU wattage before you buy — no more expensive mistakes.</p>
+            <a href="dashboard.html" class="highlight-link">Check My Build <i data-lucide="arrow-right"></i></a>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="highlight-card">
+            <div class="highlight-icon">
+              <i data-lucide="shopping-cart"></i>
+            </div>
+            <h3>Seamless Checkout</h3>
+            <p>Add parts to your cart or buy a complete build in one click. Secure MoMo payment with order tracking built right in.</p>
+            <a href="shopping-cart.html" class="highlight-link">View Cart <i data-lucide="arrow-right"></i></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================== FEATURED BUILDS SECTION ====================== -->
+  <section id="featured-builds" class="home-section section-featured-builds">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="section-badge">Ready to Go</span>
+        <h2 class="section-title">Pre-Built Configurations</h2>
+        <p class="section-subtitle">Kick-start your build with a curated setup — click any card to load it straight into the Builder.</p>
+      </div>
+      <div class="row g-4 justify-content-center">
+
+        <!-- Build 1: The Overlord -->
+        <div class="col-lg-4 col-md-6">
+          <div class="build-preset-card" onclick="loadFeaturedBuild('overlord')" role="button" tabindex="0" aria-label="Load The Overlord build">
+            <div class="preset-badge preset-badge--high">High-End</div>
+            <h3 class="preset-name">The Overlord</h3>
+            <p class="preset-tagline">AMD Ryzen 7 9800X3D + RX 9070 XT — 1440p beast with 3D V-Cache.</p>
+            <ul class="preset-parts">
+              <li><span class="preset-part-label">CPU</span><span>AMD Ryzen 7 9800X3D</span></li>
+              <li><span class="preset-part-label">GPU</span><span>Sapphire RX 9070 XT 16GB</span></li>
+              <li><span class="preset-part-label">RAM</span><span>Crucial DDR5-6000 32GB</span></li>
+              <li><span class="preset-part-label">MB</span><span>Asus B850 TUF WIFI ATX</span></li>
+              <li><span class="preset-part-label">PSU</span><span>Montech 850W Gold</span></li>
+            </ul>
+            <div class="preset-footer">
+              <span class="preset-price">~55,248,000 ₫</span>
+              <span class="preset-cta">Load Build <i data-lucide="arrow-right"></i></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Build 2: The Architect -->
+        <div class="col-lg-4 col-md-6">
+          <div class="build-preset-card" onclick="loadFeaturedBuild('architect')" role="button" tabindex="0" aria-label="Load The Architect build">
+            <div class="preset-badge preset-badge--high">High-End</div>
+            <h3 class="preset-name">The Architect</h3>
+            <p class="preset-tagline">Intel i7-13700K + RTX 4070 SUPER — creator & gaming powerhouse.</p>
+            <ul class="preset-parts">
+              <li><span class="preset-part-label">CPU</span><span>Intel Core i7-13700K</span></li>
+              <li><span class="preset-part-label">GPU</span><span>RTX 4070 SUPER 12GB</span></li>
+              <li><span class="preset-part-label">RAM</span><span>TeamGroup DDR5-6000 32GB</span></li>
+              <li><span class="preset-part-label">MB</span><span>ASUS TUF B760-PLUS WIFI</span></li>
+              <li><span class="preset-part-label">PSU</span><span>Seasonic Focus GX-850</span></li>
+            </ul>
+            <div class="preset-footer">
+              <span class="preset-price">~53,519,000 ₫</span>
+              <span class="preset-cta">Load Build <i data-lucide="arrow-right"></i></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Build 3: The Starter -->
+        <div class="col-lg-4 col-md-6">
+          <div class="build-preset-card" onclick="loadFeaturedBuild('starter')" role="button" tabindex="0" aria-label="Load The Starter build">
+            <div class="preset-badge preset-badge--mid">Mid-Range</div>
+            <h3 class="preset-name">The Starter</h3>
+            <p class="preset-tagline">AMD Ryzen 5 7600 + RX 7800 XT — best bang for buck at 1080p/1440p.</p>
+            <ul class="preset-parts">
+              <li><span class="preset-part-label">CPU</span><span>AMD Ryzen 5 7600</span></li>
+              <li><span class="preset-part-label">GPU</span><span>AMD RX 7800 XT 16GB</span></li>
+              <li><span class="preset-part-label">RAM</span><span>Kingston Fury DDR5-5600 32GB</span></li>
+              <li><span class="preset-part-label">MB</span><span>Gigabyte B650 AORUS Elite AX</span></li>
+              <li><span class="preset-part-label">PSU</span><span>Corsair RM750x</span></li>
+            </ul>
+            <div class="preset-footer">
+              <span class="preset-price">~43,169,000 ₫</span>
+              <span class="preset-cta">Load Build <i data-lucide="arrow-right"></i></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================== ABOUT SECTION ====================== -->
+  <section id="about" class="home-section section-about">
+    <div class="container">
+      <div class="row align-items-center g-5">
+
+        <div class="col-lg-6">
+          <span class="section-badge">Our Story</span>
+          <h2 class="section-title">Built by builders, for builders</h2>
+          <p class="section-body">Breaking Bad Builder was created to make custom PC building accessible to everyone — from first-time builders to seasoned enthusiasts. We believe choosing each component should be exciting, not overwhelming.</p>
+          <p class="section-body">Our platform combines a real product catalog with instant compatibility checks and a visual configurator, so you can see exactly what your rig will look like before spending a single đồng.</p>
+          <div class="about-stats">
+            <div class="stat-item">
+              <span class="stat-value">40+</span>
+              <span class="stat-label">Components</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">9</span>
+              <span class="stat-label">Categories</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">100%</span>
+              <span class="stat-label">Compatibility</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="about-visual">
+            <div class="about-chip-grid">
+              <div class="about-chip"><i data-lucide="cpu"></i><span>CPU</span></div>
+              <div class="about-chip"><i data-lucide="circuit-board"></i><span>Motherboard</span></div>
+              <div class="about-chip"><i data-lucide="memory-stick"></i><span>RAM</span></div>
+              <div class="about-chip"><i data-lucide="monitor"></i><span>GPU</span></div>
+              <div class="about-chip"><i data-lucide="hard-drive"></i><span>Storage</span></div>
+              <div class="about-chip"><i data-lucide="zap"></i><span>PSU</span></div>
+              <div class="about-chip"><i data-lucide="wind"></i><span>Cooler</span></div>
+              <div class="about-chip"><i data-lucide="box"></i><span>Case</span></div>
+              <div class="about-chip"><i data-lucide="fan"></i><span>Fan</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================== CONTACT SECTION ====================== -->
+  <section id="contact" class="home-section section-contact">
+    <div class="container">
+      <div class="row justify-content-center mb-5">
+        <div class="col-lg-7 text-center">
+          <span class="section-badge">Get in Touch</span>
+          <h2 class="section-title">Contact Us</h2>
+          <p class="section-subtitle">Have a question about components, orders, or the platform? We'd love to hear from you.</p>
+        </div>
+      </div>
+      <div class="row justify-content-center g-4">
+        <div class="col-lg-7">
+          <form class="contact-form" onsubmit="handleContactSubmit(event)" novalidate>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <label class="form-label">Your Name</label>
+                <input type="text" class="form-control contact-input" placeholder="Nguyen Van A" required maxlength="100">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label">Email Address</label>
+                <input type="email" class="form-control contact-input" placeholder="hello@example.com" required maxlength="200">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Subject</label>
+                <input type="text" class="form-control contact-input" placeholder="What's it about?" required maxlength="200">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Message</label>
+                <textarea class="form-control contact-input" rows="5" placeholder="Tell us more..." required maxlength="2000"></textarea>
+              </div>
+              <div class="col-12 text-center pt-1">
+                <button type="submit" class="btn btn-start px-5">Send Message</button>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="col-lg-3">
+          <div class="contact-info-panel">
+            <div class="contact-info-item">
+              <i data-lucide="mail"></i>
+              <div>
+                <strong>Email</strong>
+                <p>support@breakingbadbuilder.vn</p>
+              </div>
+            </div>
+            <div class="contact-info-item">
+              <i data-lucide="map-pin"></i>
+              <div>
+                <strong>Location</strong>
+                <p>Ho Chi Minh City, Vietnam</p>
+              </div>
+            </div>
+            <div class="contact-info-item">
+              <i data-lucide="clock"></i>
+              <div>
+                <strong>Hours</strong>
+                <p>Mon – Fri, 9:00 – 18:00</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- Bottom floating menu -->
   <div class="floating-menu">
@@ -132,9 +384,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script>
-    lucide.createIcons();
-  </script>
+  <script>lucide.createIcons();</script>
   <!-- Animate JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/typed.js/2.0.12/typed.min.js"></script>
@@ -144,6 +394,7 @@
   <script src="JS/components-menu.js"></script>
   <script src="JS/auth-popup.js"></script>
   <script>
+    // Preloader
     (function () {
       const preloader = document.getElementById('homePreloader');
       if (!preloader) return;
@@ -163,6 +414,81 @@
         }
       }, 2000);
     })();
+
+    // Scroll-reveal for home sections
+    (function () {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('in-view');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1 });
+
+      document.querySelectorAll('.home-section').forEach(section => observer.observe(section));
+    })();
+
+    // Contact form – UI only (no backend contact endpoint yet)
+    function handleContactSubmit(e) {
+      e.preventDefault();
+      if (typeof showPopup === 'function') {
+        showPopup("Message sent! We'll get back to you soon.", { duration: 3500 });
+      }
+      e.target.reset();
+    }
+
+    // Featured Builds – write preset to sessionStorage then navigate to dashboard
+    function loadFeaturedBuild(presetId) {
+      const presets = {
+        overlord: {
+          name: 'The Overlord',
+          parts: {
+            case:        { name: 'Lian Li O11 Dynamic Mini V2' },
+            cpu:         { name: 'AMD Ryzen 7 9800X3D' },
+            motherboard: { name: 'Asus B850 TUF GAMING PLUS WIFI DDR5 ATX' },
+            gpu:         { name: 'Sapphire NITRO+ Radeon RX 9070 XT 16GB GDDR6' },
+            ram:         { name: 'Crucial Pro Overclocking DDR5-6000 CL36 32GB' },
+            cooler:      { name: 'MSI MAG CORELIQUID A13 Water 360mm' },
+            storage:     { name: 'PNY CS2230 1TB NVMe PCIe 3.0' },
+            psu:         { name: 'Montech CENTURY II 850W 80+ Gold' },
+            fan:         { name: 'Asiahorse NYOTA 120mm Case Fans 3-Pack' },
+          },
+        },
+        architect: {
+          name: 'The Architect',
+          parts: {
+            case:        { name: 'Corsair 4000D Airflow' },
+            cpu:         { name: 'Intel Core i7-13700K' },
+            motherboard: { name: 'ASUS TUF B760-PLUS WIFI' },
+            gpu:         { name: 'NVIDIA GeForce RTX 4070 SUPER 12GB' },
+            ram:         { name: 'TeamGroup T-Force Delta RGB 32GB DDR5-6000' },
+            cooler:      { name: 'Lian Li Galahad II Trinity 360' },
+            storage:     { name: 'WD Black SN850X 2TB' },
+            psu:         { name: 'Seasonic Focus GX-850' },
+            fan:         { name: 'Lian Li UNI FAN SL120 V2' },
+          },
+        },
+        starter: {
+          name: 'The Starter',
+          parts: {
+            case:        { name: 'NZXT H5 Flow' },
+            cpu:         { name: 'AMD Ryzen 5 7600' },
+            motherboard: { name: 'Gigabyte B650 AORUS ELITE AX' },
+            gpu:         { name: 'AMD Radeon RX 7800 XT 16GB' },
+            ram:         { name: 'Kingston Fury Beast 32GB DDR5-5600' },
+            cooler:      { name: 'Corsair H100i Elite Capellix' },
+            storage:     { name: 'Samsung 980 PRO 1TB' },
+            psu:         { name: 'Corsair RM750x' },
+            fan:         { name: 'Corsair AF120 RGB Elite' },
+          },
+        },
+      };
+      const preset = presets[presetId];
+      if (!preset) return;
+      sessionStorage.setItem('featuredBuildPreset', JSON.stringify(preset));
+      window.location.href = 'dashboard.html';
+    }
   </script>
 </body>
 </html>
