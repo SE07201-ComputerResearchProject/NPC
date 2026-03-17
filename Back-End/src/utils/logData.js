@@ -1,6 +1,6 @@
 export const DEFAULT_LOGS = [
   {
-    timeStamp: '',
+    timeStamp: '2026-01-01T00:00:00',
     activity: 'test entry 1',
     user: 'Admin',
   },];
