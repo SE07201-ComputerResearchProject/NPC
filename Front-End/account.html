@@ -14,18 +14,30 @@
 </head>
 <body class="bg-light text-dark">
 
-  <!-- Navbar 1 (Top) -->
-  <nav class="navbar navbar-expand-lg navbar-secondary bg-secondary fixed-top" id="navbarTop">
-    <div class="container-fluid">
+  <nav class="navbar navbar-expand-lg navbar-glass fixed-top" id="navbarTop">
+    <div class="container">
       <a class="navbar-brand" href="index.html">Breaking Bad Builder</a>
-      <div class="d-flex ms-auto align-items-center">
-        <span id="welcomeMsg" class="text-white me-3"></span>
-        <button id="toggleTheme" class="btn btn-outline-light me-2" title="Toggle theme">
-          <i data-lucide="moon"></i>
-        </button>
+      <button class="navbar-toggler navbar-glass-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navCollapse" aria-controls="navCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <i data-lucide="menu"></i>
+      </button>
+      <div class="collapse navbar-collapse" id="navCollapse">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
+          <li class="nav-item"><a href="index.html" class="navbar-link nav-link">Home</a></li>
+          <li class="nav-item"><a href="dashboard.html" class="navbar-link nav-link">Build PC</a></li>
+          <li class="nav-item"><a href="products.html" class="navbar-link nav-link">Components</a></li>
+          <li class="nav-item"><a href="shopping-cart.html" class="navbar-link nav-link">Cart</a></li>
+          <li class="nav-item ms-lg-2">
+            <span id="welcomeMsg" class="navbar-welcome me-2"></span>
+          </li>
+          <li class="nav-item">
+            <button id="toggleTheme" class="btn btn-glass-theme" title="Toggle theme">
+              <i id="themeIcon" data-lucide="moon"></i>
+            </button>
+          </li>
+        </ul>
       </div>
     </div>
-   </nav>
+  </nav>
 
   <!-- Background (dark theme only) -->
   <div class="background retrowave"></div>

@@ -1041,6 +1041,216 @@ export const DEFAULT_COMPONENTS = [
       rgbHeaderNeeded: true,
     },
   },
+
+  // ── Featured Build Components (added from curated presets) ──────────────
+  {
+    category: 'case',
+    name: 'Lian Li O11 Dynamic Mini V2',
+    brand: 'Lian Li',
+    price: 2250000,
+    power: 0,
+    stock: 10,
+    description: 'Compact ATX mid-tower with full tempered glass side panel and USB 3.2 Gen 2 Type-C front I/O.',
+    highlights: ['ATX Mid Tower', 'Tempered Glass', 'USB 3.2 Gen 2 Type-C'],
+    specs: {
+      caseType: 'Compact Mid Tower',
+      formFactorSupport: ['ATX', 'mATX', 'Mini-ITX'],
+      maxGpuLengthMm: 360,
+      maxCpuCoolerHeightMm: 173,
+      radiatorSupportMm: [240, 280, 360],
+      includedFans: 0,
+    },
+    aiCompatibility: {
+      supportedMotherboardFormFactors: ['ATX', 'mATX', 'Mini-ITX'],
+      maxGpuLengthMm: 360,
+    },
+  },
+  {
+    category: 'cpu',
+    name: 'AMD Ryzen 7 9800X3D',
+    brand: 'AMD',
+    price: 10750000,
+    power: 120,
+    stock: 8,
+    description: 'Flagship gaming CPU with 3D V-Cache technology for record-breaking 1080p and 1440p frame rates.',
+    highlights: ['8 cores / 16 threads', 'AM5', '3D V-Cache', 'Boost up to 5.2GHz'],
+    specs: {
+      socket: 'AM5',
+      cores: 8,
+      threads: 16,
+      baseClockGHz: 4.7,
+      boostClockGHz: 5.2,
+      tdpW: 120,
+      memorySupport: 'DDR5',
+      integratedGraphics: true,
+    },
+    aiCompatibility: {
+      socket: 'AM5',
+      recommendedChipsets: ['B850', 'X870', 'B650', 'X670'],
+      minRecommendedPsuW: 650,
+    },
+  },
+  {
+    category: 'motherboard',
+    name: 'Asus B850 TUF GAMING PLUS WIFI DDR5 ATX',
+    brand: 'ASUS',
+    price: 4750000,
+    power: 35,
+    stock: 9,
+    description: 'Robust AM5 ATX board with B850 chipset, DDR5 support, Wi-Fi 6E and PCIe 5.0 M.2 slot.',
+    highlights: ['ATX', 'AM5 / B850', 'DDR5', 'Wi-Fi 6E'],
+    specs: {
+      socket: 'AM5',
+      chipset: 'B850',
+      formFactor: 'ATX',
+      ramType: 'DDR5',
+      ramSlots: 4,
+      maxRamGB: 256,
+      pcieVersion: '5.0',
+      m2Slots: 4,
+    },
+    aiCompatibility: {
+      socket: 'AM5',
+      ramType: 'DDR5',
+      formFactor: 'ATX',
+    },
+  },
+  {
+    category: 'gpu',
+    name: 'Sapphire NITRO+ Radeon RX 9070 XT 16GB GDDR6',
+    brand: 'Sapphire',
+    price: 20000000,
+    power: 250,
+    stock: 6,
+    description: 'High-performance RDNA 4 GPU with 16GB GDDR6 for ultra-smooth 1440p and capable 4K gaming.',
+    highlights: ['16GB GDDR6', 'RDNA 4', 'FSR 4', 'DisplayPort 2.1'],
+    specs: {
+      vramGB: 16,
+      boostClockMHz: 2970,
+      memoryBusBit: 256,
+      lengthMm: 333,
+      slotWidth: 2.5,
+      recommendedPsuW: 800,
+      powerConnector: '2x8-pin',
+    },
+    aiCompatibility: {
+      recommendedPsuW: 800,
+      maxCaseLengthMm: 333,
+    },
+  },
+  {
+    category: 'ram',
+    name: 'Crucial Pro Overclocking DDR5-6000 CL36 32GB',
+    brand: 'Crucial',
+    price: 8750000,
+    power: 7,
+    stock: 12,
+    description: 'High-speed DDR5 overclocking kit optimised for AMD EXPO and Intel XMP 3.0 profiles.',
+    highlights: ['2x16GB', 'DDR5', '6000MHz CL36', 'EXPO / XMP 3.0'],
+    specs: {
+      ramType: 'DDR5',
+      totalCapacityGB: 32,
+      modules: 2,
+      speedMHz: 6000,
+      casLatency: 36,
+      voltage: 1.35,
+    },
+    aiCompatibility: {
+      ramType: 'DDR5',
+      preferredSlots: 2,
+    },
+  },
+  {
+    category: 'cooler',
+    name: 'MSI MAG CORELIQUID A13 Water 360mm',
+    brand: 'MSI',
+    price: 2250000,
+    power: 18,
+    stock: 10,
+    description: '360mm AIO liquid cooler with 62.6 CFM fans for low noise and high cooling performance.',
+    highlights: ['AIO liquid', '360mm radiator', 'LCD display', '62.6 CFM'],
+    specs: {
+      coolerType: 'AIO',
+      supportedSockets: ['LGA1700', 'LGA1200', 'AM4', 'AM5'],
+      radiatorSizeMm: 360,
+      fanSizeMm: 120,
+      tubeLengthMm: 400,
+      maxTdpW: 300,
+    },
+    aiCompatibility: {
+      supportedSockets: ['LGA1700', 'AM4', 'AM5'],
+      radiatorSizeMm: 360,
+      maxTdpW: 300,
+    },
+  },
+  {
+    category: 'storage',
+    name: 'PNY CS2230 1TB NVMe PCIe 3.0',
+    brand: 'PNY',
+    price: 3500000,
+    power: 5,
+    stock: 18,
+    description: 'Value Gen 3 NVMe SSD in M.2 2280 form factor with solid sequential speeds for gaming builds.',
+    highlights: ['NVMe PCIe 3.0 x4', '1TB', 'Up to 3300MB/s read'],
+    specs: {
+      storageType: 'SSD',
+      interface: 'NVMe PCIe 3.0 x4',
+      capacityGB: 1000,
+      formFactor: 'M.2 2280',
+      sequentialReadMBps: 3300,
+      sequentialWriteMBps: 2900,
+    },
+    aiCompatibility: {
+      interface: 'M.2 NVMe',
+      m2Length: '2280',
+    },
+  },
+  {
+    category: 'psu',
+    name: 'Montech CENTURY II 850W 80+ Gold',
+    brand: 'Montech',
+    price: 2073000,
+    power: 850,
+    stock: 14,
+    description: 'Fully modular 850W 80+ Gold PSU with quiet operation, ideal for high-end GPU builds.',
+    highlights: ['850W', '80 Plus Gold', 'Fully modular', 'Low noise'],
+    specs: {
+      wattage: 850,
+      efficiency: '80 Plus Gold',
+      modularity: 'Fully modular',
+      pcie8PinConnectors: 6,
+      fanSizeMm: 120,
+      atxStandard: 'ATX 3.0',
+    },
+    aiCompatibility: {
+      maxSuggestedGpuPowerW: 420,
+      tier: 'High-end',
+    },
+  },
+  {
+    category: 'fan',
+    name: 'Asiahorse NYOTA 120mm Case Fans 3-Pack',
+    brand: 'Asiahorse',
+    price: 926000,
+    power: 4,
+    stock: 20,
+    description: 'Set of three 120mm reverse-blade ARGB fans for high-airflow showcase builds.',
+    highlights: ['120mm x3', 'Reverse blade', 'ARGB', 'Black'],
+    specs: {
+      sizeMm: 120,
+      quantity: 3,
+      maxRpm: 1800,
+      airflowCfm: 58,
+      staticPressureMmH2O: 1.9,
+      noiseDbA: 28,
+      connector: '4-pin PWM + ARGB',
+    },
+    aiCompatibility: {
+      fanSizeMm: 120,
+      connector: '4-pin PWM',
+      rgbHeaderNeeded: true,
+    },
+  },
 ].map(component => ({
   ...component,
   imageUrl: component.imageUrl || DEFAULT_COMPONENT_IMAGE_URL,
@@ -1111,13 +1321,31 @@ export async function seedComponentsIfNeeded(ComponentModel) {
     }
   }
 
+  // Phase 2: ensure every component in DEFAULT_COMPONENTS exists (regardless of category count)
+  for (const item of DEFAULT_COMPONENTS) {
+    const key = buildComponentKey(item);
+    if (!existingKeys.has(key)) {
+      toInsert.push(item);
+      existingKeys.add(key);
+    }
+  }
+
   if (!toInsert.length) {
     await backfillMissingImageUrl(ComponentModel);
-    console.log('✓ Components already satisfy minimum category coverage');
+    console.log('✓ All default components are already present in the database');
     return;
   }
 
-  await ComponentModel.insertMany(toInsert, { ordered: false });
+  // Deduplicate by key before inserting
+  const seen = new Set();
+  const uniqueToInsert = toInsert.filter(item => {
+    const key = buildComponentKey(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  await ComponentModel.insertMany(uniqueToInsert, { ordered: false });
   await backfillMissingImageUrl(ComponentModel);
-  console.log(`✓ Seeded ${toInsert.length} components to satisfy minimum category coverage`);
+  console.log(`✓ Seeded ${uniqueToInsert.length} component(s) into the database`);
 }

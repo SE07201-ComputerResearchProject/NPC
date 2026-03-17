@@ -593,9 +593,47 @@ async function loadBuildNameFromApiState() {
   }
 }
 
+async function loadFeaturedPresetIfPresent() {
+  try {
+    const presetJson = sessionStorage.getItem('featuredBuildPreset');
+    if (!presetJson) return false;
+    sessionStorage.removeItem('featuredBuildPreset');
+    const preset = JSON.parse(presetJson);
+    for (const [category, partSpec] of Object.entries(preset.parts)) {
+      if (!partSpec) continue;
+      try {
+        const components = await fetchComponentsByCategory(category);
+        const matched = components.find(c => c.name === partSpec.name)
+          || components.find(c => c.name.toLowerCase().startsWith(partSpec.name.substring(0, 20).toLowerCase()));
+        if (matched) {
+          currentBuild[category] = {
+            _id: matched._id,
+            category: matched.category,
+            name: matched.name,
+            price: matched.price,
+            power: matched.power || 0,
+            brand: matched.brand || '',
+          };
+        }
+      } catch (_) {}
+    }
+    if (preset.name) {
+      const buildNameEl = document.getElementById('buildName');
+      if (buildNameEl) buildNameEl.textContent = preset.name;
+      saveBuildName(preset.name).catch(() => {});
+    }
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 async function initializeDashboardState() {
-  await loadBuildFromApiState();
-  await loadBuildNameFromApiState();
+  const presetLoaded = await loadFeaturedPresetIfPresent();
+  if (!presetLoaded) {
+    await loadBuildFromApiState();
+    await loadBuildNameFromApiState();
+  }
   renderPartsList();
   updateStats();
 }
