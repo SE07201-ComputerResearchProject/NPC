@@ -1,7 +1,32 @@
 import express from 'express';
 import FeaturedBuild from '../models/FeaturedBuild.js';
+import { requireAdmin } from '../middleware/adminMiddleware.js';
 
 const router = express.Router();
+const VALID_TIERS = ['high', 'mid', 'budget'];
+const VALID_PART_CATEGORIES = ['case', 'cpu', 'motherboard', 'gpu', 'ram', 'cooler', 'storage', 'psu', 'fan'];
+
+function normalizeParts(partsInput) {
+  if (!partsInput || typeof partsInput !== 'object' || Array.isArray(partsInput)) {
+    return {};
+  }
+
+  const normalized = {};
+  for (const [key, value] of Object.entries(partsInput)) {
+    if (!VALID_PART_CATEGORIES.includes(key)) {
+      continue;
+    }
+
+    const name = String(value?.name || '').trim();
+    if (!name) {
+      continue;
+    }
+
+    normalized[key] = { name };
+  }
+
+  return normalized;
+}
 
 // ──────────────────────────────────────────────
 //  Seed data
@@ -100,6 +125,121 @@ router.get('/:presetId', async (req, res) => {
     res.json(build);
   } catch (err) {
     res.status(500).json({ message: 'Failed to load featured build' });
+  }
+});
+
+// ──────────────────────────────────────────────
+//  POST /api/featured-builds
+// ──────────────────────────────────────────────
+router.post('/', requireAdmin, async (req, res) => {
+  try {
+    const {
+      presetId,
+      name,
+      tagline,
+      tier,
+      estimatedPrice,
+      order,
+      parts,
+    } = req.body;
+
+    const normalizedPresetId = String(presetId || '').trim();
+    const normalizedName = String(name || '').trim();
+
+    if (!normalizedPresetId || !normalizedName) {
+      return res.status(400).json({ message: 'presetId and name are required' });
+    }
+
+    const normalizedTier = VALID_TIERS.includes(tier) ? tier : 'mid';
+    const normalizedOrder = Number.isFinite(Number(order)) ? Number(order) : 0;
+
+    const created = await FeaturedBuild.create({
+      presetId: normalizedPresetId,
+      name: normalizedName,
+      tagline: String(tagline || '').trim(),
+      tier: normalizedTier,
+      estimatedPrice: String(estimatedPrice || '').trim(),
+      order: normalizedOrder,
+      parts: normalizeParts(parts),
+    });
+
+    res.status(201).json({ message: 'Featured build created successfully', featuredBuild: created });
+  } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(409).json({ message: 'presetId already exists' });
+    }
+    res.status(500).json({ message: 'Failed to create featured build', error: error.message });
+  }
+});
+
+// ──────────────────────────────────────────────
+//  PUT /api/featured-builds/:id
+// ──────────────────────────────────────────────
+router.put('/:id', requireAdmin, async (req, res) => {
+  try {
+    const {
+      presetId,
+      name,
+      tagline,
+      tier,
+      estimatedPrice,
+      order,
+      parts,
+    } = req.body;
+
+    const updateData = {};
+
+    if (presetId !== undefined) updateData.presetId = String(presetId || '').trim();
+    if (name !== undefined) updateData.name = String(name || '').trim();
+    if (tagline !== undefined) updateData.tagline = String(tagline || '').trim();
+    if (tier !== undefined) {
+      if (!VALID_TIERS.includes(tier)) {
+        return res.status(400).json({ message: 'Invalid tier value' });
+      }
+      updateData.tier = tier;
+    }
+    if (estimatedPrice !== undefined) updateData.estimatedPrice = String(estimatedPrice || '').trim();
+    if (order !== undefined) updateData.order = Number.isFinite(Number(order)) ? Number(order) : 0;
+    if (parts !== undefined) updateData.parts = normalizeParts(parts);
+
+    if ('presetId' in updateData && !updateData.presetId) {
+      return res.status(400).json({ message: 'presetId cannot be empty' });
+    }
+    if ('name' in updateData && !updateData.name) {
+      return res.status(400).json({ message: 'name cannot be empty' });
+    }
+
+    const updated = await FeaturedBuild.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updated) {
+      return res.status(404).json({ message: 'Featured build not found' });
+    }
+
+    res.status(200).json({ message: 'Featured build updated successfully', featuredBuild: updated });
+  } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(409).json({ message: 'presetId already exists' });
+    }
+    res.status(500).json({ message: 'Failed to update featured build', error: error.message });
+  }
+});
+
+// ──────────────────────────────────────────────
+//  DELETE /api/featured-builds/:id
+// ──────────────────────────────────────────────
+router.delete('/:id', requireAdmin, async (req, res) => {
+  try {
+    const deleted = await FeaturedBuild.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ message: 'Featured build not found' });
+    }
+
+    res.status(200).json({ message: 'Featured build deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to delete featured build', error: error.message });
   }
 });
 

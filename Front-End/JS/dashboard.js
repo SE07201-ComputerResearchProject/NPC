@@ -182,16 +182,24 @@ function renderPartsList() {
   partsCategories.forEach(category => {
     const selected = currentBuild[category.key];
 
+    const selectedImageUrl = selected && typeof selected.imageUrl === 'string' ? selected.imageUrl.trim() : '';
+    const imageField = selectedImageUrl
+      ? `<img class="part-image" src="${escapeHtml(selectedImageUrl)}" alt="${escapeHtml(selected.name || category.name)}" loading="lazy" />`
+      : '<div class="part-image-placeholder">No image</div>';
+
     html += `
       <div class="part-item ${selected ? 'selected' : ''}">
-        <div class="part-info">
-          <div class="part-name">${category.name}</div>
-          ${selected ? `
-            <div class="part-name">${selected.name}</div>
-            <div class="part-price">${selected.price.toLocaleString()} VND</div>
-          ` : `
-            <div class="part-name-placeholder">Add ${category.name}</div>
-          `}
+        <div class="part-main">
+          <div class="part-image-field">${imageField}</div>
+          <div class="part-info">
+            <div class="part-name">${category.name}</div>
+            ${selected ? `
+              <div class="part-name">${selected.name}</div>
+              <div class="part-price">${selected.price.toLocaleString()} VND</div>
+            ` : `
+              <div class="part-name-placeholder">Add ${category.name}</div>
+            `}
+          </div>
         </div>
         <div class="part-actions">
           ${selected ? `<button class="btn btn-sm btn-outline-danger me-2" onclick="removeComponent('${category.key}')">Remove</button>` : ''}
@@ -322,6 +330,7 @@ async function selectComponent(categoryKey, index) {
     price: component.price,
     power: component.power || 0,
     brand: component.brand || '',
+    imageUrl: component.imageUrl || '',
   };
   closeComponentSelector();
   renderPartsList();
@@ -613,6 +622,7 @@ async function loadFeaturedPresetIfPresent() {
             price: matched.price,
             power: matched.power || 0,
             brand: matched.brand || '',
+            imageUrl: matched.imageUrl || '',
           };
         }
       } catch (_) {}

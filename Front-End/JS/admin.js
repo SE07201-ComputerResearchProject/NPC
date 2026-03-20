@@ -2,6 +2,7 @@ const API_BASE = 'http://localhost:3000/api';
 const USER_API_BASE = `${API_BASE}/users`;
 const PRODUCT_API_BASE = `${API_BASE}/components`;
 const LOG_API_BASE = `${API_BASE}/logs`;
+const FEATURED_BUILD_API_BASE = `${API_BASE}/featured-builds`;
 
 const PRODUCT_CATEGORIES = [
   'case',
@@ -19,8 +20,10 @@ const state = {
   users: [],
   products: [],
   logs: [],
+  featuredBuilds: [],
   editingUserId: null,
   editingProductId: null,
+  editingFeaturedBuildId: null,
   logAutoRefreshTimer: null,
 };
 
@@ -31,6 +34,7 @@ const el = {
   adminAccessPanel: document.getElementById('adminAccessPanel'),
   adminWorkspace: document.getElementById('adminWorkspace'),
   adminUnauthorized: document.getElementById('adminUnauthorized'),
+  adminNavButtons: Array.from(document.querySelectorAll('[data-admin-target]')),
 
   userForm: document.getElementById('userForm'),
   userId: document.getElementById('userId'),
@@ -77,7 +81,38 @@ const el = {
   logAutoRefresh: document.getElementById('logAutoRefresh'),
   logsTableBody: document.querySelector('#logsTable tbody'),
   logStatus: document.getElementById('logStatus'),
+
+  prebuiltForm: document.getElementById('prebuiltForm'),
+  prebuiltId: document.getElementById('prebuiltId'),
+  prebuiltPresetId: document.getElementById('prebuiltPresetId'),
+  prebuiltName: document.getElementById('prebuiltName'),
+  prebuiltTagline: document.getElementById('prebuiltTagline'),
+  prebuiltTier: document.getElementById('prebuiltTier'),
+  prebuiltEstimatedPrice: document.getElementById('prebuiltEstimatedPrice'),
+  prebuiltOrder: document.getElementById('prebuiltOrder'),
+  prebuiltPartsJson: document.getElementById('prebuiltPartsJson'),
+  prebuiltSubmitBtn: document.getElementById('prebuiltSubmitBtn'),
+  prebuiltResetBtn: document.getElementById('prebuiltResetBtn'),
+  prebuiltSearch: document.getElementById('prebuiltSearch'),
+  reloadPrebuiltBtn: document.getElementById('reloadPrebuiltBtn'),
+  prebuiltTableBody: document.querySelector('#prebuiltTable tbody'),
+  prebuiltStatus: document.getElementById('prebuiltStatus'),
 };
+
+function switchAdminSection(targetId) {
+  const moduleIds = ['usersSection', 'productsSection', 'prebuiltSection', 'logsSection'];
+  moduleIds.forEach(id => {
+    const section = document.getElementById(id);
+    if (!section) return;
+    section.classList.toggle('is-active', id === targetId);
+  });
+
+  el.adminNavButtons.forEach(button => {
+    const isActive = button.dataset.adminTarget === targetId;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+}
 
 function setStatus(target, message, type = 'info') {
   if (!target) return;
@@ -699,6 +734,227 @@ function handleProductTableClick(event) {
   }
 }
 
+function parsePrebuiltPartsJson(rawValue) {
+  const raw = String(rawValue || '').trim();
+  if (!raw) {
+    return {};
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error('Parts JSON is invalid. Please provide a valid object.');
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Parts JSON must be an object.');
+  }
+
+  const normalized = {};
+  Object.entries(parsed).forEach(([category, value]) => {
+    if (!value || typeof value !== 'object') {
+      return;
+    }
+
+    const partName = String(value.name || '').trim();
+    if (!partName) {
+      return;
+    }
+
+    normalized[category] = { name: partName };
+  });
+
+  return normalized;
+}
+
+function readPrebuiltForm() {
+  return {
+    presetId: el.prebuiltPresetId.value.trim(),
+    name: el.prebuiltName.value.trim(),
+    tagline: el.prebuiltTagline.value.trim(),
+    tier: el.prebuiltTier.value,
+    estimatedPrice: el.prebuiltEstimatedPrice.value.trim(),
+    order: Number(el.prebuiltOrder.value || 0),
+    parts: parsePrebuiltPartsJson(el.prebuiltPartsJson.value),
+  };
+}
+
+function setPrebuiltFormMode(editing) {
+  state.editingFeaturedBuildId = editing ? el.prebuiltId.value : null;
+  el.prebuiltSubmitBtn.textContent = editing ? 'Update Pre-Built' : 'Create Pre-Built';
+  el.prebuiltPresetId.disabled = editing;
+}
+
+function clearPrebuiltForm() {
+  el.prebuiltForm.reset();
+  el.prebuiltId.value = '';
+  el.prebuiltTier.value = 'mid';
+  el.prebuiltOrder.value = 0;
+  el.prebuiltPartsJson.value = '';
+  setPrebuiltFormMode(false);
+}
+
+function fillPrebuiltForm(build) {
+  el.prebuiltId.value = build._id || '';
+  el.prebuiltPresetId.value = build.presetId || '';
+  el.prebuiltName.value = build.name || '';
+  el.prebuiltTagline.value = build.tagline || '';
+  el.prebuiltTier.value = build.tier || 'mid';
+  el.prebuiltEstimatedPrice.value = build.estimatedPrice || '';
+  el.prebuiltOrder.value = Number(build.order || 0);
+  const partsObject = build.parts && typeof build.parts === 'object' ? build.parts : {};
+  el.prebuiltPartsJson.value = JSON.stringify(partsObject, null, 2);
+  setPrebuiltFormMode(true);
+}
+
+function renderPrebuiltTable(builds) {
+  if (!el.prebuiltTableBody) return;
+
+  if (!builds.length) {
+    el.prebuiltTableBody.innerHTML = '<tr><td colspan="5" class="empty-state">No pre-built PCs found.</td></tr>';
+    return;
+  }
+
+  el.prebuiltTableBody.innerHTML = builds
+    .map(build => {
+      const id = escapeHtml(build._id || '');
+      return `
+        <tr>
+          <td>${escapeHtml(build.presetId || '-')}</td>
+          <td>${escapeHtml(build.name || '-')}</td>
+          <td>${escapeHtml(String(build.tier || '-').toUpperCase())}</td>
+          <td>${Number(build.order || 0)}</td>
+          <td>
+            <div class="row-actions">
+              <button class="btn btn-sm btn-outline-primary" data-action="edit-prebuilt" data-id="${id}">Edit</button>
+              <button class="btn btn-sm btn-outline-danger" data-action="delete-prebuilt" data-id="${id}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    })
+    .join('');
+}
+
+function filterPrebuiltBuilds() {
+  const keyword = (el.prebuiltSearch.value || '').toLowerCase().trim();
+  if (!keyword) {
+    renderPrebuiltTable(state.featuredBuilds);
+    return;
+  }
+
+  const filtered = state.featuredBuilds.filter(build => {
+    return [build.presetId, build.name, build.tagline]
+      .filter(Boolean)
+      .some(value => String(value).toLowerCase().includes(keyword));
+  });
+
+  renderPrebuiltTable(filtered);
+}
+
+async function loadFeaturedBuilds() {
+  setStatus(el.prebuiltStatus, 'Loading pre-built PCs...', 'info');
+  try {
+    const payload = await requestJson(FEATURED_BUILD_API_BASE);
+    const builds = Array.isArray(payload) ? payload : [];
+    state.featuredBuilds = builds.sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+    filterPrebuiltBuilds();
+    setStatus(el.prebuiltStatus, `Loaded ${state.featuredBuilds.length} pre-built PC(s).`, 'ok');
+  } catch (error) {
+    setStatus(el.prebuiltStatus, toErrorMessage(error, 'Failed to load pre-built PCs.'), 'error');
+  }
+}
+
+async function submitPrebuiltForm(event) {
+  event.preventDefault();
+
+  let payload;
+  try {
+    payload = readPrebuiltForm();
+  } catch (error) {
+    setStatus(el.prebuiltStatus, toErrorMessage(error, 'Invalid pre-built data.'), 'error');
+    return;
+  }
+
+  if (!payload.presetId || !payload.name) {
+    setStatus(el.prebuiltStatus, 'Preset ID and Name are required.', 'error');
+    return;
+  }
+
+  if (!state.editingFeaturedBuildId) {
+    setStatus(el.prebuiltStatus, 'Creating pre-built PC...', 'info');
+    try {
+      await requestJson(FEATURED_BUILD_API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      clearPrebuiltForm();
+      await loadFeaturedBuilds();
+      setStatus(el.prebuiltStatus, 'Pre-built PC created successfully.', 'ok');
+    } catch (error) {
+      setStatus(el.prebuiltStatus, toErrorMessage(error, 'Failed to create pre-built PC.'), 'error');
+    }
+    return;
+  }
+
+  setStatus(el.prebuiltStatus, 'Updating pre-built PC...', 'info');
+  try {
+    await requestJson(`${FEATURED_BUILD_API_BASE}/${state.editingFeaturedBuildId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    clearPrebuiltForm();
+    await loadFeaturedBuilds();
+    setStatus(el.prebuiltStatus, 'Pre-built PC updated successfully.', 'ok');
+  } catch (error) {
+    setStatus(el.prebuiltStatus, toErrorMessage(error, 'Failed to update pre-built PC.'), 'error');
+  }
+}
+
+function handlePrebuiltTableClick(event) {
+  const button = event.target.closest('button[data-action]');
+  if (!button) return;
+
+  const id = button.dataset.id;
+  const action = button.dataset.action;
+  if (!id || !action) return;
+
+  const selectedBuild = state.featuredBuilds.find(item => item._id === id);
+  if (!selectedBuild) {
+    setStatus(el.prebuiltStatus, 'Selected pre-built PC was not found.', 'error');
+    return;
+  }
+
+  if (action === 'edit-prebuilt') {
+    fillPrebuiltForm(selectedBuild);
+    setStatus(el.prebuiltStatus, `Editing pre-built PC: ${selectedBuild.name}`, 'info');
+    return;
+  }
+
+  if (action === 'delete-prebuilt') {
+    const ok = window.confirm(`Delete pre-built PC ${selectedBuild.name}?`);
+    if (!ok) return;
+
+    setStatus(el.prebuiltStatus, 'Deleting pre-built PC...', 'info');
+    requestJson(`${FEATURED_BUILD_API_BASE}/${id}`, {
+      method: 'DELETE',
+    })
+      .then(async () => {
+        if (state.editingFeaturedBuildId === id) {
+          clearPrebuiltForm();
+        }
+        await loadFeaturedBuilds();
+        setStatus(el.prebuiltStatus, 'Pre-built PC deleted successfully.', 'ok');
+      })
+      .catch(error => {
+        setStatus(el.prebuiltStatus, toErrorMessage(error, 'Failed to delete pre-built PC.'), 'error');
+      });
+  }
+}
+
 function bindEvents() {
   el.saveAdminIdBtn.addEventListener('click', saveAdminUserId);
 
@@ -730,6 +986,31 @@ function bindEvents() {
   if (el.logAutoRefresh) {
     el.logAutoRefresh.addEventListener('change', toggleLogAutoRefresh);
   }
+
+  if (el.prebuiltForm) {
+    el.prebuiltForm.addEventListener('submit', submitPrebuiltForm);
+  }
+  if (el.prebuiltResetBtn) {
+    el.prebuiltResetBtn.addEventListener('click', clearPrebuiltForm);
+  }
+  if (el.prebuiltSearch) {
+    el.prebuiltSearch.addEventListener('input', filterPrebuiltBuilds);
+  }
+  if (el.reloadPrebuiltBtn) {
+    el.reloadPrebuiltBtn.addEventListener('click', loadFeaturedBuilds);
+  }
+  if (el.prebuiltTableBody) {
+    el.prebuiltTableBody.addEventListener('click', handlePrebuiltTableClick);
+  }
+
+  el.adminNavButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const target = button.dataset.adminTarget;
+      if (target) {
+        switchAdminSection(target);
+      }
+    });
+  });
 }
 
 async function init() {
@@ -753,10 +1034,12 @@ async function init() {
   initCategoryOptions();
   clearUserForm();
   clearProductForm();
+  clearPrebuiltForm();
   bindEvents();
+  switchAdminSection('usersSection');
 
   setStatus(el.globalStatus, 'Admin page ready.', 'info');
-  await Promise.all([loadUsers(), loadProducts(), loadLogs()]);
+  await Promise.all([loadUsers(), loadProducts(), loadFeaturedBuilds(), loadLogs()]);
 }
 
 init();

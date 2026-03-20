@@ -69,8 +69,9 @@
       <a class="btn btn-primary" href="index.html">Back to Home</a>
     </section>
 
-    <section class="admin-columns" id="adminWorkspace">
-      <article class="square-panel admin-panel" id="usersSection">
+    <section class="admin-workspace" id="adminWorkspace">
+      <div class="admin-content-stack">
+      <article class="square-panel admin-panel admin-module is-active" id="usersSection">
         <div class="panel-head">
           <h2>User CRUD</h2>
           <button id="reloadUsersBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Users</button>
@@ -144,7 +145,7 @@
         </div>
       </article>
 
-      <article class="square-panel admin-panel" id="productsSection">
+      <article class="square-panel admin-panel admin-module" id="productsSection">
         <div class="panel-head">
           <h2>Products CRUD</h2>
           <button id="reloadProductsBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Products</button>
@@ -222,7 +223,77 @@
         </div>
       </article>
 
-      <article class="square-panel admin-panel logs-panel" id="logsSection">
+      <article class="square-panel admin-panel admin-module" id="prebuiltSection">
+        <div class="panel-head">
+          <h2>Pre-Built PC CRUD</h2>
+          <button id="reloadPrebuiltBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Pre-Built</button>
+        </div>
+
+        <form id="prebuiltForm" class="crud-form">
+          <input type="hidden" id="prebuiltId" />
+          <div class="row g-2">
+            <div class="col-md-4">
+              <label for="prebuiltPresetId" class="form-label">Preset ID</label>
+              <input id="prebuiltPresetId" class="form-control" placeholder="overlord" required />
+            </div>
+            <div class="col-md-5">
+              <label for="prebuiltName" class="form-label">Name</label>
+              <input id="prebuiltName" class="form-control" required />
+            </div>
+            <div class="col-md-3">
+              <label for="prebuiltTier" class="form-label">Tier</label>
+              <select id="prebuiltTier" class="form-select">
+                <option value="high">High</option>
+                <option value="mid" selected>Mid</option>
+                <option value="budget">Budget</option>
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label for="prebuiltTagline" class="form-label">Tagline</label>
+              <input id="prebuiltTagline" class="form-control" />
+            </div>
+            <div class="col-md-2">
+              <label for="prebuiltOrder" class="form-label">Order</label>
+              <input id="prebuiltOrder" type="number" class="form-control" min="0" value="0" />
+            </div>
+            <div class="col-md-2">
+              <label for="prebuiltEstimatedPrice" class="form-label">Est. Price</label>
+              <input id="prebuiltEstimatedPrice" class="form-control" placeholder="~50,000,000 VND" />
+            </div>
+            <div class="col-12">
+              <label for="prebuiltPartsJson" class="form-label">Parts JSON</label>
+              <textarea id="prebuiltPartsJson" class="form-control" rows="6" placeholder='{"cpu":{"name":"Intel Core i7-13700K"},"gpu":{"name":"RTX 4070 SUPER"}}'></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button id="prebuiltSubmitBtn" type="submit" class="btn btn-primary">Create Pre-Built</button>
+            <button id="prebuiltResetBtn" type="button" class="btn btn-outline-secondary">Clear</button>
+          </div>
+        </form>
+
+        <div class="toolbar-row">
+          <input id="prebuiltSearch" class="form-control" placeholder="Search preset id, name, tagline" />
+        </div>
+
+        <div id="prebuiltStatus" class="status-box" role="status" aria-live="polite"></div>
+
+        <div class="table-wrap">
+          <table class="table table-hover align-middle" id="prebuiltTable">
+            <thead>
+              <tr>
+                <th>Preset ID</th>
+                <th>Name</th>
+                <th>Tier</th>
+                <th>Order</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="square-panel admin-panel admin-module logs-panel" id="logsSection">
         <div class="panel-head">
           <h2>Log Check</h2>
           <button id="reloadLogsBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Logs</button>
@@ -261,6 +332,18 @@
           </table>
         </div>
       </article>
+
+      </div>
+
+      <aside class="square-panel admin-side-navbar" aria-label="Admin modules">
+        <p class="side-nav-kicker">Modules</p>
+        <div class="admin-side-nav-list" role="tablist" aria-label="Admin panel sections">
+          <button class="admin-side-nav-btn is-active" type="button" data-admin-target="usersSection">CRUD User</button>
+          <button class="admin-side-nav-btn" type="button" data-admin-target="productsSection">CRUD Product</button>
+          <button class="admin-side-nav-btn" type="button" data-admin-target="prebuiltSection">CRUD Pre-Built PC</button>
+          <button class="admin-side-nav-btn" type="button" data-admin-target="logsSection">View Logs</button>
+        </div>
+      </aside>
     </section>
   </main>
 
