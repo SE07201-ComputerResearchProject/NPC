@@ -49,11 +49,23 @@ body.bg-dark .admin-hero-panel {
   border-left: 6px solid #dc3545;
 }
 
-.admin-columns {
+.admin-workspace {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) 280px;
   gap: 16px;
   align-items: start;
+}
+
+.admin-content-stack {
+  min-width: 0;
+}
+
+.admin-module {
+  display: none;
+}
+
+.admin-module.is-active {
+  display: block;
 }
 
 .admin-panel {
@@ -63,8 +75,70 @@ body.bg-dark .admin-hero-panel {
   box-shadow: 0 16px 36px rgba(0,0,0,0.08);
 }
 
+.admin-side-navbar {
+  position: sticky;
+  top: 94px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.96);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 18px 36px rgba(0,0,0,0.08);
+}
+
+body.bg-dark .admin-side-navbar {
+  background: rgba(18,18,18,0.95);
+  border-color: rgba(255,255,255,0.1);
+}
+
+.side-nav-kicker {
+  margin: 0 0 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: #6c757d;
+}
+
+.admin-side-nav-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-side-nav-btn {
+  border: 1px solid rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.9);
+  color: #1f2937;
+  border-radius: 12px;
+  padding: 12px 14px;
+  text-align: left;
+  font-weight: 600;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.admin-side-nav-btn:hover {
+  transform: translateX(-3px);
+  border-color: rgba(13, 110, 253, 0.4);
+}
+
+.admin-side-nav-btn.is-active {
+  border-color: #0d6efd;
+  background: rgba(13, 110, 253, 0.12);
+  color: #0a3f9c;
+}
+
+body.bg-dark .admin-side-nav-btn {
+  border-color: rgba(255,255,255,0.14);
+  background: rgba(31,31,31,0.95);
+  color: #e8e8e8;
+}
+
+body.bg-dark .admin-side-nav-btn.is-active {
+  border-color: rgba(110, 168, 254, 0.8);
+  background: rgba(13, 110, 253, 0.22);
+  color: #dce9ff;
+}
+
 .logs-panel {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 
 .logs-toolbar {
@@ -259,8 +333,17 @@ body.bg-dark .empty-state {
 }
 
 @media (max-width: 1180px) {
-  .admin-columns {
+  .admin-workspace {
     grid-template-columns: 1fr;
+  }
+
+  .admin-side-navbar {
+    position: static;
+    order: -1;
+  }
+
+  .admin-side-nav-list {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -278,6 +361,10 @@ body.bg-dark .empty-state {
   }
 
   .logs-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-side-nav-list {
     grid-template-columns: 1fr;
   }
 

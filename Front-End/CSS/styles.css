@@ -1404,10 +1404,6 @@ body.bg-dark .product-detail-category {
   gap: 10px;
 }
 
-/* ============================================================
-   HOME PAGE REDESIGN — Navbar Glass + Sections
-   ============================================================ */
-
 /* ---------- Navbar Glass ---------- */
 .navbar-glass:not(.navbar-pill) {
   background: rgba(248, 249, 250, 0.68) !important;
@@ -1787,11 +1783,12 @@ body.bg-light .hero-slider-card {
   letter-spacing: -0.025em;
   line-height: 1.1;
   margin-bottom: 16px;
+  color: white;
 }
 
 .hero-content-left > p {
   font-size: 1.07rem;
-  color: #1f2937;
+  color: white;
   max-width: 500px;
   line-height: 1.65;
   margin: 0 0 8px;
@@ -1812,10 +1809,10 @@ body.bg-dark .hero-content-left > p {
   justify-content: center;
   padding: 11px 26px;
   background: transparent;
-  color: #0f0f0f;
+  color: #ffffff;
   font-size: 0.93rem;
   font-weight: 600;
-  border: 1.5px solid #0f0f0f;
+  border: 1.5px solid #ffffff;
   border-radius: 6px;
   text-decoration: none;
   transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
