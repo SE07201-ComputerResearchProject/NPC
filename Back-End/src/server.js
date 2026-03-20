@@ -1,3 +1,5 @@
+import featuredBuildRoutes from './routes/featuredBuildRoutes.js';
+import { seedFeaturedBuildsIfNeeded } from './routes/featuredBuildRoutes.js';
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
@@ -36,6 +38,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/compatibility', compatibilityRoutes);
+app.use('/api/featured-builds', featuredBuildRoutes);
 
 app.get('/api/config/public', (req, res) => {
   res.status(200).json({
@@ -56,6 +59,7 @@ mongoose.connect(mongoConnectionString)
   console.log('✓ MongoDB connected');
   await seedComponentsIfNeeded(Component);
   await seedLogsIfNeeded(Log);
+    await seedFeaturedBuildsIfNeeded();
   await createLog('test', 'anon');
   app.listen(PORT, () => {
     console.log(`✓ Server running on port ${PORT}`);

@@ -381,6 +381,8 @@ function applyTheme(theme) {
   if (navbarTop) {
     navbarTop.classList.toggle('bg-dark', isDark);
     navbarTop.classList.toggle('navbar-dark', isDark);
+    navbarTop.classList.toggle('navbar-light', !isDark);
+    navbarTop.setAttribute('data-theme', isDark ? 'dark' : 'light');
   }
 
   // icon indicates the opposite theme (clicking will switch to it)
@@ -533,19 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 if (toggleBtn) {
-  toggleBtn.addEventListener('click', (e) => {
-    // create ripple effect from button location
-    const rect = toggleBtn.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
-
-    const ripple = document.createElement('div');
-    ripple.className = 'mode-ripple';
-    ripple.style.left = x + 'px';
-    ripple.style.top = y + 'px';
-    document.body.appendChild(ripple);
-    ripple.addEventListener('animationend', () => ripple.remove());
-
+  toggleBtn.addEventListener('click', () => {
     // determine new theme and apply
     const currentlyDark = document.body.classList.contains('bg-dark');
     const newTheme = currentlyDark ? 'light' : 'dark';

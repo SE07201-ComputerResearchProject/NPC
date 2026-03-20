@@ -10,39 +10,21 @@
   <!-- Custom CSS -->
   <link rel="stylesheet" href="CSS/styles.css" />
   <!-- Title-->
-  <title>Breaking Bad Builder - Home</title>
+  <title>Breaking Bad - Home</title>
 </head>
 <body class="bg-light text-dark">
 
   <div id="homePreloader" class="products-loader-overlay home-preloader" aria-live="polite" aria-label="Loading homepage">
     <div class="loader"></div>
   </div>
-  <script>
-    (function () {
-      const preloader = document.getElementById('homePreloader');
-      if (!preloader) return;
-
-      try {
-        const preloaderCooldownMs = 20 * 60 * 1000;
-        const lastShownAt = Number(localStorage.getItem('homePreloaderLastShownAt') || '0');
-        const stillInCooldown = Number.isFinite(lastShownAt) && (Date.now() - lastShownAt) < preloaderCooldownMs;
-
-        window.__showHomePreloader = !stillInCooldown;
-
-        if (stillInCooldown) {
-          preloader.classList.add('hidden');
-        }
-      } catch {
-        // If storage is unavailable, fallback to showing preloader.
-        window.__showHomePreloader = true;
-      }
-    })();
-  </script>
+  <script src="JS/home-page-preload.js"></script>
 
   <!-- Navbar (Glass Blur) -->
-  <nav class="navbar navbar-expand-lg navbar-glass fixed-top" id="navbarTop">
+  <nav class="navbar navbar-expand-lg navbar-glass navbar-pill fixed-top" id="navbarTop">
     <div class="container">
-      <a class="navbar-brand" href="index.html">Breaking Bad Builder</a>
+      <a class="navbar-brand navbar-home-btn" href="index.html" aria-label="Go to homepage">
+        <i data-lucide="house"></i>
+      </a>
       <button class="navbar-toggler navbar-glass-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navCollapse" aria-controls="navCollapse" aria-expanded="false" aria-label="Toggle navigation">
         <i data-lucide="menu"></i>
       </button>
@@ -70,42 +52,47 @@
   <!-- ====================== HERO SECTION ====================== -->
   <section id="hero" class="hero-section">
 
-    <div class="components-floating-layer" id="floatingComponentsLayer" aria-hidden="true">
-      <div class="floating-chip chip-1">
-        <img src="Assets/Floating/cpu-card.svg" alt="CPU" loading="lazy">
-        <span>CPU</span>
-      </div>
-      <div class="floating-chip chip-2">
-        <img src="Assets/Floating/motherboard-card.svg" alt="Motherboard" loading="lazy">
-        <span>Motherboard</span>
-      </div>
-      <div class="floating-chip chip-3">
-        <img src="Assets/Floating/ram-card.svg" alt="RAM" loading="lazy">
-        <span>RAM</span>
-      </div>
-      <div class="floating-chip chip-4">
-        <img src="Assets/Floating/storage-card.svg" alt="Storage" loading="lazy">
-        <span>Storage</span>
-      </div>
-      <div class="floating-chip chip-5">
-        <img src="Assets/Floating/cooling-card.svg" alt="Cooling" loading="lazy">
-        <span>Cooling</span>
-      </div>
-      <div class="floating-chip chip-6">
-        <img src="Assets/Floating/power-card.svg" alt="Power" loading="lazy">
-        <span>Power</span>
+  <!-- Hero Background -->
+    <div class="hero-bg" style="background-image: url('Assets/ImageSlider/JYVsiQT.jpg');"></div>
+
+  <!-- Hero Content Left -->
+    <div class="hero-content-left">
+      <h1>Breaking Bad</h1>
+      <p>Cook your dream PC with our professors and easy-to-use simulator!
+        <br>Featuring <span class="typing"></span>
+      </p>
+      <div class="d-flex gap-3 flex-wrap justify-content-start mt-4">
+        <a href="dashboard.html" class="btn btn-start">Start Building</a>
+        <a href="#highlights" class="btn btn-outline-glass">Learn More</a>
       </div>
     </div>
 
-    <!-- Hero Content -->
-    <div class="content">
-      <h1>Welcome to Breaking Bad Builder</h1>
-      <p>Build your dream PC with our easy-to-use simulator!
-        <br>Featuring <span class="typing"></span>
-      </p>
-      <div class="d-flex gap-3 flex-wrap justify-content-center mt-2">
-        <a href="dashboard.html" class="btn btn-start">Start Building</a>
-        <a href="#highlights" class="btn btn-outline-glass">Learn More</a>
+    <!-- Hero Content Bottom -->
+    <div class="hero-content-bottom">
+      <p>Learn more about our features and offerings.</p>
+    </div>
+
+    <div class="hero-slider-card" id="heroSlider" aria-label="Featured component visuals">
+      <div class="hero-slider-layout">
+        <div class="hero-slider-viewport">
+          <img class="hero-slide is-active" src="Assets/ImageSlider/Fractal_Design-North_KV_6_Charcoal_Mesh-2560.jpg" alt="PC Build Showcase" data-kicker="Build PC" data-title="Build Your Own PC" data-description="Make it your own with bunch of  real components, instant compatibility checks, and a visual configurator.">
+          <img class="hero-slide" src="Assets/ImageSlider/affordable_gaming_pc_parts.webp" alt="PC components showcase" data-kicker="Components" data-title="Choose Components Quickly" data-description="CPU, GPU, RAM easily compare and assemble.">
+        </div>
+
+        <div class="hero-slider-copy">
+          <p class="hero-slider-kicker" id="heroSliderKicker">Build PC</p>
+          <h3 class="hero-slider-title" id="heroSliderTitle">Tu Build Theo Nhu Cau</h3>
+          <p class="hero-slider-description" id="heroSliderDescription">Len cau hinh gon gang, can bang hieu nang va ngan sach.</p>
+
+          <div class="hero-slider-controls" aria-label="Hero image slider controls">
+            <button class="hero-slider-btn" type="button" id="heroPrevSlide" aria-label="Previous slide">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <button class="hero-slider-btn" type="button" id="heroNextSlide" aria-label="Next slide">
+              <i data-lucide="chevron-right"></i>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -167,7 +154,9 @@
         <h2 class="section-title">Pre-Built Configurations</h2>
         <p class="section-subtitle">Kick-start your build with a curated setup — click any card to load it straight into the Builder.</p>
       </div>
-      <div class="row g-4 justify-content-center">
+      <div class="row g-4 justify-content-center" id="featuredBuildsGrid">
+        <!-- Populated dynamically from /api/featured-builds —
+             static fallback cards shown until API responds -->
 
         <!-- Build 1: The Overlord -->
         <div class="col-lg-4 col-md-6">
@@ -393,102 +382,6 @@
   <script src="JS/products-menu.js"></script>
   <script src="JS/components-menu.js"></script>
   <script src="JS/auth-popup.js"></script>
-  <script>
-    // Preloader
-    (function () {
-      const preloader = document.getElementById('homePreloader');
-      if (!preloader) return;
-
-      if (!window.__showHomePreloader) {
-        preloader.classList.add('hidden');
-        return;
-      }
-
-      setTimeout(() => {
-        preloader.classList.add('hidden');
-        try {
-          localStorage.setItem('homePreloaderLastShownAt', String(Date.now()));
-          localStorage.removeItem('homePreloaderShown');
-        } catch {
-          // Ignore storage write errors.
-        }
-      }, 2000);
-    })();
-
-    // Scroll-reveal for home sections
-    (function () {
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('in-view');
-            observer.unobserve(entry.target);
-          }
-        });
-      }, { threshold: 0.1 });
-
-      document.querySelectorAll('.home-section').forEach(section => observer.observe(section));
-    })();
-
-    // Contact form – UI only (no backend contact endpoint yet)
-    function handleContactSubmit(e) {
-      e.preventDefault();
-      if (typeof showPopup === 'function') {
-        showPopup("Message sent! We'll get back to you soon.", { duration: 3500 });
-      }
-      e.target.reset();
-    }
-
-    // Featured Builds – write preset to sessionStorage then navigate to dashboard
-    function loadFeaturedBuild(presetId) {
-      const presets = {
-        overlord: {
-          name: 'The Overlord',
-          parts: {
-            case:        { name: 'Lian Li O11 Dynamic Mini V2' },
-            cpu:         { name: 'AMD Ryzen 7 9800X3D' },
-            motherboard: { name: 'Asus B850 TUF GAMING PLUS WIFI DDR5 ATX' },
-            gpu:         { name: 'Sapphire NITRO+ Radeon RX 9070 XT 16GB GDDR6' },
-            ram:         { name: 'Crucial Pro Overclocking DDR5-6000 CL36 32GB' },
-            cooler:      { name: 'MSI MAG CORELIQUID A13 Water 360mm' },
-            storage:     { name: 'PNY CS2230 1TB NVMe PCIe 3.0' },
-            psu:         { name: 'Montech CENTURY II 850W 80+ Gold' },
-            fan:         { name: 'Asiahorse NYOTA 120mm Case Fans 3-Pack' },
-          },
-        },
-        architect: {
-          name: 'The Architect',
-          parts: {
-            case:        { name: 'Corsair 4000D Airflow' },
-            cpu:         { name: 'Intel Core i7-13700K' },
-            motherboard: { name: 'ASUS TUF B760-PLUS WIFI' },
-            gpu:         { name: 'NVIDIA GeForce RTX 4070 SUPER 12GB' },
-            ram:         { name: 'TeamGroup T-Force Delta RGB 32GB DDR5-6000' },
-            cooler:      { name: 'Lian Li Galahad II Trinity 360' },
-            storage:     { name: 'WD Black SN850X 2TB' },
-            psu:         { name: 'Seasonic Focus GX-850' },
-            fan:         { name: 'Lian Li UNI FAN SL120 V2' },
-          },
-        },
-        starter: {
-          name: 'The Starter',
-          parts: {
-            case:        { name: 'NZXT H5 Flow' },
-            cpu:         { name: 'AMD Ryzen 5 7600' },
-            motherboard: { name: 'Gigabyte B650 AORUS ELITE AX' },
-            gpu:         { name: 'AMD Radeon RX 7800 XT 16GB' },
-            ram:         { name: 'Kingston Fury Beast 32GB DDR5-5600' },
-            cooler:      { name: 'Corsair H100i Elite Capellix' },
-            storage:     { name: 'Samsung 980 PRO 1TB' },
-            psu:         { name: 'Corsair RM750x' },
-            fan:         { name: 'Corsair AF120 RGB Elite' },
-          },
-        },
-      };
-      const preset = presets[presetId];
-      if (!preset) return;
-      sessionStorage.setItem('featuredBuildPreset', JSON.stringify(preset));
-      window.location.href = 'dashboard.html';
-    }
-  </script>
+  <script src="JS/home-page.js"></script>
 </body>
 </html>
