@@ -1,96 +1,40 @@
-// routes/logs.js
 import express from 'express';
 import mongoose from 'mongoose';
 import Log from '../models/Log.js';
 
 const router = express.Router();
 
-//creating a system log entry
-router.post('/create', async (req, res) => {
+// Create (POST /api/logs)
+router.post('/', async (req, res) => {
+  const { user, activity = '' } = req.body;
+  if (!user || typeof user !== 'string' || user.trim() === '') {
+    return res.status(400).json({ error: 'user is required' });
+  }
   try {
-    const { user, activity = '' } = req.body;
-
-    // Basic validation
-    if (!user || typeof user !== 'string' || user.trim() === '') {
-      return res.status(400).json({ error: 'user is required and must be a non-empty string' });
-    }
-
-    const log = new Log({
-      user: user.trim(),
-      activity: typeof activity === 'string' ? activity.trim() : String(activity),
-    });
-
-    const saved = await log.save();
-    return res.status(201).json(saved.toObject());
+    const saved = await Log.create({ user: user.trim(), activity: activity.trim() });
+    return res.status(201).json(saved);
   } catch (err) {
-    if (err instanceof mongoose.Error.ValidationError) {
-      return res.status(400).json({ error: err.message });
-    }
-    console.error('Create log error', err);
+    if (err instanceof mongoose.Error.ValidationError) return res.status(400).json({ error: err.message });
+    console.error(err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-/**
- * GET /logs
- * Read logs with optional filters, pagination and sorting.
- * Query params:
- *   user - filter by user string
- *   limit - number per page (default 50, max 200)
- *   page - page number (default 1)
- *   sort - mongoose sort string (default -timeStamp)
- */
+// List (GET /api/logs)
 router.get('/', async (req, res) => {
-  try {
-    const { user, limit = 50, page = 1, sort = '-timeStamp' } = req.query;
-
-    const parsedLimit = Math.min(200, Math.max(1, parseInt(limit, 10) || 50));
-    const parsedPage = Math.max(1, parseInt(page, 10) || 1);
-
-    const filter = {};
-    if (user) filter.user = user;
-
-    const [data, total] = await Promise.all([
-      Log.find(filter)
-        .sort(sort)
-        .skip((parsedPage - 1) * parsedLimit)
-        .limit(parsedLimit)
-        .lean()
-        .exec(),
-      Log.countDocuments(filter).exec(),
-    ]);
-
-    return res.json({
-      page: parsedPage,
-      limit: parsedLimit,
-      total,
-      data,
-    });
-  } catch (err) {
-    console.error('List logs error', err);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
+  const docs = await Log.find().sort({ timeStamp: -1 }).limit(50).lean();
+  res.json(docs);
 });
 
-/**
- * GET /logs/:id
- * Read single log by id
- */
-router.get('/:id', async (req, res) => {
+// Get by id (GET /api/logs/:id) — only match 24-hex ObjectId
+router.get('/:id([0-9a-fA-F]{24})', async (req, res) => {
   try {
-    const { id } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: 'Invalid id' });
-    }
-
-    const doc = await Log.findById(id).lean().exec();
+    const doc = await Log.findById(req.params.id).lean();
     if (!doc) return res.status(404).json({ error: 'Log not found' });
-
-    return res.json(doc);
+    res.json(doc);
   } catch (err) {
-    console.error('Get log error', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

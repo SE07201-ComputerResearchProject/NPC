@@ -1,6 +1,7 @@
 // auth-popup.js - handles authentication UI
 
 const USER_API_BASE_URL = 'http://localhost:3000/api/users';
+const LOG_API_BASE_URL = 'http://localhost:3000/api/logs';
 const PUBLIC_CONFIG_API_URL = 'http://localhost:3000/api/config/public';
 let recaptchaSiteKey = '';
 let googleClientId = '';
@@ -303,7 +304,7 @@ function showSignIn() {
   const footer = document.getElementById('authFooter');
   if (!content || !title || !subtitle || !footer) return;
   activeAuthMode = 'login';
-  
+
   title.textContent = 'Log In';
   subtitle.textContent = 'Enter your credentials to access your account';
   content.innerHTML = `
@@ -358,14 +359,26 @@ function showSignIn() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: emailVal, password: passwordVal, captchaToken })
         });
-        
+
         const data = await response.json();
 
         if (response.ok) {
           applyAuthSuccess(data, 'Logged in successfully');
+                    //creating a log entry for a successful login
+          await fetch(LOG_API_BASE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user: `${emailVal}`, activity: `Login successful` }),
+          });
         } else {
           showPopup(data.message || 'Login failed');
           resetRecaptchaByMode('login');
+                    //creating a log entry for a failed login attempt
+          await fetch(LOG_API_BASE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user: `anon`, activity: `Login failed, email attempted: ${emailVal}` }),
+          });
         }
       } catch (err) {
         console.error(err);
@@ -383,7 +396,7 @@ function showSignUp() {
   const footer = document.getElementById('authFooter');
   if (!content || !title || !subtitle || !footer) return;
   activeAuthMode = 'signup';
-  
+
   title.textContent = 'Sign Up';
   subtitle.textContent = 'Create your account first. You can add address details later in Account Information.';
   content.innerHTML = `
@@ -463,9 +476,22 @@ function showSignUp() {
 
         if (response.ok) {
           applyAuthSuccess(data, 'Account created successfully! Add your address in Account Information.');
+          //creating a log entry for a successful registration
+          await fetch(LOG_API_BASE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user: 'anon', activity: `Registration succeeded, Email used: ${em}` }),
+          });
         } else {
           showPopup(data.message || 'Registration failed');
           resetRecaptchaByMode('signup');
+
+          //creating a log entry for a failed registration
+          await fetch(LOG_API_BASE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user: 'anon', activity: `Registration failed, Email used: ${em}` }),
+          });
         }
       } catch (err) {
         console.error('Connection error:', err);

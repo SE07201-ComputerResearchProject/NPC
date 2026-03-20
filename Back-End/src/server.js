@@ -16,7 +16,6 @@ import Component from './models/Component.js';
 import Log from './models/Log.js'
 import { seedComponentsIfNeeded } from './utils/componentData.js';
 import { seedLogsIfNeeded } from './utils/logData.js';
-import { createLog } from './utils/logData.js';
 
 dotenv.config();
 
@@ -60,10 +59,17 @@ mongoose.connect(mongoConnectionString)
   await seedComponentsIfNeeded(Component);
   await seedLogsIfNeeded(Log);
     await seedFeaturedBuildsIfNeeded();
-  await createLog('test', 'anon');
-  app.listen(PORT, () => {
+// node or browser
+  app.listen(PORT, async () => {
     console.log(`✓ Server running on port ${PORT}`);
     console.log(`Ready to process requests...`);
+
+    await fetch(`http://localhost:${PORT}/api/logs/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: 'anon', activity: 'log entry injection 2' }),
+    });
+
   });
 })
 .catch(err => console.error('✗ MongoDB connection error:', err.message));
