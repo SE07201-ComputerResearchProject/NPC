@@ -713,9 +713,8 @@ function showPaymentModal(amount) {
   content.className = 'auth-content';
   content.innerHTML = `
     <p>Total: ${amount.toLocaleString()} VND</p>
-    <button class="btn btn-primary w-100 mb-2" id="payCard">Credit/Debit Card</button>
+    <button class="btn btn-primary w-100 mb-2" id="payVnpay">VNPay</button>
     <button class="btn btn-secondary w-100 mb-2" id="payPaypal">PayPal</button>
-    <button class="btn btn-danger w-100 mb-2" id="payMomo">MoMo</button>
   `;
 
   modal.appendChild(header);
@@ -746,7 +745,7 @@ function showPaymentModal(amount) {
     closePaymentModal();
   });
 
-  document.getElementById('payMomo').addEventListener('click', async () => {
+  document.getElementById('payVnpay').addEventListener('click', async () => {
     if (!window.isLoggedIn) {
       closePaymentModal();
       toggleAuthPopup(new Event('click'));
@@ -754,20 +753,20 @@ function showPaymentModal(amount) {
       return;
     }
 
-    const payMomoBtn = document.getElementById('payMomo');
-    if (payMomoBtn) {
-      payMomoBtn.disabled = true;
-      payMomoBtn.textContent = 'Creating payment...';
+    const payVnpayBtn = document.getElementById('payVnpay');
+    if (payVnpayBtn) {
+      payVnpayBtn.disabled = true;
+      payVnpayBtn.textContent = 'Creating payment...';
     }
 
     try {
-      await startMomoPayment(amount);
+      await startVnpayPayment(amount);
     } catch (error) {
-      if (payMomoBtn) {
-        payMomoBtn.disabled = false;
-        payMomoBtn.textContent = 'MoMo';
+      if (payVnpayBtn) {
+        payVnpayBtn.disabled = false;
+        payVnpayBtn.textContent = 'VNPay';
       }
-      showPopup(error.message || 'Cannot connect to MoMo API right now.');
+      showPopup(error.message || 'Cannot connect to VNPay API right now.');
     }
   });
 }
@@ -791,15 +790,15 @@ function notifyPaymentResultFromUrl() {
 
   const paymentCode = params.get('paymentCode') || 'N/A';
   if (paymentStatus === 'success') {
-    showPopup(`MoMo payment successful (code: ${paymentCode})`, { duration: 3500, center: true });
+    showPopup(`VNPay payment successful (code: ${paymentCode})`, { duration: 3500, center: true });
   } else {
-    showPopup(`MoMo payment failed (code: ${paymentCode})`, { duration: 3500, center: true });
+    showPopup(`VNPay payment failed (code: ${paymentCode})`, { duration: 3500, center: true });
   }
 
   window.history.replaceState({}, '', window.location.pathname);
 }
 
-async function startMomoPayment(amount) {
+async function startVnpayPayment(amount) {
   const orderPayload = await createCheckoutOrder('build');
   const orderId = orderPayload?.order?.id;
   if (!orderId) {
@@ -808,7 +807,7 @@ async function startMomoPayment(amount) {
 
   const buildName = (typeof getBuildName === 'function' && getBuildName()) || 'New Build';
 
-  const response = await fetch(`${PAYMENT_API_BASE_URL}/momo/create`, {
+  const response = await fetch(`${PAYMENT_API_BASE_URL}/vnpay/create`, {
     method: 'POST',
     headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({
@@ -820,11 +819,11 @@ async function startMomoPayment(amount) {
   });
 
   const data = await response.json();
-  if (!response.ok || !data.paymentUrl) {
-    throw new Error(data.message || 'Cannot create MoMo payment URL');
+  if (!response.ok || !data.metadata) {
+    throw new Error(data.message || 'Cannot create VNPay payment URL');
   }
 
-  window.location.href = data.paymentUrl;
+  window.location.href = data.metadata;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
