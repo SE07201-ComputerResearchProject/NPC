@@ -55,6 +55,7 @@ router.post('/vnpay/create', requireAuth, async (req, res) => {
       vnp_TxnRef: txnRef,
       vnp_OrderInfo: `Thanh toan don hang ${orderId}`,
       vnp_OrderType: ProductCode.Other,
+      vnp_Url:  'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
       vnp_ReturnUrl: 'http://localhost:3000/api/payments/vnpay/return',
       vnp_Locale: VnpLocale.VN,
       vnp_CreateDate: dateFormat(new Date()),
