@@ -16,6 +16,8 @@ const PRODUCT_CATEGORIES = [
   'fan',
 ];
 
+const PRODUCT_VIEW_MORE_IMAGE_SLOTS = 3;
+
 const state = {
   users: [],
   products: [],
@@ -23,6 +25,8 @@ const state = {
   featuredBuilds: [],
   editingUserId: null,
   editingProductId: null,
+  editingProductImageUrls: [],
+  pendingProductImageUrls: [],
   editingFeaturedBuildId: null,
   logAutoRefreshTimer: null,
 };
@@ -63,7 +67,8 @@ const el = {
   productPrice: document.getElementById('productPrice'),
   productPower: document.getElementById('productPower'),
   productStock: document.getElementById('productStock'),
-  productImageUrl: document.getElementById('productImageUrl'),
+  productImageFile: document.getElementById('productImageFile'),
+  productImageHint: document.getElementById('productImageHint'),
   productHighlights: document.getElementById('productHighlights'),
   productDescription: document.getElementById('productDescription'),
   productSubmitBtn: document.getElementById('productSubmitBtn'),
@@ -189,6 +194,69 @@ function formatDateTime(value) {
 function isSuspiciousLog(log) {
   const content = `${log?.activity || ''} ${log?.user || ''}`.toLowerCase();
   return /(error|fail|invalid|unauthorized|denied|exception|forbidden)/i.test(content);
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Unable to read the selected image file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function updateProductImageHint(message) {
+  if (!el.productImageHint) return;
+  el.productImageHint.textContent = message;
+}
+
+function normalizeProductImageUrls(product) {
+  const fromArray = Array.isArray(product?.imageUrls)
+    ? product.imageUrls.map(item => String(item || '').trim()).filter(Boolean)
+    : [];
+
+  if (fromArray.length > 0) {
+    return fromArray.slice(0, PRODUCT_VIEW_MORE_IMAGE_SLOTS);
+  }
+
+  const single = String(product?.imageUrl || '').trim();
+  return single ? [single] : [];
+}
+
+async function handleProductImageFileChange() {
+  const files = Array.from(el.productImageFile?.files || []);
+  if (!files.length) {
+    state.pendingProductImageUrls = [];
+    if (state.editingProductImageUrls.length) {
+      updateProductImageHint(`Current images: ${state.editingProductImageUrls.length} file(s).`);
+    } else {
+      updateProductImageHint('No file selected. You can choose up to 3 images for View More.');
+    }
+    return;
+  }
+
+  const selectedFiles = files.slice(0, PRODUCT_VIEW_MORE_IMAGE_SLOTS);
+
+  try {
+    state.pendingProductImageUrls = await Promise.all(selectedFiles.map(file => fileToDataUrl(file)));
+    const droppedCount = files.length - selectedFiles.length;
+    if (droppedCount > 0) {
+      updateProductImageHint(`Selected ${selectedFiles.length} image(s). Ignored ${droppedCount} extra file(s).`);
+    } else {
+      updateProductImageHint(`Selected ${selectedFiles.length} image(s).`);
+    }
+  } catch (error) {
+    state.pendingProductImageUrls = [];
+    if (el.productImageFile) {
+      el.productImageFile.value = '';
+    }
+    if (state.editingProductImageUrls.length) {
+      updateProductImageHint(`Current images: ${state.editingProductImageUrls.length} file(s).`);
+    } else {
+      updateProductImageHint('No file selected. You can choose up to 3 images for View More.');
+    }
+    setStatus(el.productStatus, toErrorMessage(error, 'Failed to read image file.'), 'error');
+  }
 }
 
 async function requestJson(url, options = {}) {
@@ -449,6 +517,11 @@ function readProductForm() {
     .map(item => item.trim())
     .filter(Boolean);
 
+  const imageUrls = (state.pendingProductImageUrls.length
+    ? state.pendingProductImageUrls
+    : state.editingProductImageUrls).slice(0, PRODUCT_VIEW_MORE_IMAGE_SLOTS);
+  const imageUrl = imageUrls[0] || '';
+
   return {
     category: el.productCategory.value,
     name: el.productName.value.trim(),
@@ -456,7 +529,8 @@ function readProductForm() {
     price: Number(el.productPrice.value),
     power: Number(el.productPower.value || 0),
     stock: Number(el.productStock.value || 0),
-    imageUrl: el.productImageUrl.value.trim(),
+    imageUrls,
+    imageUrl,
     description: el.productDescription.value.trim(),
     highlights,
   };
@@ -470,6 +544,9 @@ function setProductFormMode(editing) {
 function clearProductForm() {
   el.productForm.reset();
   el.productId.value = '';
+  state.pendingProductImageUrls = [];
+  state.editingProductImageUrls = [];
+  updateProductImageHint('No file selected. You can choose up to 3 images for View More.');
   setProductFormMode(false);
   if (PRODUCT_CATEGORIES.length > 0) {
     el.productCategory.value = PRODUCT_CATEGORIES[0];
@@ -484,7 +561,16 @@ function fillProductForm(product) {
   el.productPrice.value = product.price ?? 0;
   el.productPower.value = product.power ?? 0;
   el.productStock.value = product.stock ?? 0;
-  el.productImageUrl.value = product.imageUrl || '';
+  state.editingProductImageUrls = normalizeProductImageUrls(product);
+  state.pendingProductImageUrls = [];
+  if (el.productImageFile) {
+    el.productImageFile.value = '';
+  }
+  if (state.editingProductImageUrls.length) {
+    updateProductImageHint(`Current images: ${state.editingProductImageUrls.length} file(s).`);
+  } else {
+    updateProductImageHint('No file selected. You can choose up to 3 images for View More.');
+  }
   el.productDescription.value = product.description || '';
   el.productHighlights.value = Array.isArray(product.highlights) ? product.highlights.join(', ') : '';
   setProductFormMode(true);
@@ -970,6 +1056,9 @@ function bindEvents() {
   el.productSearch.addEventListener('input', loadProducts);
   el.productCategoryFilter.addEventListener('change', loadProducts);
   el.productsTableBody.addEventListener('click', handleProductTableClick);
+  if (el.productImageFile) {
+    el.productImageFile.addEventListener('change', handleProductImageFileChange);
+  }
 
   if (el.reloadLogsBtn) {
     el.reloadLogsBtn.addEventListener('click', loadLogs);

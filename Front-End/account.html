@@ -3,18 +3,205 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Animate CSS -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-  <!-- Custom CSS -->
   <link rel="stylesheet" href="CSS/styles.css" />
-  <link rel="stylesheet" href="CSS/dashboard.css" />
+  <link rel="stylesheet" href="CSS/dashboard-unified.css" />
   <title>Breaking Bad Builder - Account</title>
+  <style>
+    /* ── Account page layout ── */
+    .account-layout {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+    }
+
+    /* ── Sidebar ── */
+    .account-sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 84px;
+      padding: 24px 16px;
+    }
+
+    .account-avatar-wrap {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .account-avatar-remove {
+      margin-top: 10px;
+      font-size: 0.75rem;
+      line-height: 1;
+      padding: 6px 10px;
+    }
+
+    .account-avatar-circle {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      background: rgba(0, 120, 255, 0.08);
+      border: 2px solid rgba(0, 120, 255, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      margin: 0 auto 10px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .account-avatar-circle img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .account-avatar-placeholder {
+      width: 40px;
+      height: 40px;
+      opacity: 0.35;
+    }
+
+    .account-avatar-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.56);
+      opacity: 0;
+      transition: opacity 0.18s ease;
+      pointer-events: none;
+    }
+
+    .account-avatar-circle:hover .account-avatar-overlay,
+    .account-avatar-circle:focus-visible .account-avatar-overlay {
+      opacity: 1;
+    }
+
+    .account-sidebar-name {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 2px;
+      word-break: break-word;
+    }
+
+    .account-provider-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: rgba(0, 120, 255, 0.1);
+      color: #0078ff;
+      margin-top: 4px;
+    }
+
+    body.bg-dark .account-provider-badge {
+      background: rgba(74, 144, 226, 0.2);
+      color: #4a90e2;
+    }
+
+    /* Nav */
+    .account-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 20px;
+    }
+
+    .account-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      text-align: left;
+      width: 100%;
+      font-size: 0.9rem;
+      color: inherit;
+      transition: background 0.18s, color 0.18s;
+      cursor: pointer;
+    }
+
+    .account-nav-item svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    .account-nav-item:hover {
+      background: rgba(0, 120, 255, 0.08);
+      color: #0078ff;
+    }
+
+    .account-nav-item.active {
+      background: rgba(0, 120, 255, 0.14);
+      color: #0078ff;
+      font-weight: 600;
+    }
+
+    body.bg-dark .account-nav-item:hover,
+    body.bg-dark .account-nav-item.active {
+      color: #4a90e2;
+    }
+    body.bg-dark .account-nav-item.active {
+      background: rgba(74, 144, 226, 0.18);
+    }
+
+    /* ── Main tabs ── */
+    .account-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .account-tab-panel {
+      display: none;
+    }
+    .account-tab-panel.active {
+      display: block;
+    }
+
+    /* Section divider label */
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #0078ff;
+      margin-bottom: 14px;
+    }
+    body.bg-dark .section-label { color: #4a90e2; }
+
+    /* readonly input in dark mode */
+    body.bg-dark input[readonly] {
+      background: #2a2a2a !important;
+      color: #aaa !important;
+    }
+
+    /* Responsive: stack on small screens */
+    @media (max-width: 767px) {
+      .account-layout {
+        flex-direction: column;
+      }
+      .account-sidebar {
+        width: 100%;
+        position: static;
+      }
+    }
+  </style>
 </head>
 <body class="bg-light text-dark">
 
-  <nav class="navbar navbar-expand-lg navbar-glass navbar-pill fixed-top" id="navbarTop">
+  <nav class="navbar navbar-expand-lg navbar-glass fixed-top" id="navbarTop">
     <div class="container">
       <a class="navbar-brand navbar-home-btn" href="index.html" aria-label="Go to homepage">
         <i data-lucide="house"></i>
@@ -41,85 +228,182 @@
     </div>
   </nav>
 
-  <!-- Background (dark theme only) -->
   <div class="background retrowave"></div>
 
   <div class="content">
-    <div class="container-fluid">
-      <div class="row">
-        <!-- left panel: account form -->
-        <div class="col-md-6">
-          <div class="square-panel">
-            <h1>Account Information</h1>
-            <div class="d-flex align-items-center gap-3 mb-3" id="accountIdentity" style="display:none !important;">
-              <img id="accountAvatar" src="" alt="Account Avatar" width="56" height="56" style="display:none;border-radius:50%;object-fit:cover;border:1px solid #ccc;">
-              <div>
-                <div class="small text-muted">Signed in via</div>
-                <div class="fw-semibold" id="accountProvider">Local Account</div>
-              </div>
+    <div class="container">
+      <div class="account-layout">
+
+        <!-- ════ SIDEBAR ════ -->
+        <aside class="square-panel account-sidebar">
+
+          <!-- Avatar + identity -->
+          <div class="account-avatar-wrap">
+            <div class="account-avatar-circle" id="accountAvatarTrigger" role="button" tabindex="0" aria-label="Change avatar">
+              <img id="accountAvatar" src="" alt="Avatar" style="display:none;">
+              <i id="accountAvatarIcon" data-lucide="user" class="account-avatar-placeholder"></i>
+              <span class="account-avatar-overlay">Change Avatar</span>
             </div>
-            <form id="profileForm">
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label for="username" class="form-label">Username</label>
-                <input type="text" id="username" class="form-control" required>
+            <input type="file" id="avatarFileInput" accept="image/*" style="display:none;" />
+            <button type="button" id="removeAvatarBtn" class="btn btn-outline-secondary account-avatar-remove">Remove Avatar</button>
+            <div class="account-sidebar-name" id="sidebarUsername">User</div>
+            <span class="account-provider-badge" id="sidebarProviderBadge">
+              <i data-lucide="shield-check" style="width:12px;height:12px;"></i>
+              <span id="sidebarProviderText">Local Account</span>
+            </span>
+          </div>
+
+          <hr class="my-2" />
+
+          <!-- Navigation -->
+          <nav class="account-nav mt-3">
+            <button class="account-nav-item active" id="navUserInfo" onclick="switchTab('userInfo')">
+              <i data-lucide="user-round"></i>
+              <span>User Information</span>
+            </button>
+            <button class="account-nav-item" id="navAddressBilling" onclick="switchTab('addressBilling')">
+              <i data-lucide="map-pin"></i>
+              <span>Address &amp; Billing</span>
+            </button>
+          </nav>
+
+          <!-- Logout -->
+          <button id="logoutBtn" class="btn btn-outline-danger w-100 mt-2" style="font-size:0.88rem;">
+            <i data-lucide="log-out" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"></i>
+            Log out
+          </button>
+        </aside>
+
+        <!-- ════ MAIN CONTENT ════ -->
+        <main class="account-main">
+
+          <!-- ── Tab 1: User Information ── -->
+          <div id="tabUserInfo" class="square-panel account-tab-panel active">
+            <div class="section-label">User Information</div>
+
+            <form id="profileForm" novalidate>
+              <!-- Username -->
+              <div class="mb-3">
+                <label for="username" class="form-label fw-semibold">Username</label>
+                <input type="text" id="username" class="form-control" placeholder="Your username" required>
               </div>
 
-              <div class="col-md-6 mb-3">
-                <label for="email" class="form-label">Email (Read-only)</label>
-                <input type="email" id="email" class="form-control" readonly style="background-color: #e9ecef;">
+              <!-- Email (read-only) -->
+              <div class="mb-4">
+                <label for="email" class="form-label fw-semibold">
+                  Email
+                  <span class="badge bg-secondary ms-1" style="font-size:0.65rem;vertical-align:middle;">Read-only</span>
+                </label>
+                <input type="email" id="email" class="form-control" readonly>
               </div>
-              
-              <div class="col-md-6 mb-3">
-                <label for="fullName" class="form-label">Full Name</label>
-                <input type="text" id="fullName" class="form-control" placeholder="Your full name">
+
+              <hr class="my-3">
+              <div class="section-label mt-3">Change Password</div>
+
+              <!-- Current Password -->
+              <div class="mb-3">
+                <label for="currentPassword" class="form-label fw-semibold">Current Password</label>
+                <div class="input-group">
+                  <input type="password" id="currentPassword" class="form-control" placeholder="Enter current password">
+                  <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility('currentPassword', this)" tabindex="-1">
+                    <i data-lucide="eye" style="width:14px;height:14px;"></i>
+                  </button>
+                </div>
               </div>
-              
-              <div class="col-md-6 mb-3">
-                <label for="dob" class="form-label">Date of Birth</label>
-                <input type="date" id="dob" class="form-control">
+
+              <!-- New Password -->
+              <div class="mb-3">
+                <label for="newPassword" class="form-label fw-semibold">New Password</label>
+                <div class="input-group">
+                  <input type="password" id="newPassword" class="form-control" placeholder="At least 6 characters">
+                  <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility('newPassword', this)" tabindex="-1">
+                    <i data-lucide="eye" style="width:14px;height:14px;"></i>
+                  </button>
+                </div>
               </div>
-            </div>
-            <div class="row">
-              <div class="col-md-12 mb-3">
-                <label for="street" class="form-label">Street Address</label>
+
+              <!-- Confirm Password -->
+              <div class="mb-4">
+                <label for="confirmPassword" class="form-label fw-semibold">Confirm New Password</label>
+                <div class="input-group">
+                  <input type="password" id="confirmPassword" class="form-control" placeholder="Repeat new password">
+                  <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility('confirmPassword', this)" tabindex="-1">
+                    <i data-lucide="eye" style="width:14px;height:14px;"></i>
+                  </button>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary px-4">Save Changes</button>
+            </form>
+          </div>
+
+          <!-- ── Tab 2: Address & Billing ── -->
+          <div id="tabAddressBilling" class="square-panel account-tab-panel">
+            <form id="addressForm" novalidate>
+
+              <!-- Shipping Address -->
+              <div class="section-label">Shipping Address</div>
+              <div class="mb-3">
+                <label for="street" class="form-label fw-semibold">Street Address</label>
                 <input type="text" id="street" class="form-control" placeholder="123 Main St">
               </div>
-              <div class="col-md-6 mb-3">
-                <label for="city" class="form-label">City</label>
-                <input type="text" id="city" class="form-control" placeholder="City">
+              <div class="row">
+                <div class="col-sm-5 mb-3">
+                  <label for="city" class="form-label fw-semibold">City</label>
+                  <input type="text" id="city" class="form-control" placeholder="City">
+                </div>
+                <div class="col-sm-4 mb-3">
+                  <label for="state" class="form-label fw-semibold">State / Province</label>
+                  <input type="text" id="state" class="form-control" placeholder="State">
+                </div>
+                <div class="col-sm-3 mb-3">
+                  <label for="zip" class="form-label fw-semibold">ZIP Code</label>
+                  <input type="text" id="zip" class="form-control" placeholder="ZIP">
+                </div>
               </div>
-              <div class="col-md-3 mb-3">
-                <label for="state" class="form-label">State</label>
-                <input type="text" id="state" class="form-control" placeholder="State">
+
+              <hr class="my-3">
+
+              <!-- Billing Address header + checkbox -->
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="section-label mb-0">Billing Address</div>
+                <div class="form-check mb-0">
+                  <input type="checkbox" id="billingSameAsShipping" class="form-check-input" checked
+                         onchange="toggleBillingFields(this.checked)">
+                  <label for="billingSameAsShipping" class="form-check-label small">Same as shipping</label>
+                </div>
               </div>
-              <div class="col-md-3 mb-3">
-                <label for="zip" class="form-label">ZIP Code</label>
-                <input type="text" id="zip" class="form-control" placeholder="ZIP">
+
+              <!-- Billing fields (hidden when same-as-shipping) -->
+              <div id="billingFields">
+                <div class="mb-3">
+                  <label for="billingStreet" class="form-label fw-semibold">Street Address</label>
+                  <input type="text" id="billingStreet" class="form-control" placeholder="123 Main St">
+                </div>
+                <div class="row">
+                  <div class="col-sm-5 mb-3">
+                    <label for="billingCity" class="form-label fw-semibold">City</label>
+                    <input type="text" id="billingCity" class="form-control" placeholder="City">
+                  </div>
+                  <div class="col-sm-4 mb-3">
+                    <label for="billingState" class="form-label fw-semibold">State / Province</label>
+                    <input type="text" id="billingState" class="form-control" placeholder="State">
+                  </div>
+                  <div class="col-sm-3 mb-3">
+                    <label for="billingZip" class="form-label fw-semibold">ZIP Code</label>
+                    <input type="text" id="billingZip" class="form-control" placeholder="ZIP">
+                  </div>
+                </div>
               </div>
-            </div>
-            <button type="submit" class="btn btn-primary">Save</button>
-          </form>
-            <button id="logoutBtn" class="btn btn-danger mt-3">Log out</button>
+
+              <button type="submit" class="btn btn-primary px-4">Save Address</button>
+            </form>
           </div>
-        </div>
-        <!-- right panel: saved build summary -->
-        <div class="col-md-6">
-          <div class="square-panel">
-            <h3>Your Saved Build</h3>
-            <div class="build-panel p-3 border rounded">
-              <p><strong>Name:</strong> <span id="panelBuildName">New Build</span></p>
-              <p><strong>Total:</strong> <span id="panelTotalPrice">₫0</span></p>
-              <p><strong>Compatibility:</strong> <span id="panelCompatibility" class="compatible">✓ Compatible</span></p>
-              <p><strong>Power:</strong> <span id="panelPowerDraw">0W</span></p>
-              <h5>Components</h5>
-              <div class="parts-list" id="panelPartsList"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+
+        </main>
+      </div><!-- /.account-layout -->
+    </div><!-- /.container -->
+  </div><!-- /.content -->
 
   <!-- Bottom floating menu -->
   <div class="floating-menu">
