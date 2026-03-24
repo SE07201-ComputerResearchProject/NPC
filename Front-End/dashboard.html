@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Animate CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="CSS/dashboard-unified.css" />
+  <!-- Title-->
+  <title>Breaking Bad Builder - Dashboard</title>
+</head>
+<body class="bg-light text-dark">
+
+  <nav class="navbar navbar-expand-lg navbar-glass fixed-top" id="navbarTop">
+    <div class="container">
+      <a class="navbar-brand navbar-home-btn" href="index.html" aria-label="Go to homepage">
+        <i data-lucide="house"></i>
+      </a>
+      <button class="navbar-toggler navbar-glass-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navCollapse" aria-controls="navCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <i data-lucide="menu"></i>
+      </button>
+      <div class="collapse navbar-collapse" id="navCollapse">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
+          <li class="nav-item"><a href="index.html" class="navbar-link nav-link">Home</a></li>
+          <li class="nav-item"><a href="dashboard.html" class="navbar-link nav-link">Build PC</a></li>
+          <li class="nav-item"><a href="products.html" class="navbar-link nav-link">Components</a></li>
+          <li class="nav-item"><a href="shopping-cart.html" class="navbar-link nav-link">Cart</a></li>
+          <li class="nav-item ms-lg-2">
+            <span id="welcomeMsg" class="navbar-welcome me-2"></span>
+          </li>
+          <li class="nav-item">
+            <button id="toggleTheme" class="btn btn-glass-theme" title="Toggle theme">
+              <i id="themeIcon" data-lucide="moon"></i>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <!-- background element – animation & blur active only when body has bg-dark -->
+  <div class="background retrowave"></div>
+  <div class="container-fluid dashboard-container">
+    <div class="dashboard-layout">
+      <section class="dashboard-left-column">
+        <!-- Header Stats -->
+        <div class="build-header">
+          <div class="header-top">
+            <div class="build-name-container">
+              <h2 id="buildName">New Build</h2>
+              <button class="btn-edit-name" onclick="editBuildName()" title="Edit Build Name">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                  <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
+                </svg>
+              </button>
+            </div>
+            <span class="header-date"></span>
+          </div>
+
+          <div class="stats-bar">
+            <div class="stat-item">
+              <span class="stat-label">Total Price</span>
+              <span class="stat-value" id="totalPrice">₫0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Compatibility</span>
+              <span class="stat-value compatible" id="compatibility">✓ Compatible</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Power Draw</span>
+              <span class="stat-value" id="powerDraw">0W</span>
+            </div>
+          </div>
+
+          <div id="compatibilityWarnings" style="display: none; margin-top: 10px;"></div>
+
+          <div class="action-buttons">
+            <button class="btn btn-sm btn-outline-secondary">Share</button>
+            <button class="btn btn-sm btn-outline-secondary">Clone Build</button>
+            <button class="btn btn-sm btn-outline-secondary">Build Settings</button>
+            <button id="checkoutBtn" class="btn btn-sm btn-outline-success">Checkout</button>
+            <button id="saveBuildBtn" class="btn btn-sm btn-outline-primary">Save Build</button>
+          </div>
+        </div>
+
+        <!-- Parts List -->
+        <div class="parts-section">
+          <h4>Parts List</h4>
+          <div class="parts-list" id="partsList">
+            <!-- Parts will be rendered here -->
+          </div>
+        </div>
+
+        <!-- Additional Products -->
+        <div class="additional-products">
+          <h5>Additional Products</h5>
+          <div class="additional-buttons">
+            <button class="btn btn-sm btn-outline-secondary">Thermal Compound</button>
+            <button class="btn btn-sm btn-outline-secondary">Operating System</button>
+            <button class="btn btn-sm btn-outline-secondary">Sound Card</button>
+            <button class="btn btn-sm btn-outline-secondary">Network Card</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="dashboard-right-column">
+        <section class="build-visualizer square-panel">
+          <p class="visualizer-kicker">Build Preview</p>
+          <h4>2D Rig Illustration</h4>
+          <p id="buildVisualizerHint" class="visualizer-hint">Select components from the left panel to light up matching parts in the model on the right.</p>
+
+          <div class="pc-illustration-wrap">
+            <div class="pc-illustration" id="buildVisualizerScene" aria-label="Live 2D build visualization">
+              <div class="scene-part scene-case" data-part="case">
+                <span class="scene-part-name">Case</span>
+                <small class="scene-part-value">Not added</small>
+              </div>
+              <div class="scene-part scene-motherboard" data-part="motherboard">
+                <span class="scene-part-name">Motherboard</span>
+                <small class="scene-part-value">Not added</small>
+              </div>
+              <div class="scene-part scene-cpu" data-part="cpu">
+                <span class="scene-part-name">CPU</span>
+                <small class="scene-part-value">Not added</small>
+              </div>
+              <div class="scene-part scene-cooler" data-part="cooler">
+                <span class="scene-part-name">Cooler</span>
+                <small class="scene-part-value">Not added</small>
+              </div>
+              <div class="scene-part scene-ram" data-part="ram">
+                <span class="scene-part-name">RAM</span>
+                <small class="scene-part-value">Not added</small>
+              </div>
+              <div class="scene-part scene-gpu" data-part="gpu">
+                <span class="scene-part-name">GPU</span>
+                <small class="scene-part-value">Not added</small>
+              </div>
+              <div class="scene-part scene-storage" data-part="storage">
+                <span class="scene-part-name">Storage</span>
+                <small class="scene-part-value">Not added</small>
+              </div>
+              <div class="scene-part scene-psu" data-part="psu">
+                <span class="scene-part-name">PSU</span>
+                <small class="scene-part-value">Not added</small>
+              </div>
+              <div class="scene-part scene-fan" data-part="fan">
+                <span class="scene-part-name">Fan</span>
+                <small class="scene-part-value">Not added</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="visualizer-progress">
+            <div class="progress-meta">
+              <span>Build Completion</span>
+              <strong id="buildCompletionText">0%</strong>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="buildProgressValue"></div>
+            </div>
+          </div>
+
+          <ul id="buildVisualizerList" class="visualizer-list"></ul>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Bottom floating menu -->
+  <div class="floating-menu">
+
+    <a href="index.html" class="menu-item">
+      <i data-lucide="home"></i>
+      <span class="label">Home</span>
+    </a>
+
+    <a href="dashboard.html" class="menu-item">
+      <i data-lucide="pencil-ruler"></i>
+      <span class="label">Build PC</span>
+    </a>
+
+    <a href="#" class="menu-item" onclick="toggleComponentsMenu(event)">
+      <i data-lucide="cpu"></i>
+      <span class="label">Components</span>
+    </a>
+
+    <a href="shopping-cart.html" class="menu-item">
+      <i data-lucide="shopping-cart"></i>
+      <span class="label">Cart</span>
+    </a>
+
+    <div class="account-wrapper">
+      <a href="#" class="menu-item">
+        <i data-lucide="user"></i>
+        <span class="label">Account</span>
+      </a>
+      <div class="account-dropdown">
+        <a href="#" onclick="goToAccount(event)">Account Info</a>
+        <a href="#" onclick="logout()">Logout</a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+  <!-- Animate JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/typed.js/2.0.12/typed.min.js"></script>
+  <!-- Custom JS -->
+  <script src="JS/app.js"></script>
+  <script src="JS/dashboard.js"></script>
+  <script src="JS/products-menu.js"></script>
+  <script src="JS/components-menu.js"></script>
+  <script src="JS/auth-popup.js"></script>
+</body>
+</html>

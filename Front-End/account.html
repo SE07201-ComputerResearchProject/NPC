@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <link rel="stylesheet" href="CSS/styles.css" />
+  <link rel="stylesheet" href="CSS/dashboard-unified.css" />
+  <link rel="stylesheet" href="CSS/Account.css" />
+  <title>Breaking Bad Builder - Account</title>
+</head>
+<body class="bg-light text-dark">
+
+  <nav class="navbar navbar-expand-lg navbar-glass fixed-top" id="navbarTop">
+    <div class="container">
+      <a class="navbar-brand navbar-home-btn" href="index.html" aria-label="Go to homepage">
+        <i data-lucide="house"></i>
+      </a>
+      <button class="navbar-toggler navbar-glass-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navCollapse" aria-controls="navCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <i data-lucide="menu"></i>
+      </button>
+      <div class="collapse navbar-collapse" id="navCollapse">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
+          <li class="nav-item"><a href="index.html" class="navbar-link nav-link">Home</a></li>
+          <li class="nav-item"><a href="dashboard.html" class="navbar-link nav-link">Build PC</a></li>
+          <li class="nav-item"><a href="products.html" class="navbar-link nav-link">Components</a></li>
+          <li class="nav-item"><a href="shopping-cart.html" class="navbar-link nav-link">Cart</a></li>
+          <li class="nav-item ms-lg-2">
+            <span id="welcomeMsg" class="navbar-welcome me-2"></span>
+          </li>
+          <li class="nav-item">
+            <button id="toggleTheme" class="btn btn-glass-theme" title="Toggle theme">
+              <i id="themeIcon" data-lucide="moon"></i>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="background retrowave"></div>
+
+  <div class="content">
+    <div class="container">
+      <div class="account-layout">
+
+        <!-- ════ SIDEBAR ════ -->
+        <aside class="square-panel account-sidebar">
+
+          <!-- Avatar + identity -->
+          <div class="account-avatar-wrap">
+            <div class="account-avatar-circle" id="accountAvatarTrigger" role="button" tabindex="0" aria-label="Change avatar">
+              <img id="accountAvatar" src="" alt="Avatar" style="display:none;">
+              <i id="accountAvatarIcon" data-lucide="user" class="account-avatar-placeholder"></i>
+              <span class="account-avatar-overlay">Change Avatar</span>
+            </div>
+            <input type="file" id="avatarFileInput" accept="image/*" style="display:none;" />
+            <button type="button" id="removeAvatarBtn" class="btn btn-outline-secondary account-avatar-remove">Remove Avatar</button>
+            <div class="account-sidebar-name" id="sidebarUsername">User</div>
+            <span class="account-provider-badge" id="sidebarProviderBadge">
+              <i data-lucide="shield-check" style="width:12px;height:12px;"></i>
+              <span id="sidebarProviderText">Local Account</span>
+            </span>
+          </div>
+
+          <hr class="my-2" />
+
+          <!-- Navigation -->
+          <nav class="account-nav mt-3">
+            <button class="account-nav-item active" id="navUserInfo" onclick="switchTab('userInfo')">
+              <i data-lucide="user-round"></i>
+              <span>User Information</span>
+            </button>
+            <button class="account-nav-item" id="navAddressBilling" onclick="switchTab('addressBilling')">
+              <i data-lucide="map-pin"></i>
+              <span>Address &amp; Billing</span>
+            </button>
+          </nav>
+
+          <!-- Logout -->
+          <button id="logoutBtn" class="btn btn-outline-danger w-100 mt-2" style="font-size:0.88rem;">
+            <i data-lucide="log-out" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"></i>
+            Log out
+          </button>
+        </aside>
+
+        <!-- ════ MAIN CONTENT ════ -->
+        <main class="account-main">
+
+          <!-- ── Tab 1: User Information ── -->
+          <div id="tabUserInfo" class="square-panel account-tab-panel active">
+            <div class="section-label">User Information</div>
+
+            <form id="profileForm" novalidate>
+              <!-- Username -->
+              <div class="mb-3">
+                <label for="username" class="form-label fw-semibold">Username</label>
+                <input type="text" id="username" class="form-control" placeholder="Your username" required>
+              </div>
+
+              <!-- Email (read-only) -->
+              <div class="mb-4">
+                <label for="email" class="form-label fw-semibold">
+                  Email
+                  <span class="badge bg-secondary ms-1" style="font-size:0.65rem;vertical-align:middle;">Read-only</span>
+                </label>
+                <input type="email" id="email" class="form-control" readonly>
+              </div>
+
+              <hr class="my-3">
+              <div class="section-label mt-3">Change Password</div>
+
+              <!-- Current Password -->
+              <div class="mb-3">
+                <label for="currentPassword" class="form-label fw-semibold">Current Password</label>
+                <div class="input-group">
+                  <input type="password" id="currentPassword" class="form-control" placeholder="Enter current password">
+                  <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility('currentPassword', this)" tabindex="-1">
+                    <i data-lucide="eye" style="width:14px;height:14px;"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- New Password -->
+              <div class="mb-3">
+                <label for="newPassword" class="form-label fw-semibold">New Password</label>
+                <div class="input-group">
+                  <input type="password" id="newPassword" class="form-control" placeholder="At least 6 characters">
+                  <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility('newPassword', this)" tabindex="-1">
+                    <i data-lucide="eye" style="width:14px;height:14px;"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Confirm Password -->
+              <div class="mb-4">
+                <label for="confirmPassword" class="form-label fw-semibold">Confirm New Password</label>
+                <div class="input-group">
+                  <input type="password" id="confirmPassword" class="form-control" placeholder="Repeat new password">
+                  <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility('confirmPassword', this)" tabindex="-1">
+                    <i data-lucide="eye" style="width:14px;height:14px;"></i>
+                  </button>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary px-4">Save Changes</button>
+            </form>
+          </div>
+
+          <!-- ── Tab 2: Address & Billing ── -->
+          <div id="tabAddressBilling" class="square-panel account-tab-panel">
+            <form id="addressForm" novalidate>
+
+              <!-- Shipping Address -->
+              <div class="section-label">Shipping Address</div>
+              <div class="mb-3">
+                <label for="street" class="form-label fw-semibold">Street Address</label>
+                <input type="text" id="street" class="form-control" placeholder="123 Main St">
+              </div>
+              <div class="row">
+                <div class="col-sm-5 mb-3">
+                  <label for="city" class="form-label fw-semibold">City</label>
+                  <input type="text" id="city" class="form-control" placeholder="City">
+                </div>
+                <div class="col-sm-4 mb-3">
+                  <label for="state" class="form-label fw-semibold">State / Province</label>
+                  <input type="text" id="state" class="form-control" placeholder="State">
+                </div>
+                <div class="col-sm-3 mb-3">
+                  <label for="zip" class="form-label fw-semibold">ZIP Code</label>
+                  <input type="text" id="zip" class="form-control" placeholder="ZIP">
+                </div>
+              </div>
+
+              <hr class="my-3">
+
+              <!-- Billing Address header + checkbox -->
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="section-label mb-0">Billing Address</div>
+                <div class="form-check mb-0">
+                  <input type="checkbox" id="billingSameAsShipping" class="form-check-input" checked
+                         onchange="toggleBillingFields(this.checked)">
+                  <label for="billingSameAsShipping" class="form-check-label small">Same as shipping</label>
+                </div>
+              </div>
+
+              <!-- Billing fields (hidden when same-as-shipping) -->
+              <div id="billingFields">
+                <div class="mb-3">
+                  <label for="billingStreet" class="form-label fw-semibold">Street Address</label>
+                  <input type="text" id="billingStreet" class="form-control" placeholder="123 Main St">
+                </div>
+                <div class="row">
+                  <div class="col-sm-5 mb-3">
+                    <label for="billingCity" class="form-label fw-semibold">City</label>
+                    <input type="text" id="billingCity" class="form-control" placeholder="City">
+                  </div>
+                  <div class="col-sm-4 mb-3">
+                    <label for="billingState" class="form-label fw-semibold">State / Province</label>
+                    <input type="text" id="billingState" class="form-control" placeholder="State">
+                  </div>
+                  <div class="col-sm-3 mb-3">
+                    <label for="billingZip" class="form-label fw-semibold">ZIP Code</label>
+                    <input type="text" id="billingZip" class="form-control" placeholder="ZIP">
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary px-4">Save Address</button>
+            </form>
+          </div>
+
+        </main>
+      </div><!-- /.account-layout -->
+    </div><!-- /.container -->
+  </div><!-- /.content -->
+
+  <!-- Bottom floating menu -->
+  <div class="floating-menu">
+    <a href="index.html" class="menu-item">
+      <i data-lucide="home"></i>
+      <span class="label">Home</span>
+    </a>
+    <a href="dashboard.html" class="menu-item">
+      <i data-lucide="pencil-ruler"></i>
+      <span class="label">Build PC</span>
+    </a>
+    <a href="#" class="menu-item" onclick="toggleComponentsMenu(event)">
+      <i data-lucide="cpu"></i>
+      <span class="label">Components</span>
+    </a>
+    <div class="account-wrapper">
+      <a href="#" class="menu-item">
+        <i data-lucide="user"></i>
+        <span class="label">Account</span>
+      </a>
+      <div class="account-dropdown">
+        <a href="#" onclick="goToAccount(event)">Account Info</a>
+        <a href="#" onclick="logout()">Logout</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>lucide.createIcons();</script>
+  <script src="JS/app.js"></script>
+  <script src="JS/components-menu.js"></script>
+  <script src="JS/auth-popup.js"></script>
+  <script src="JS/account.js"></script>
+</body>
+</html>

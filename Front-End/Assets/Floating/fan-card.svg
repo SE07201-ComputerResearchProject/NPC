@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160" viewBox="0 0 240 160" role="img" aria-label="Fan card image">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b3d2e" />
+      <stop offset="100%" stop-color="#1b9aaa" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="232" height="152" rx="20" fill="url(#bg)" />
+  <rect x="64" y="26" width="112" height="112" rx="12" fill="#e6fffa" />
+  <circle cx="120" cy="82" r="28" fill="#1b9aaa" />
+  <circle cx="120" cy="82" r="8" fill="#e6fffa" />
+  <path d="M120 54 C136 54,140 66,128 72 C124 66,116 62,120 54 Z" fill="#e6fffa" />
+  <path d="M148 82 C148 98,136 102,130 92 C136 88,142 82,148 82 Z" fill="#e6fffa" />
+  <path d="M120 110 C104 110,100 98,112 92 C116 98,124 102,120 110 Z" fill="#e6fffa" />
+  <path d="M92 82 C92 66,104 62,110 72 C104 76,98 82,92 82 Z" fill="#e6fffa" />
+  <text x="120" y="145" text-anchor="middle" fill="#ffffff" font-size="22" font-family="Segoe UI, Arial" font-weight="700">FAN</text>
+</svg>

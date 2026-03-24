@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <link rel="stylesheet" href="CSS/styles.css" />
+  <title>Breaking Bad Builder - Components</title>
+</head>
+<body class="bg-light text-dark">
+  <div id="productsLoaderOverlay" class="products-loader-overlay" aria-live="polite" aria-label="Loading products">
+    <div class="loader"></div>
+  </div>
+
+  <nav class="navbar navbar-expand-lg navbar-glass fixed-top" id="navbarTop">
+    <div class="container">
+      <a class="navbar-brand navbar-home-btn" href="index.html" aria-label="Go to homepage">
+        <i data-lucide="house"></i>
+      </a>
+      <button class="navbar-toggler navbar-glass-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navCollapse" aria-controls="navCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <i data-lucide="menu"></i>
+      </button>
+      <div class="collapse navbar-collapse" id="navCollapse">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
+          <li class="nav-item"><a href="index.html" class="navbar-link nav-link">Home</a></li>
+          <li class="nav-item"><a href="dashboard.html" class="navbar-link nav-link">Build PC</a></li>
+          <li class="nav-item"><a href="products.html" class="navbar-link nav-link">Components</a></li>
+          <li class="nav-item"><a href="shopping-cart.html" class="navbar-link nav-link">Cart</a></li>
+          <li class="nav-item ms-lg-2">
+            <span id="welcomeMsg" class="navbar-welcome me-2"></span>
+          </li>
+          <li class="nav-item">
+            <button id="toggleTheme" class="btn btn-glass-theme" title="Toggle theme">
+              <i id="themeIcon" data-lucide="moon"></i>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="background retrowave"></div>
+
+  <main class="products-page">
+    <section class="products-hero">
+      <p class="products-kicker">PC Components</p>
+      <h1 id="productsTitle">Browse Components</h1>
+      <p class="products-description">Pick components by category, check current pricing, and add them directly to your build.</p>
+    </section>
+
+    <section class="products-toolbar square-panel">
+      <div class="products-search-group">
+        <label for="componentSearch" class="form-label">Search</label>
+        <input type="search" id="componentSearch" class="form-control" placeholder="Search by name, brand, description">
+      </div>
+      <div class="products-actions">
+        <a href="dashboard.html" class="btn btn-outline-primary">Open Build</a>
+        <a href="shopping-cart.html" class="btn btn-primary">View Cart</a>
+      </div>
+    </section>
+
+    <section class="products-filters" id="categoryFilters"></section>
+
+    <section id="productsStatus" class="products-status">Loading components...</section>
+    <section class="products-grid" id="productsGrid"></section>
+    <section class="products-pagination" id="productsPagination"></section>
+  </main>
+
+  <div class="floating-menu">
+    <a href="index.html" class="menu-item">
+      <i data-lucide="home"></i>
+      <span class="label">Home</span>
+    </a>
+    <a href="dashboard.html" class="menu-item">
+      <i data-lucide="pencil-ruler"></i>
+      <span class="label">Build PC</span>
+    </a>
+    <a href="#" class="menu-item" onclick="toggleComponentsMenu(event)">
+      <i data-lucide="cpu"></i>
+      <span class="label">Components</span>
+    </a>
+    <a href="shopping-cart.html" class="menu-item">
+      <i data-lucide="shopping-cart"></i>
+      <span class="label">Cart</span>
+    </a>
+    <div class="account-wrapper">
+      <a href="#" class="menu-item">
+        <i data-lucide="user"></i>
+        <span class="label">Account</span>
+      </a>
+      <div class="account-dropdown">
+        <a href="#" onclick="goToAccount(event)">Account Info</a>
+        <a href="#" onclick="logout()">Logout</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>lucide.createIcons();</script>
+  <script src="JS/app.js"></script>
+  <script src="JS/components-menu.js"></script>
+  <script src="JS/auth-popup.js"></script>
+  <script src="JS/products-page.js"></script>
+</body>
+</html>

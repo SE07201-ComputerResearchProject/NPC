@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <link rel="stylesheet" href="CSS/styles.css" />
+  <link rel="stylesheet" href="CSS/admin.css" />
+  <title>Breaking Bad - Admin</title>
+</head>
+<body class="bg-light text-dark">
+  <nav class="navbar navbar-expand-lg navbar-glass fixed-top" id="navbarTop">
+    <div class="container">
+      <a class="navbar-brand" href="index.html">Breaking Bad Builder</a>
+      <button class="navbar-toggler navbar-glass-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navCollapse" aria-controls="navCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <i data-lucide="menu"></i>
+      </button>
+      <div class="collapse navbar-collapse" id="navCollapse">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
+          <li class="nav-item"><a href="index.html" class="navbar-link nav-link">Home</a></li>
+          <li class="nav-item"><a href="dashboard.html" class="navbar-link nav-link">Build PC</a></li>
+          <li class="nav-item"><a href="products.html" class="navbar-link nav-link">Components</a></li>
+          <li class="nav-item"><a href="shopping-cart.html" class="navbar-link nav-link">Cart</a></li>
+          <li class="nav-item ms-lg-2">
+            <span id="welcomeMsg" class="navbar-welcome me-2"></span>
+          </li>
+          <li class="nav-item">
+            <button id="toggleTheme" class="btn btn-glass-theme" title="Toggle theme">
+              <i id="themeIcon" data-lucide="moon"></i>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="background retrowave"></div>
+
+  <main class="admin-page">
+    <section class="admin-shell parent">
+      <aside class="square-panel admin-modules-panel div1" aria-label="Admin modules">
+        <div class="admin-panel-intro">
+          <p class="products-kicker">Modules</p>
+          <h2>Control Rack</h2>
+          <p class="admin-panel-copy">Switch between all four management flows without leaving the current workspace.</p>
+        </div>
+
+        <div class="admin-side-nav-list" role="tablist" aria-label="Admin panel sections">
+          <button class="admin-side-nav-btn is-active" type="button" data-admin-target="usersSection">
+            <span class="admin-side-nav-label">CRUD User</span>
+            <span class="admin-side-nav-meta">Accounts, profile fields, permission checks</span>
+          </button>
+          <button class="admin-side-nav-btn" type="button" data-admin-target="productsSection">
+            <span class="admin-side-nav-label">CRUD Product</span>
+            <span class="admin-side-nav-meta">Components, stock, price, images</span>
+          </button>
+          <button class="admin-side-nav-btn" type="button" data-admin-target="prebuiltSection">
+            <span class="admin-side-nav-label">CRUD Pre-Built</span>
+            <span class="admin-side-nav-meta">Preset PCs, tiers, ordering, parts JSON</span>
+          </button>
+          <button class="admin-side-nav-btn" type="button" data-admin-target="logsSection">
+            <span class="admin-side-nav-label">View Logs</span>
+            <span class="admin-side-nav-meta">Activity stream, suspicious events, refresh</span>
+          </button>
+        </div>
+
+        <div class="admin-module-rail">
+          <span class="admin-module-rail-label">Selected</span>
+          <strong id="activeModuleName">CRUD User</strong>
+          <p id="activeModuleDescription">Manage accounts, profile details, and role visibility from one place.</p>
+        </div>
+      </aside>
+
+      <section class="square-panel admin-console-panel div3">
+        <div class="admin-console-head">
+          <div>
+            <p class="products-kicker">Management Console</p>
+            <h1>Admin CRUD Dashboard</h1>
+            <p class="admin-subtitle">A centralized admin grid: module selector on the left, management console on top, and the active CRUD dashboard on the right.</p>
+          </div>
+          <div class="admin-hero-actions">
+            <a class="btn btn-outline-primary" href="products.html">Products Page</a>
+            <a class="btn btn-outline-primary" href="dashboard.html">Build Dashboard</a>
+          </div>
+        </div>
+
+        <div class="admin-console-grid">
+          <section id="adminAccessPanel" class="admin-access-card">
+            <div class="admin-console-section-head">
+              <h2>Admin Access</h2>
+              <span class="admin-console-chip">Stored locally</span>
+            </div>
+            <p class="muted-note">Enter the Admin User ID to call routes that require admin privileges. This value is stored in browser storage.</p>
+            <div class="row g-2 align-items-end">
+              <div class="col-lg-8">
+                <label for="adminUserId" class="form-label">Admin User ID (x-user-id)</label>
+                <input id="adminUserId" class="form-control" placeholder="64f..." />
+              </div>
+              <div class="col-lg-4 d-grid">
+                <button id="saveAdminIdBtn" type="button" class="btn btn-success">Save Admin ID</button>
+              </div>
+            </div>
+            <div id="globalStatus" class="status-box" role="status" aria-live="polite"></div>
+          </section>
+
+          <section class="admin-console-card admin-console-focus">
+            <div class="admin-console-section-head">
+              <h2>Active Surface</h2>
+              <span id="activeModuleBadge" class="admin-console-chip">CRUD User</span>
+            </div>
+            <p id="activeModuleConsoleCopy" class="admin-console-copy">Manage user records, update profile fields, and inspect account data without leaving the main grid.</p>
+            <div class="admin-console-tags">
+              <span class="admin-console-tag">Single-page workflow</span>
+              <span class="admin-console-tag">Live API data</span>
+              <span class="admin-console-tag">CRUD preserved</span>
+            </div>
+          </section>
+
+          <section class="admin-console-card admin-console-metrics">
+            <div class="admin-console-section-head">
+              <h2>Live Counters</h2>
+              <span class="admin-console-chip">Snapshot</span>
+            </div>
+            <div class="admin-metric-grid">
+              <article class="admin-metric-card">
+                <span class="admin-metric-label">Users</span>
+                <strong id="usersCount">0</strong>
+              </article>
+              <article class="admin-metric-card">
+                <span class="admin-metric-label">Products</span>
+                <strong id="productsCount">0</strong>
+              </article>
+              <article class="admin-metric-card">
+                <span class="admin-metric-label">Pre-Built</span>
+                <strong id="prebuiltCount">0</strong>
+              </article>
+              <article class="admin-metric-card">
+                <span class="admin-metric-label">Logs</span>
+                <strong id="logsCount">0</strong>
+              </article>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="admin-stage-panel div2">
+        <section id="adminUnauthorized" class="square-panel admin-unauthorized d-none">
+          <h2>Admin only</h2>
+          <p>You do not have permission to access this page. Please sign in with an admin account.</p>
+          <a class="btn btn-primary" href="index.html">Back to Home</a>
+        </section>
+
+        <section class="admin-workspace" id="adminWorkspace">
+          <div class="admin-stage-head square-panel">
+            <div>
+              <p class="products-kicker">Dashboard Surface</p>
+              <h2 id="stageModuleTitle">CRUD User</h2>
+              <p id="stageModuleDescription" class="admin-stage-copy">Create, update, search, and inspect user records inside the main dashboard area.</p>
+            </div>
+          </div>
+
+          <div class="admin-content-stack">
+      <article class="square-panel admin-panel admin-module is-active" id="usersSection">
+        <div class="panel-head">
+          <h2>User CRUD</h2>
+          <button id="reloadUsersBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Users</button>
+        </div>
+
+        <form id="userForm" class="crud-form">
+          <input type="hidden" id="userId" />
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label for="userUsername" class="form-label">Username</label>
+              <input id="userUsername" class="form-control" required />
+            </div>
+            <div class="col-md-6">
+              <label for="userEmail" class="form-label">Email</label>
+              <input id="userEmail" type="email" class="form-control" required />
+            </div>
+            <div class="col-md-6" id="passwordFieldWrap">
+              <label for="userPassword" class="form-label">Password</label>
+              <input id="userPassword" type="password" class="form-control" minlength="6" />
+            </div>
+            <div class="col-md-6">
+              <label for="userFullName" class="form-label">Full Name</label>
+              <input id="userFullName" class="form-control" />
+            </div>
+            <div class="col-md-6">
+              <label for="userDob" class="form-label">Date of Birth</label>
+              <input id="userDob" type="date" class="form-control" />
+            </div>
+            <div class="col-md-6">
+              <label for="userStreet" class="form-label">Street</label>
+              <input id="userStreet" class="form-control" />
+            </div>
+            <div class="col-md-4">
+              <label for="userCity" class="form-label">City</label>
+              <input id="userCity" class="form-control" />
+            </div>
+            <div class="col-md-4">
+              <label for="userState" class="form-label">State</label>
+              <input id="userState" class="form-control" />
+            </div>
+            <div class="col-md-4">
+              <label for="userZip" class="form-label">ZIP</label>
+              <input id="userZip" class="form-control" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button id="userSubmitBtn" type="submit" class="btn btn-primary">Create User</button>
+            <button id="userResetBtn" type="button" class="btn btn-outline-secondary">Clear</button>
+          </div>
+        </form>
+
+        <div class="toolbar-row">
+          <input id="userSearch" class="form-control" placeholder="Search username, email, full name" />
+        </div>
+
+        <div id="userStatus" class="status-box" role="status" aria-live="polite"></div>
+
+        <div class="table-wrap">
+          <table class="table table-hover align-middle" id="usersTable">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Full Name</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="square-panel admin-panel admin-module" id="productsSection">
+        <div class="panel-head">
+          <h2>Products CRUD</h2>
+          <button id="reloadProductsBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Products</button>
+        </div>
+
+        <form id="productForm" class="crud-form">
+          <input type="hidden" id="productId" />
+          <div class="row g-2">
+            <div class="col-md-4">
+              <label for="productCategory" class="form-label">Category</label>
+              <select id="productCategory" class="form-select" required></select>
+            </div>
+            <div class="col-md-8">
+              <label for="productName" class="form-label">Name</label>
+              <input id="productName" class="form-control" required />
+            </div>
+            <div class="col-md-4">
+              <label for="productBrand" class="form-label">Brand</label>
+              <input id="productBrand" class="form-control" />
+            </div>
+            <div class="col-md-4">
+              <label for="productPrice" class="form-label">Price (VND)</label>
+              <input id="productPrice" type="number" min="0" class="form-control" required />
+            </div>
+            <div class="col-md-4">
+              <label for="productPower" class="form-label">Power (W)</label>
+              <input id="productPower" type="number" min="0" class="form-control" />
+            </div>
+            <div class="col-md-4">
+              <label for="productStock" class="form-label">Stock</label>
+              <input id="productStock" type="number" min="0" class="form-control" />
+            </div>
+            <div class="col-md-8">
+              <label for="productImageFile" class="form-label">Image</label>
+              <input id="productImageFile" type="file" class="form-control" accept="image/*" multiple />
+              <small id="productImageHint" class="form-text text-muted">No file selected. You can choose up to 3 images for View More.</small>
+            </div>
+            <div class="col-md-8">
+              <label for="productHighlights" class="form-label">Highlights (comma separated)</label>
+              <input id="productHighlights" class="form-control" placeholder="DDR5, RGB, PCIe 5.0" />
+            </div>
+            <div class="col-12">
+              <label for="productDescription" class="form-label">Description</label>
+              <textarea id="productDescription" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button id="productSubmitBtn" type="submit" class="btn btn-primary">Create Product</button>
+            <button id="productResetBtn" type="button" class="btn btn-outline-secondary">Clear</button>
+          </div>
+        </form>
+
+        <div class="toolbar-row grid-2">
+          <select id="productCategoryFilter" class="form-select">
+            <option value="all">All categories</option>
+          </select>
+          <input id="productSearch" class="form-control" placeholder="Search name, brand, description" />
+        </div>
+
+        <div id="productStatus" class="status-box" role="status" aria-live="polite"></div>
+
+        <div class="table-wrap">
+          <table class="table table-hover align-middle" id="productsTable">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Name</th>
+                <th>Brand</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="square-panel admin-panel admin-module" id="prebuiltSection">
+        <div class="panel-head">
+          <h2>Pre-Built PC CRUD</h2>
+          <button id="reloadPrebuiltBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Pre-Built</button>
+        </div>
+
+        <form id="prebuiltForm" class="crud-form">
+          <input type="hidden" id="prebuiltId" />
+          <div class="row g-2">
+            <div class="col-md-4">
+              <label for="prebuiltPresetId" class="form-label">Preset ID</label>
+              <input id="prebuiltPresetId" class="form-control" placeholder="overlord" required />
+            </div>
+            <div class="col-md-5">
+              <label for="prebuiltName" class="form-label">Name</label>
+              <input id="prebuiltName" class="form-control" required />
+            </div>
+            <div class="col-md-3">
+              <label for="prebuiltTier" class="form-label">Tier</label>
+              <select id="prebuiltTier" class="form-select">
+                <option value="high">High</option>
+                <option value="mid" selected>Mid</option>
+                <option value="budget">Budget</option>
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label for="prebuiltTagline" class="form-label">Tagline</label>
+              <input id="prebuiltTagline" class="form-control" />
+            </div>
+            <div class="col-md-2">
+              <label for="prebuiltOrder" class="form-label">Order</label>
+              <input id="prebuiltOrder" type="number" class="form-control" min="0" value="0" />
+            </div>
+            <div class="col-md-2">
+              <label for="prebuiltEstimatedPrice" class="form-label">Est. Price</label>
+              <input id="prebuiltEstimatedPrice" class="form-control" placeholder="~50,000,000 VND" />
+            </div>
+            <div class="col-12">
+              <label for="prebuiltPartsJson" class="form-label">Parts JSON</label>
+              <textarea id="prebuiltPartsJson" class="form-control" rows="6" placeholder='{"cpu":{"name":"Intel Core i7-13700K"},"gpu":{"name":"RTX 4070 SUPER"}}'></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button id="prebuiltSubmitBtn" type="submit" class="btn btn-primary">Create Pre-Built</button>
+            <button id="prebuiltResetBtn" type="button" class="btn btn-outline-secondary">Clear</button>
+          </div>
+        </form>
+
+        <div class="toolbar-row">
+          <input id="prebuiltSearch" class="form-control" placeholder="Search preset id, name, tagline" />
+        </div>
+
+        <div id="prebuiltStatus" class="status-box" role="status" aria-live="polite"></div>
+
+        <div class="table-wrap">
+          <table class="table table-hover align-middle" id="prebuiltTable">
+            <thead>
+              <tr>
+                <th>Preset ID</th>
+                <th>Name</th>
+                <th>Tier</th>
+                <th>Order</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="square-panel admin-panel admin-module logs-panel" id="logsSection">
+        <div class="panel-head">
+          <h2>Log Check</h2>
+          <button id="reloadLogsBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Logs</button>
+          <button id="clearAllLogsBtn" type="button" class="btn btn-outline-danger btn-sm">Clear All Logs</button>
+        </div>
+
+        <div class="toolbar-row logs-toolbar">
+          <input id="logSearch" class="form-control" placeholder="Search user/activity" />
+          <select id="logLimit" class="form-select">
+            <option value="20">20 latest logs</option>
+            <option value="50" selected>50 latest logs</option>
+            <option value="100">100 latest logs</option>
+          </select>
+          <label class="form-check log-check-option">
+            <input id="logSuspiciousOnly" class="form-check-input" type="checkbox" />
+            <span class="form-check-label">Suspicious only</span>
+          </label>
+          <label class="form-check log-check-option">
+            <input id="logAutoRefresh" class="form-check-input" type="checkbox" />
+            <span class="form-check-label">Auto refresh 10s</span>
+          </label>
+        </div>
+
+        <div id="logStatus" class="status-box" role="status" aria-live="polite"></div>
+
+        <div class="table-wrap logs-table-wrap">
+          <table class="table table-hover align-middle" id="logsTable">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>User</th>
+                <th>Activity</th>
+                <th>Flag</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </article>
+
+      </div>
+        </section>
+    </section>
+  </main>
+
+  <div class="floating-menu">
+    <a href="index.html" class="menu-item">
+      <i data-lucide="home"></i>
+      <span class="label">Home</span>
+    </a>
+    <a href="dashboard.html" class="menu-item">
+      <i data-lucide="pencil-ruler"></i>
+      <span class="label">Build PC</span>
+    </a>
+    <a href="#" class="menu-item" onclick="toggleComponentsMenu(event)">
+      <i data-lucide="cpu"></i>
+      <span class="label">Components</span>
+    </a>
+    <a href="shopping-cart.html" class="menu-item">
+      <i data-lucide="shopping-cart"></i>
+      <span class="label">Cart</span>
+    </a>
+    <div class="account-wrapper">
+      <a href="#" class="menu-item">
+        <i data-lucide="user"></i>
+        <span class="label">Account</span>
+      </a>
+      <div class="account-dropdown">
+        <a href="#" onclick="goToAccount(event)">Account Info</a>
+        <a href="#" onclick="logout()">Logout</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>lucide.createIcons();</script>
+  <script src="JS/app.js"></script>
+  <script src="JS/components-menu.js"></script>
+  <script src="JS/auth-popup.js"></script>
+  <script src="JS/admin.js"></script>
+</body>
+</html>
