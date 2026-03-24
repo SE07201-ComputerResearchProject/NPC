@@ -1,4 +1,5 @@
-const API_BASE = 'http://localhost:3000/api';
+const APP_CONFIG = window.APP_CONFIG || {};
+const API_BASE = APP_CONFIG.API_BASE_URL || 'http://localhost:3001/api';
 const USER_API_BASE = `${API_BASE}/users`;
 const PRODUCT_API_BASE = `${API_BASE}/components`;
 const LOG_API_BASE = `${API_BASE}/logs`;
@@ -116,6 +117,7 @@ const el = {
   clearAllLogsBtn: document.getElementById('clearAllLogsBtn'),
   logSearch: document.getElementById('logSearch'),
   logLimit: document.getElementById('logLimit'),
+  logCategoryFilter: document.getElementById('logCategoryFilter'),
   logSuspiciousOnly: document.getElementById('logSuspiciousOnly'),
   logAutoRefresh: document.getElementById('logAutoRefresh'),
   logsTableBody: document.querySelector('#logsTable tbody'),
@@ -268,6 +270,24 @@ function formatDateTime(value) {
 function isSuspiciousLog(log) {
   const content = `${log?.activity || ''} ${log?.user || ''}`.toLowerCase();
   return /(error|fail|invalid|unauthorized|denied|exception|forbidden)/i.test(content);
+}
+
+function getLogCategory(log) {
+  const content = `${log?.activity || ''} ${log?.user || ''}`.toLowerCase();
+
+  if (/(payment|vnpay|txnref|order)/i.test(content)) {
+    return 'payment';
+  }
+
+  if (/(login|register|registration|google login|logout|captcha|mfa|password)/i.test(content)) {
+    return 'auth';
+  }
+
+  if (/(system|error|exception|signature|denied|forbidden|failed)/i.test(content)) {
+    return 'system';
+  }
+
+  return 'general';
 }
 
 function fileToDataUrl(file) {
@@ -681,13 +701,15 @@ function renderProductsTable(products) {
 
 function getFilteredLogs() {
   const keyword = (el.logSearch?.value || '').toLowerCase().trim();
+  const category = el.logCategoryFilter?.value || 'all';
   const suspiciousOnly = Boolean(el.logSuspiciousOnly?.checked);
 
   return state.logs.filter(log => {
     const haystack = `${log?.user || ''} ${log?.activity || ''}`.toLowerCase();
     const keywordMatch = !keyword || haystack.includes(keyword);
+    const categoryMatch = category === 'all' || getLogCategory(log) === category;
     const suspiciousMatch = !suspiciousOnly || isSuspiciousLog(log);
-    return keywordMatch && suspiciousMatch;
+    return keywordMatch && categoryMatch && suspiciousMatch;
   });
 }
 
@@ -1187,6 +1209,9 @@ function bindEvents() {
   }
   if (el.logLimit) {
     el.logLimit.addEventListener('change', loadLogs);
+  }
+  if (el.logCategoryFilter) {
+    el.logCategoryFilter.addEventListener('change', refreshLogsView);
   }
   if (el.logAutoRefresh) {
     el.logAutoRefresh.addEventListener('change', toggleLogAutoRefresh);

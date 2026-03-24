@@ -1,7 +1,8 @@
 // Dashboard functionality for PC Builder
 
-const PAYMENT_API_BASE_URL = 'http://localhost:3000/api/payments';
-const COMPATIBILITY_API_BASE_URL = 'http://localhost:3000/api/compatibility';
+const APP_CONFIG = window.APP_CONFIG || {};
+const PAYMENT_API_BASE_URL = APP_CONFIG.PAYMENTS_API || 'http://localhost:3001/api/payments';
+const COMPATIBILITY_API_BASE_URL = APP_CONFIG.COMPATIBILITY_API || 'http://localhost:3001/api/compatibility';
 
 // track authentication state (false until user logs in)
 window.isLoggedIn = typeof getAuthState === 'function' ? getAuthState() : false;
@@ -30,7 +31,7 @@ let currentBuild = {
   fan: null
 };
 
-const COMPONENT_API_BASE_URL = 'http://localhost:3000/api/components';
+const COMPONENT_API_BASE_URL = APP_CONFIG.COMPONENTS_API || 'http://localhost:3001/api/components';
 const componentsCache = {};
 const compatibilityState = {
   requestId: 0,

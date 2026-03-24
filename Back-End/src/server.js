@@ -64,13 +64,6 @@ mongoose.connect(mongoConnectionString)
   app.listen(PORT, async () => {
     console.log(`✓ Server running on port ${PORT}`);
     console.log(`Ready to process requests...`);
-
-    await fetch(`http://localhost:${PORT}/api/logs/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user: 'anon', activity: 'log entry injection 2' }),
-    });
-
   });
 })
 .catch(err => console.error('✗ MongoDB connection error:', err.message));

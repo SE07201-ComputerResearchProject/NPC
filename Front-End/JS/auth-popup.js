@@ -1,7 +1,8 @@
 // auth-popup.js - handles authentication UI
 
-const USER_API_BASE_URL = 'http://localhost:3000/api/users';
-const PUBLIC_CONFIG_API_URL = 'http://localhost:3000/api/config/public';
+const APP_CONFIG = window.APP_CONFIG || {};
+const USER_API_BASE_URL = APP_CONFIG.USERS_API || 'http://localhost:3001/api/users';
+const PUBLIC_CONFIG_API_URL = APP_CONFIG.CONFIG_PUBLIC_API || 'http://localhost:3001/api/config/public';
 let recaptchaSiteKey = '';
 let googleClientId = '';
 let recaptchaScriptPromise = null;

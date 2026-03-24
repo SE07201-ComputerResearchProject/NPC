@@ -1,4 +1,5 @@
-const COMPONENT_API_BASE_URL = 'http://localhost:3000/api/components';
+const APP_CONFIG = window.APP_CONFIG || {};
+const COMPONENT_API_BASE_URL = APP_CONFIG.COMPONENTS_API || 'http://localhost:3001/api/components';
 
 const searchParams = new URLSearchParams(window.location.search);
 const initialCategory = searchParams.get('category') || 'all';

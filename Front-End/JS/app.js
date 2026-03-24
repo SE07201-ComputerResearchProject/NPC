@@ -5,7 +5,8 @@ const background = document.querySelector('.background');
 const floatingMenu = document.querySelector('.floating-menu');
 let lastScrollY = window.scrollY;
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const APP_CONFIG = window.APP_CONFIG || {};
+const API_BASE_URL = APP_CONFIG.API_BASE_URL || 'http://localhost:3001/api';
 const CART_API_URL = `${API_BASE_URL}/carts/me`;
 const BUILD_API_URL = `${API_BASE_URL}/builds/me/current`;
 const ORDER_API_URL = `${API_BASE_URL}/orders`;
@@ -267,7 +268,7 @@ async function hydrateProfileRoleIfMissing() {
     if (!token) return;
 
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const response = await fetch('http://localhost:3000/api/users/me', { headers });
+    const response = await fetch(`${API_BASE_URL}/users/me`, { headers });
     if (!response.ok) return;
 
     const user = await response.json();

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+  <link rel="stylesheet" href="CSS/styles.css" />
+  <link rel="stylesheet" href="CSS/dashboard-unified.css" />
+  <link rel="stylesheet" href="CSS/payment-success.css" />
+  <title>Payment Successful</title>
+</head>
+<body class="bg-light text-dark">
+  <nav class="navbar navbar-expand-lg navbar-glass fixed-top" id="navbarTop">
+    <div class="container">
+      <a class="navbar-brand navbar-home-btn" href="index.html" aria-label="Go to homepage">
+        <i data-lucide="house"></i>
+      </a>
+      <button class="navbar-toggler navbar-glass-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navCollapse" aria-controls="navCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <i data-lucide="menu"></i>
+      </button>
+      <div class="collapse navbar-collapse" id="navCollapse">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
+          <li class="nav-item"><a href="index.html" class="navbar-link nav-link">Home</a></li>
+          <li class="nav-item"><a href="dashboard.html" class="navbar-link nav-link">Build PC</a></li>
+          <li class="nav-item"><a href="products.html" class="navbar-link nav-link">Components</a></li>
+          <li class="nav-item"><a href="shopping-cart.html" class="navbar-link nav-link">Cart</a></li>
+          <li class="nav-item ms-lg-2">
+            <span id="welcomeMsg" class="navbar-welcome me-2"></span>
+          </li>
+          <li class="nav-item">
+            <button id="toggleTheme" class="btn btn-glass-theme" title="Toggle theme">
+              <i id="themeIcon" data-lucide="moon"></i>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="background retrowave"></div>
+
+  <main class="content payment-success-page">
+    <div class="container">
+      <section class="payment-success-shell">
+        <div class="square-panel payment-success-hero animate__animated animate__fadeInUp">
+          <div class="payment-success-icon-wrap">
+            <div class="payment-success-icon-ring"></div>
+            <div class="payment-success-icon">
+              <i data-lucide="badge-check"></i>
+            </div>
+          </div>
+          <span class="payment-success-eyebrow">VNPay Confirmation</span>
+          <h1>Payment completed successfully</h1>
+          <p id="paymentHeroMessage" class="payment-success-copy">
+            Your transaction has been confirmed. Order details are shown below.
+          </p>
+
+          <div class="payment-success-actions">
+            <a href="index.html" class="btn btn-primary">Back to Home</a>
+            <a id="paymentContinueLink" href="products.html" class="btn btn-outline-primary">Continue Shopping</a>
+            <a href="account.html" class="btn btn-outline-secondary">Open Account</a>
+          </div>
+        </div>
+
+        <div class="payment-success-grid">
+          <section class="square-panel payment-detail-card animate__animated animate__fadeInUp animate__delay-1s">
+            <div class="payment-card-head">
+              <h2>Transaction Summary</h2>
+              <span id="paymentStatusBadge" class="payment-status-badge success">Success</span>
+            </div>
+            <dl class="payment-detail-list">
+              <div>
+                <dt>Order ID</dt>
+                <dd id="paymentOrderId">-</dd>
+              </div>
+              <div>
+                <dt>Transaction Ref</dt>
+                <dd id="paymentTxnRef">-</dd>
+              </div>
+              <div>
+                <dt>VNPay Code</dt>
+                <dd id="paymentCode">-</dd>
+              </div>
+              <div>
+                <dt>Paid At</dt>
+                <dd id="paymentPaidAt">-</dd>
+              </div>
+              <div>
+                <dt>Source</dt>
+                <dd id="paymentSource">-</dd>
+              </div>
+              <div>
+                <dt>Total</dt>
+                <dd id="paymentTotal">-</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="square-panel payment-detail-card animate__animated animate__fadeInUp animate__delay-2s">
+            <div class="payment-card-head">
+              <h2>Items</h2>
+              <span id="paymentItemCount" class="payment-item-count">0 items</span>
+            </div>
+            <div id="paymentItems" class="payment-items-list">
+              <div class="payment-empty-state">Loading order details...</div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="floating-menu">
+    <a href="index.html" class="menu-item">
+      <i data-lucide="home"></i>
+      <span class="label">Home</span>
+    </a>
+    <a href="dashboard.html" class="menu-item">
+      <i data-lucide="pencil-ruler"></i>
+      <span class="label">Build PC</span>
+    </a>
+    <a href="#" class="menu-item" onclick="toggleComponentsMenu(event)">
+      <i data-lucide="cpu"></i>
+      <span class="label">Components</span>
+    </a>
+    <div class="account-wrapper">
+      <a href="#" class="menu-item">
+        <i data-lucide="user"></i>
+        <span class="label">Account</span>
+      </a>
+      <div class="account-dropdown">
+        <a href="#" onclick="goToAccount(event)">Account Info</a>
+        <a href="#" onclick="logout()">Logout</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>lucide.createIcons();</script>
+  <script src="JS/runtime-config.js"></script>
+  <script src="JS/app.js"></script>
+  <script src="JS/components-menu.js"></script>
+  <script src="JS/auth-popup.js"></script>
+  <script src="JS/payment-success.js"></script>
+</body>
+</html>

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Starter files for an e-commerce website",
   "scripts": {
-    "start": "npx http-server -p 8080"
+    "start": "npx http-server .. -p 3000"
   },
   "author": "",
   "license": "MIT",

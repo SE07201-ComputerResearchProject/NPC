@@ -1,4 +1,5 @@
-const PAYMENT_API_BASE_URL = 'http://localhost:3000/api/payments';
+const APP_CONFIG = window.APP_CONFIG || {};
+const PAYMENT_API_BASE_URL = APP_CONFIG.PAYMENTS_API || 'http://localhost:3001/api/payments';
 
 function formatCurrency(value) {
   return `${Number(value || 0).toLocaleString()} VND`;

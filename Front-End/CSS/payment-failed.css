@@ -1,0 +1,231 @@
+.payment-failed-page {
+  padding-top: 112px;
+  padding-bottom: 96px;
+}
+
+.payment-failed-shell {
+  display: grid;
+  gap: 24px;
+}
+
+.payment-failed-hero {
+  text-align: center;
+  padding: 42px 28px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 120, 120, 0.18), transparent 35%),
+    radial-gradient(circle at top right, rgba(255, 184, 77, 0.18), transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 245, 245, 0.96));
+}
+
+.payment-failed-icon-wrap {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  margin: 0 auto 20px;
+}
+
+.payment-failed-icon-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 90deg, rgba(226, 71, 71, 0.2), rgba(255, 170, 0, 0.16), rgba(226, 71, 71, 0.2));
+  animation: paymentFailedPulse 2.4s ease-in-out infinite;
+}
+
+.payment-failed-icon {
+  position: absolute;
+  inset: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c73b3b, #ff9f1c);
+  color: #fff;
+  box-shadow: 0 20px 35px rgba(117, 37, 37, 0.16);
+}
+
+.payment-failed-icon svg {
+  width: 44px;
+  height: 44px;
+}
+
+.payment-failed-eyebrow {
+  display: inline-block;
+  margin-bottom: 12px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #c73b3b;
+}
+
+.payment-failed-hero h1 {
+  margin: 0 0 12px;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.05;
+}
+
+.payment-failed-copy {
+  max-width: 720px;
+  margin: 0 auto;
+  color: rgba(20, 28, 38, 0.78);
+  font-size: 1rem;
+}
+
+.payment-failed-actions {
+  margin-top: 28px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.payment-failed-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1.25fr;
+  gap: 24px;
+}
+
+.payment-failed-card {
+  padding: 26px;
+}
+
+.payment-failed-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.payment-failed-card-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.payment-failed-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.payment-failed-status.danger {
+  background: rgba(199, 59, 59, 0.12);
+  color: #9e2b2b;
+}
+
+.payment-failed-status.neutral {
+  background: rgba(255, 159, 28, 0.14);
+  color: #9a5a00;
+}
+
+.payment-failed-detail-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+
+.payment-failed-detail-list div,
+.payment-recovery-item {
+  display: grid;
+  gap: 5px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 248, 248, 0.95);
+  border: 1px solid rgba(199, 59, 59, 0.1);
+}
+
+.payment-failed-detail-list dt {
+  margin: 0;
+  font-size: 0.77rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(20, 28, 38, 0.52);
+}
+
+.payment-failed-detail-list dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.payment-recovery-list {
+  display: grid;
+  gap: 12px;
+}
+
+.payment-recovery-item strong {
+  font-size: 0.98rem;
+}
+
+.payment-recovery-item p {
+  margin: 0;
+  color: rgba(20, 28, 38, 0.72);
+}
+
+body.bg-dark .payment-failed-hero {
+  background:
+    radial-gradient(circle at top left, rgba(255, 120, 120, 0.14), transparent 35%),
+    radial-gradient(circle at top right, rgba(255, 184, 77, 0.14), transparent 30%),
+    linear-gradient(135deg, rgba(26, 31, 43, 0.98), rgba(20, 26, 38, 0.95));
+}
+
+body.bg-dark .payment-failed-copy,
+body.bg-dark .payment-failed-detail-list dt,
+body.bg-dark .payment-recovery-item p {
+  color: rgba(229, 236, 244, 0.72);
+}
+
+body.bg-dark .payment-failed-detail-list div,
+body.bg-dark .payment-recovery-item {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+body.bg-dark .payment-failed-status.danger {
+  background: rgba(199, 59, 59, 0.18);
+  color: #ff9696;
+}
+
+body.bg-dark .payment-failed-status.neutral {
+  background: rgba(255, 159, 28, 0.2);
+  color: #ffc36f;
+}
+
+@keyframes paymentFailedPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.82;
+  }
+
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 991px) {
+  .payment-failed-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .payment-failed-page {
+    padding-top: 96px;
+    padding-bottom: 84px;
+  }
+
+  .payment-failed-hero,
+  .payment-failed-card {
+    padding: 22px 18px;
+  }
+}

@@ -1,6 +1,7 @@
 // account.js - handle account profile page (sidebar layout)
 
-const ACCOUNT_USER_API_BASE_URL = 'http://localhost:3000/api/users';
+const APP_CONFIG = window.APP_CONFIG || {};
+const ACCOUNT_USER_API_BASE_URL = APP_CONFIG.USERS_API || 'http://localhost:3001/api/users';
 const CURRENT_USER_API_URL = `${ACCOUNT_USER_API_BASE_URL}/me`;
 const MAX_AVATAR_FILE_MB = 2;
 
