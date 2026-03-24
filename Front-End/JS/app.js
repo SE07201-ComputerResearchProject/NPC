@@ -5,8 +5,7 @@ const background = document.querySelector('.background');
 const floatingMenu = document.querySelector('.floating-menu');
 let lastScrollY = window.scrollY;
 
-const APP_CONFIG = window.APP_CONFIG || {};
-const API_BASE_URL = APP_CONFIG.API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE_URL = 'http://localhost:3001/api';
 const CART_API_URL = `${API_BASE_URL}/carts/me`;
 const BUILD_API_URL = `${API_BASE_URL}/builds/me/current`;
 const ORDER_API_URL = `${API_BASE_URL}/orders`;
@@ -399,8 +398,11 @@ function applyTheme(theme) {
   }
 }
 
-// load authentication state from storage
-window.isLoggedIn = getAuthState() || Boolean(getAuthToken());
+// Load authentication state from token to avoid stale `isLoggedIn=true` without a valid session token.
+window.isLoggedIn = Boolean(getAuthToken());
+if (!window.isLoggedIn) {
+  setAuthState(false);
+}
 
 // generic pop-up notification helper
 // options: {duration, center, onClick}
@@ -472,7 +474,11 @@ function goToAccount(event) {
   } else {
     // not logged in: show login popup and remember where to go afterwards
     window.redirectAfterLogin = 'account.html';
-    toggleAuthPopup(event);
+    if (typeof window.toggleAuthPopup === 'function') {
+      window.toggleAuthPopup(event);
+    } else {
+      showPopup('Auth popup is not ready yet. Please refresh the page.');
+    }
   }
 }
 
@@ -482,6 +488,7 @@ function initAccountDropdown() {
   if (!wrapper) return;
   const dropdown = wrapper.querySelector('.account-dropdown');
   if (!dropdown) return;
+  const trigger = wrapper.querySelector(':scope > .menu-item') || wrapper;
   const accountInfoLink = dropdown.querySelector('a[onclick*="goToAccount"]');
 
   let adminLink = dropdown.querySelector('.admin-only-link');
@@ -508,10 +515,15 @@ function initAccountDropdown() {
   refreshWrapper();
 
   // if not logged in, click opens auth popup instead
-  wrapper.addEventListener('click', e => {
+  trigger.addEventListener('click', e => {
+    e.preventDefault();
     e.stopPropagation();
     if (!window.isLoggedIn) {
-      toggleAuthPopup(e);
+      if (typeof toggleAuthPopup === 'function') {
+        toggleAuthPopup(e);
+      } else {
+        showPopup('Auth popup is not ready yet. Please refresh the page.');
+      }
       return;
     }
     dropdown.classList.toggle('show');
@@ -532,6 +544,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // restore last theme choice
   applyTheme(getTheme());
   hydrateProfileRoleIfMissing();
+});
+
+// Fallback delegated click handler: if account trigger is clicked while logged out,
+// force open auth popup even if page-specific listeners fail to initialize.
+document.addEventListener('click', event => {
+  const trigger = event.target.closest('.account-wrapper > .menu-item');
+  if (!trigger) return;
+  if (window.isLoggedIn) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  if (typeof window.toggleAuthPopup === 'function') {
+    window.toggleAuthPopup(event);
+  }
 });
 
 

@@ -2,6 +2,7 @@
 function toggleProductsMenu(event) {
   event.preventDefault();
   const menu = document.getElementById('productsMenu');
+  if (!menu) return;
   menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
 }
 
@@ -9,8 +10,8 @@ function toggleProductsMenu(event) {
 document.addEventListener('click', function(event) {
   const productsNavItem = document.querySelector('.products-nav-item');
   const menu = document.getElementById('productsMenu');
-  
-  if (productsNavItem && !productsNavItem.contains(event.target)) {
+
+  if (productsNavItem && menu && !productsNavItem.contains(event.target)) {
     menu.style.display = 'none';
   }
 });

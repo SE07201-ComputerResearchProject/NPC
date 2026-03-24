@@ -31,7 +31,9 @@ function toggleComponentsMenu(event) {
 
   document.body.insertAdjacentHTML('beforeend', html);
   const menuEl = document.getElementById('componentsMenu');
-  lucide.createIcons();
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
 
   // position popup above the clicked icon rather than the whole bar
   if (menuEl) {

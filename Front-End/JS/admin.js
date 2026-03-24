@@ -1,5 +1,4 @@
-const APP_CONFIG = window.APP_CONFIG || {};
-const API_BASE = APP_CONFIG.API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE = 'http://localhost:3001/api';
 const USER_API_BASE = `${API_BASE}/users`;
 const PRODUCT_API_BASE = `${API_BASE}/components`;
 const LOG_API_BASE = `${API_BASE}/logs`;

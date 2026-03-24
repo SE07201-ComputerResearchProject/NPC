@@ -11,8 +11,7 @@
 (function () {
   'use strict';
 
-  const APP_CONFIG = window.APP_CONFIG || {};
-  const FEATURED_BUILDS_API = APP_CONFIG.FEATURED_BUILDS_API || 'http://localhost:3001/api/featured-builds';
+  const FEATURED_BUILDS_API = 'http://localhost:3001/api/featured-builds';
 
   // ──────────────────────────────────────────────────────────────
   //  Preloader

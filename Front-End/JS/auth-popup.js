@@ -1,8 +1,9 @@
 // auth-popup.js - handles authentication UI
 
-const APP_CONFIG = window.APP_CONFIG || {};
-const USER_API_BASE_URL = APP_CONFIG.USERS_API || 'http://localhost:3001/api/users';
-const PUBLIC_CONFIG_API_URL = APP_CONFIG.CONFIG_PUBLIC_API || 'http://localhost:3001/api/config/public';
+const USER_API_BASE_URL = 'http://localhost:3001/api/users';
+const PUBLIC_CONFIG_API_URL = 'http://localhost:3001/api/config/public';
+const USER_API_FALLBACKS = [USER_API_BASE_URL];
+const PUBLIC_CONFIG_API_FALLBACKS = [PUBLIC_CONFIG_API_URL];
 let recaptchaSiteKey = '';
 let googleClientId = '';
 let recaptchaScriptPromise = null;
@@ -11,6 +12,24 @@ let googleInitialized = false;
 let activeAuthMode = 'login';
 let loginRecaptchaId = null;
 let signupRecaptchaId = null;
+
+async function fetchWithFallback(urls, options = {}) {
+  let lastError = null;
+
+  for (const url of urls) {
+    try {
+      return await fetch(url, options);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('Network request failed');
+}
+
+function buildUserApiUrls(pathSuffix) {
+  return USER_API_FALLBACKS.map(base => `${String(base).replace(/\/$/, '')}/${pathSuffix}`);
+}
 
 function applyAuthSuccess(data, fallbackMessage) {
   const user = data?.user || {};
@@ -52,7 +71,7 @@ async function fetchPublicAuthConfig() {
   }
 
   try {
-    const response = await fetch(PUBLIC_CONFIG_API_URL);
+    const response = await fetchWithFallback(PUBLIC_CONFIG_API_FALLBACKS);
     if (!response.ok) return { recaptchaSiteKey: '', googleClientId: '' };
 
     const payload = await response.json();
@@ -162,7 +181,7 @@ async function handleGoogleCredentialResponse(response) {
       return;
     }
 
-    const res = await fetch(`${USER_API_BASE_URL}/google`, {
+    const res = await fetchWithFallback(buildUserApiUrls('google'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idToken, captchaToken }),
@@ -271,7 +290,9 @@ function toggleAuthPopup(event) {
   document.body.appendChild(backdrop);
   document.body.appendChild(modal);
   requestAnimationFrame(() => backdrop.classList.add('show'));
-  if (window.lucide) lucide.createIcons();
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
 
   showSignIn();
 }
@@ -331,7 +352,9 @@ function showSignIn() {
     </form>
   `;
   footer.innerHTML = `<span>Don't have an account? <a href="#" onclick="showSignUp()">Sign Up</a></span>`;
-  lucide.createIcons();
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
   attachPasswordToggle();
   renderRecaptcha('loginRecaptcha', 'login').catch(() => {
     showPopup('Cannot load captcha. Please refresh page.');
@@ -354,7 +377,7 @@ function showSignIn() {
       }
 
       try {
-        const response = await fetch(`${USER_API_BASE_URL}/login`, {
+        const response = await fetchWithFallback(buildUserApiUrls('login'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: emailVal, password: passwordVal, captchaToken })
@@ -424,7 +447,9 @@ function showSignUp() {
     </form>
   `;
   footer.innerHTML = `<span>Already have an account? <a href="#" onclick="showSignIn()">Log In</a></span>`;
-  lucide.createIcons();
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
   attachPasswordToggle();
   renderRecaptcha('signupRecaptcha', 'signup').catch(() => {
     showPopup('Cannot load captcha. Please refresh page.');
@@ -454,7 +479,7 @@ function showSignUp() {
       }
 
       try {
-        const response = await fetch(`${USER_API_BASE_URL}/register`, {
+        const response = await fetchWithFallback(buildUserApiUrls('register'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: u, email: em, password: pw, captchaToken })
@@ -476,4 +501,10 @@ function showSignUp() {
     });
   }
 }
+
+// Ensure popup functions are always reachable from other scripts and inline handlers.
+window.toggleAuthPopup = toggleAuthPopup;
+window.closeAuthPopup = closeAuthPopup;
+window.showSignIn = showSignIn;
+window.showSignUp = showSignUp;
 

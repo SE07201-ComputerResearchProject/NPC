@@ -53,7 +53,7 @@ app.get('/', (req, res) => {
 });
 
 // Start server only after MongoDB is connected
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 mongoose.connect(mongoConnectionString)
 .then(async () => {
   console.log('✓ MongoDB connected');
