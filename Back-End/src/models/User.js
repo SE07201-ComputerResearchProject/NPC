@@ -72,6 +72,32 @@ const userSchema = new mongoose.Schema({
       default: '',
     },
   },
+  billingSameAsShipping: {
+    type: Boolean,
+    default: true,
+  },
+  billingAddress: {
+    street: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    city: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    state: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    zip: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+  },
   createdAt: {
     type: Date,
     default: Date.now,

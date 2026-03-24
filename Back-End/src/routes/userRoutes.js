@@ -18,6 +18,8 @@ function serializeUserForClient(user) {
     fullName: user.fullName || '',
     dateOfBirth: user.dateOfBirth || null,
     address: user.address || { street: '', city: '', state: '', zip: '' },
+    billingSameAsShipping: user.billingSameAsShipping !== false,
+    billingAddress: user.billingAddress || { street: '', city: '', state: '', zip: '' },
     avatarUrl: user.avatarUrl || '',
   };
 }
@@ -31,7 +33,7 @@ function buildJwtForUser(user) {
 }
 
 function buildProfileUpdateData(body = {}) {
-  const { username, fullName, dateOfBirth, address } = body;
+  const { username, fullName, dateOfBirth, address, billingAddress, billingSameAsShipping, avatarUrl } = body;
   const updateData = {};
 
   if (username) updateData.username = username;
@@ -44,6 +46,20 @@ function buildProfileUpdateData(body = {}) {
       state: address.state || '',
       zip: address.zip || '',
     };
+  }
+  if (billingSameAsShipping !== undefined) {
+    updateData.billingSameAsShipping = Boolean(billingSameAsShipping);
+  }
+  if (billingAddress) {
+    updateData.billingAddress = {
+      street: billingAddress.street || '',
+      city: billingAddress.city || '',
+      state: billingAddress.state || '',
+      zip: billingAddress.zip || '',
+    };
+  }
+  if (avatarUrl !== undefined) {
+    updateData.avatarUrl = avatarUrl || '';
   }
 
   updateData.updatedAt = new Date();
@@ -295,21 +311,41 @@ router.get('/me', requireAuth, async (req, res) => {
 
 router.put('/me', requireAuth, async (req, res) => {
   try {
-    const updateData = buildProfileUpdateData(req.body);
+    const { currentPassword, newPassword } = req.body;
 
-    const user = await User.findByIdAndUpdate(
-      req.currentUser.userId,
-      updateData,
-      { new: true, runValidators: true }
-    ).select('-password');
-
+    const user = await User.findById(req.currentUser.userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Handle password change when both fields are provided
+    if (currentPassword || newPassword) {
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: 'Both current password and new password are required to change password' });
+      }
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: 'New password must be at least 6 characters' });
+      }
+      if (user.provider === 'google' && !user.password) {
+        return res.status(400).json({ message: 'Google accounts cannot set a local password here' });
+      }
+      const isValid = await user.comparePassword(currentPassword);
+      if (!isValid) {
+        return res.status(400).json({ message: 'Current password is incorrect' });
+      }
+      user.password = newPassword;
+    }
+
+    // Apply other profile fields
+    const updateData = buildProfileUpdateData(req.body);
+    Object.assign(user, updateData);
+
+    await user.save();
+
+    const updated = await User.findById(user._id).select('-password');
     return res.status(200).json({
       message: 'Profile updated successfully',
-      user,
+      user: updated,
     });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to update current user profile', error: error.message });

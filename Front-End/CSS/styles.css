@@ -1659,6 +1659,7 @@ body.bg-dark .hero-bg::before {
   transform: translateX(-50%);
   text-align: center;
   width: max(300px, 60%);
+  color: white;
 }
 
 .hero-slider-card {
