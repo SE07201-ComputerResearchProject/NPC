@@ -46,6 +46,24 @@ let pendingProductsRequests = 0;
 let productCardRevealObserver = null;
 let productDetailsEscHandler = null;
 
+function getComponentImages(component, maxItems = 3) {
+  const fromArray = Array.isArray(component?.imageUrls)
+    ? component.imageUrls.map(item => String(item || '').trim()).filter(Boolean)
+    : [];
+
+  if (fromArray.length > 0) {
+    return fromArray.slice(0, maxItems);
+  }
+
+  const single = String(component?.imageUrl || '').trim();
+  if (single) {
+    return [single];
+  }
+
+  const fallback = CATEGORY_HERO_IMAGES[component?.category] || CATEGORY_HERO_IMAGES.all;
+  return fallback ? [fallback] : [];
+}
+
 function setProductsLoaderVisible(isVisible) {
   const overlay = document.getElementById('productsLoaderOverlay');
   if (!overlay) return;
@@ -275,11 +293,31 @@ function openProductDetailsModal(component) {
   const backdrop = document.createElement('div');
   backdrop.id = 'productSpecsBackdrop';
   backdrop.className = 'product-spec-backdrop';
-  // TODO: Replace this placeholder with real per-product illustration URL when your image assets are ready.
-  const hasIllustration = typeof component.imageUrl === 'string' && component.imageUrl.trim().length > 0;
-  const illustrationHtml = hasIllustration
-    ? `<img src="${escapeHtml(component.imageUrl)}" alt="${escapeHtml(component.name)} illustration" />`
+  const modalImages = getComponentImages(component, 3);
+  const mainImage = modalImages[0] || '';
+  const illustrationHtml = mainImage
+    ? `<img src="${escapeHtml(mainImage)}" alt="${escapeHtml(component.name)} illustration" data-product-main-image />`
     : `<div class="product-illustration-placeholder">Illustration image placeholder<br />Add product image later</div>`;
+  const thumbHtml = Array.from({ length: 3 }).map((_, index) => {
+    const image = modalImages[index] || '';
+    const activeClass = index === 0 && image ? 'is-active' : '';
+
+    if (!image) {
+      return '<span class="is-empty" aria-hidden="true"></span>';
+    }
+
+    return `
+      <button
+        type="button"
+        class="product-thumb ${activeClass}"
+        data-product-thumb
+        data-image-src="${escapeHtml(image)}"
+        aria-label="View image ${index + 1}"
+      >
+        <img src="${escapeHtml(image)}" alt="${escapeHtml(component.name)} thumbnail ${index + 1}" />
+      </button>
+    `;
+  }).join('');
 
   backdrop.innerHTML = `
     <section class="product-spec-modal" role="dialog" aria-modal="true" aria-label="${escapeHtml(component.name)} specs">
@@ -296,10 +334,8 @@ function openProductDetailsModal(component) {
             <div class="product-image-main">
               ${illustrationHtml}
             </div>
-            <div class="product-image-thumbs" aria-hidden="true">
-              <span></span>
-              <span></span>
-              <span></span>
+            <div class="product-image-thumbs" aria-label="More product images">
+              ${thumbHtml}
             </div>
           </div>
 
@@ -374,6 +410,21 @@ function openProductDetailsModal(component) {
       } catch (error) {
         showPopup(error.message || 'Cannot complete Buy Now right now.');
       }
+    });
+  }
+
+  const mainImageEl = backdrop.querySelector('[data-product-main-image]');
+  const thumbButtons = Array.from(backdrop.querySelectorAll('[data-product-thumb]'));
+  if (mainImageEl && thumbButtons.length) {
+    thumbButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const src = button.dataset.imageSrc || '';
+        if (!src) return;
+
+        mainImageEl.src = src;
+        thumbButtons.forEach(item => item.classList.remove('is-active'));
+        button.classList.add('is-active');
+      });
     });
   }
 
@@ -541,7 +592,7 @@ function renderComponents() {
       <p class="product-brand">${component.brand || 'Generic'}</p>
       <div class="product-image-grid product-image-single" aria-label="Product image for ${component.name}">
         <div class="image-slot image-slot-photo">
-          <img src="${escapeHtml((component.imageUrl && component.imageUrl.trim()) || CATEGORY_HERO_IMAGES[component.category] || CATEGORY_HERO_IMAGES.all)}" alt="${escapeHtml(component.name)}" loading="lazy" />
+          <img src="${escapeHtml(getComponentImages(component, 1)[0])}" alt="${escapeHtml(component.name)}" loading="lazy" />
         </div>
       </div>
       <p class="product-description">${component.description || 'No description yet.'}</p>

@@ -4,6 +4,19 @@ import { requireAdmin } from '../middleware/adminMiddleware.js';
 
 const router = express.Router();
 
+function normalizeImageUrls(imageUrls, imageUrl) {
+  const fromArray = Array.isArray(imageUrls)
+    ? imageUrls.map(item => String(item || '').trim()).filter(Boolean)
+    : [];
+
+  if (fromArray.length > 0) {
+    return fromArray;
+  }
+
+  const single = String(imageUrl || '').trim();
+  return single ? [single] : [];
+}
+
 router.get('/categories', async (req, res) => {
   try {
     const counts = await Component.aggregate([
@@ -76,6 +89,7 @@ router.post('/', requireAdmin, async (req, res) => {
       description,
       highlights,
       imageUrl,
+      imageUrls,
       specs,
       aiCompatibility,
     } = req.body;
@@ -93,6 +107,8 @@ router.post('/', requireAdmin, async (req, res) => {
       return res.status(409).json({ message: 'Component already exists in this category' });
     }
 
+    const normalizedImageUrls = normalizeImageUrls(imageUrls, imageUrl);
+
     const component = await Component.create({
       category,
       name,
@@ -102,7 +118,8 @@ router.post('/', requireAdmin, async (req, res) => {
       stock: Number(stock || 0),
       description: description || '',
       highlights: Array.isArray(highlights) ? highlights : [],
-      imageUrl: imageUrl || '',
+      imageUrl: normalizedImageUrls[0] || '',
+      imageUrls: normalizedImageUrls,
       specs: specs && typeof specs === 'object' ? specs : {},
       aiCompatibility: aiCompatibility && typeof aiCompatibility === 'object' ? aiCompatibility : {},
     });
@@ -125,6 +142,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
       description,
       highlights,
       imageUrl,
+      imageUrls,
       specs,
       aiCompatibility,
     } = req.body;
@@ -142,7 +160,11 @@ router.put('/:id', requireAdmin, async (req, res) => {
     if (stock !== undefined) updateData.stock = Number(stock);
     if (description !== undefined) updateData.description = description;
     if (highlights !== undefined) updateData.highlights = Array.isArray(highlights) ? highlights : [];
-    if (imageUrl !== undefined) updateData.imageUrl = imageUrl || '';
+    if (imageUrls !== undefined || imageUrl !== undefined) {
+      const normalizedImageUrls = normalizeImageUrls(imageUrls, imageUrl);
+      updateData.imageUrls = normalizedImageUrls;
+      updateData.imageUrl = normalizedImageUrls[0] || '';
+    }
     if (specs !== undefined) updateData.specs = specs && typeof specs === 'object' ? specs : {};
     if (aiCompatibility !== undefined) {
       updateData.aiCompatibility = aiCompatibility && typeof aiCompatibility === 'object' ? aiCompatibility : {};

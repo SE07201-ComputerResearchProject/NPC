@@ -59,6 +59,13 @@ const componentSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    imageUrls: {
+      type: [String],
+      default: [],
+      set: values => (Array.isArray(values)
+        ? values.map(item => String(item || '').trim()).filter(Boolean)
+        : []),
+    },
     specs: {
       type: mongoose.Schema.Types.Mixed,
       default: {},
