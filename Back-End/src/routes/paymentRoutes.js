@@ -6,7 +6,6 @@ import { VNPay, ignoreLogger, ProductCode, VnpLocale, dateFormat } from 'vnpay';
 
 const router = express.Router();
 
-// Generate unique payment ID
 function generatePayID() {
   const now = new Date();
   const timestamp = now.getTime();
@@ -15,29 +14,31 @@ function generatePayID() {
   return `PAY${timestamp}${seconds}${milliseconds}`;
 }
 
-// VNPay routes
 router.post('/vnpay/create', requireAuth, async (req, res) => {
   try {
     const orderId = String(req.body.orderId || '').trim();
-    if (!orderId) {
-      return res.status(400).json({ message: 'orderId is required' });
-    }
+    if (!orderId) return res.status(400).json({ message: 'orderId is required' });
 
     const order = await Order.findOne({ _id: orderId, user: req.currentUser.userId });
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
+    if (!order) return res.status(404).json({ message: 'Order not found' });
 
     const amountValue = Number(order.totalAmount || 0);
     if (!Number.isFinite(amountValue) || amountValue <= 0) {
       return res.status(400).json({ message: 'Invalid payment amount' });
     }
 
-    // Initialize VNPay with your credentials
+    // Xử lý IP gọn gàng nhất
+    let ipAddr = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
+    ipAddr = ipAddr.toString().split(',')[0].trim().replace('::ffff:', '');
+    if (ipAddr === '::1' || !ipAddr) ipAddr = '127.0.0.1';
+
+    // VIỆC QUAN TRỌNG: Loại bỏ hoàn toàn dấu cách (space) trong OrderInfo
+    const safeOrderInfo = `ThanhToanDonHang_${orderId}`.replace(/[^a-zA-Z0-9_]/g, "");
+
+    // Khởi tạo thư viện với SECRET KEY MỚI
     const vnpay = new VNPay({
       tmnCode: 'R44LG29E',
-      secureSecret: 'EDY6RULT0QS7V5OJBB6CD4ATSZUAFQTP',
-      vnpayHost: 'https://sandbox.vnpayment.vn',
+      secureSecret: 'KCQ84UBEE1XCJILCGK47N5YF5A6W3N6T', // <-- ĐÃ CẬP NHẬT MÃ MỚI
       testMode: true,
       hashAlgorithm: 'SHA512',
       enableLog: true,
@@ -48,21 +49,20 @@ router.post('/vnpay/create', requireAuth, async (req, res) => {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const txnRef = `${orderId}_${generatePayID()}`;
 
-    // Build payment URL using the library
+    // Tạo URL
     const vnpayResponse = vnpay.buildPaymentUrl({
-      vnp_Amount: amountValue,
-      vnp_IpAddr: req.ip || '127.0.0.1',
+      vnp_Amount: Math.round(amountValue), // Thư viện sẽ tự nhân 100 ngầm
+      vnp_IpAddr: ipAddr,
       vnp_TxnRef: txnRef,
-      vnp_OrderInfo: `Thanh toan don hang ${orderId}`,
+      vnp_OrderInfo: safeOrderInfo,
       vnp_OrderType: ProductCode.Other,
-      vnp_Url:  'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
       vnp_ReturnUrl: 'http://localhost:3000/api/payments/vnpay/return',
       vnp_Locale: VnpLocale.VN,
       vnp_CreateDate: dateFormat(new Date()),
       vnp_ExpireDate: dateFormat(tomorrow),
     });
 
-    // Save order with pending status
+    // Cập nhật DB
     order.payment = {
       ...(order.payment || {}),
       provider: 'vnpay',
@@ -78,45 +78,35 @@ router.post('/vnpay/create', requireAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('VNPay create error:', error);
-    res.status(500).json({ 
-      message: 'Failed to create VNPay payment URL', 
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Failed to create VNPay URL', error: error.message });
   }
 });
 
 router.get('/vnpay/return', async (req, res) => {
   try {
-    // Initialize VNPay for verification
+    const frontendReturnUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    
+    // Khởi tạo thư viện giống hệt hàm create với SECRET KEY MỚI
     const vnpay = new VNPay({
       tmnCode: 'R44LG29E',
-      secureSecret: 'EDY6RULT0QS7V5OJBB6CD4ATSZUAFQTP',
-      vnpayHost: 'https://sandbox.vnpayment.vn',
+      secureSecret: 'KCQ84UBEE1XCJILCGK47N5YF5A6W3N6T', // <-- ĐÃ CẬP NHẬT MÃ MỚI
       testMode: true,
       hashAlgorithm: 'SHA512',
       enableLog: true,
       loggerFn: ignoreLogger,
     });
 
-    // Verify the return URL using the library's method
     const verify = vnpay.verifyReturnUrl(req.query);
-    
-    const frontendReturnUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     const vnp_TxnRef = String(req.query.vnp_TxnRef || '');
     const vnp_ResponseCode = String(req.query.vnp_ResponseCode || '99');
-    
-    // Extract orderId from txnRef (format: orderId_PAYXXXX)
     const orderId = vnp_TxnRef ? vnp_TxnRef.split('_')[0] : '';
 
     if (!verify.isSuccess) {
-      // Invalid signature
       console.error('Invalid VNPay signature');
-      const redirectUrl = `${frontendReturnUrl}/shopping-cart.html?paymentStatus=error&paymentCode=INVALID_SIGNATURE&txnRef=${encodeURIComponent(vnp_TxnRef)}`;
-      return res.redirect(redirectUrl);
+      return res.redirect(`${frontendReturnUrl}/shopping-cart.html?paymentStatus=error&paymentCode=INVALID_SIGNATURE&txnRef=${encodeURIComponent(vnp_TxnRef)}`);
     }
 
     if (vnp_ResponseCode === '00') {
-      // Payment successful
       const order = await Order.findById(orderId);
       if (order) {
         order.status = 'paid';
@@ -128,38 +118,23 @@ router.get('/vnpay/return', async (req, res) => {
         };
         await order.save();
 
-        // Clear cart if order from cart source
         if (order.source === 'cart') {
-          await Cart.findOneAndUpdate(
-            { user: order.user },
-            { items: [] },
-            { upsert: true, new: true, setDefaultsOnInsert: true }
-          );
+          await Cart.findOneAndUpdate({ user: order.user }, { items: [] }, { upsert: true });
         }
       }
-
-      const redirectUrl = `${frontendReturnUrl}/shopping-cart.html?paymentStatus=success&paymentCode=${vnp_ResponseCode}&txnRef=${encodeURIComponent(vnp_TxnRef)}`;
-      return res.redirect(redirectUrl);
+      return res.redirect(`${frontendReturnUrl}/shopping-cart.html?paymentStatus=success&paymentCode=${vnp_ResponseCode}&txnRef=${encodeURIComponent(vnp_TxnRef)}`);
     } else {
-      // Payment failed or cancelled
       const order = await Order.findById(orderId);
       if (order) {
         order.status = 'failed';
-        order.payment = {
-          ...(order.payment || {}),
-          responseCode: vnp_ResponseCode,
-        };
+        order.payment = { ...(order.payment || {}), responseCode: vnp_ResponseCode };
         await order.save();
       }
-
-      const redirectUrl = `${frontendReturnUrl}/shopping-cart.html?paymentStatus=failed&paymentCode=${vnp_ResponseCode}&txnRef=${encodeURIComponent(vnp_TxnRef)}`;
-      return res.redirect(redirectUrl);
+      return res.redirect(`${frontendReturnUrl}/shopping-cart.html?paymentStatus=failed&paymentCode=${vnp_ResponseCode}&txnRef=${encodeURIComponent(vnp_TxnRef)}`);
     }
   } catch (error) {
     console.error('VNPay return error:', error);
-    const frontendReturnUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
-    const redirectUrl = `${frontendReturnUrl}/shopping-cart.html?paymentStatus=error`;
-    return res.redirect(redirectUrl);
+    return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/shopping-cart.html?paymentStatus=error`);
   }
 });
 
