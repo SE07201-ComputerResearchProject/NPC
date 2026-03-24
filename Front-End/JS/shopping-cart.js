@@ -146,7 +146,7 @@ async function handleCheckout() {
       return;
     }
 
-    const response = await fetch(`${PAYMENT_API_BASE_URL}/momo/create`, {
+    const response = await fetch(`${PAYMENT_API_BASE_URL}/vnpay/create`, {
       method: 'POST',
       headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
@@ -158,12 +158,12 @@ async function handleCheckout() {
     });
 
     const payload = await response.json();
-    if (!response.ok || !payload.paymentUrl) {
-      showPopup(payload.message || 'Cannot create payment URL. Please verify MoMo env settings.');
+    if (!response.ok || !payload.metadata) {
+      showPopup(payload.message || 'Cannot create payment URL. Please verify VNPay env settings.');
       return;
     }
 
-    window.location.href = payload.paymentUrl;
+    window.location.href = payload.metadata;
   } catch (error) {
     showPopup('Cannot connect to payment server.');
   }
