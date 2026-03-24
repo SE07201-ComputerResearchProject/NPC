@@ -35,10 +35,10 @@ router.post('/vnpay/create', requireAuth, async (req, res) => {
     // VIỆC QUAN TRỌNG: Loại bỏ hoàn toàn dấu cách (space) trong OrderInfo
     const safeOrderInfo = `ThanhToanDonHang_${orderId}`.replace(/[^a-zA-Z0-9_]/g, "");
 
-    // Khởi tạo thư viện với SECRET KEY MỚI
+    // Khởi tạo thư viện với SECRET KEY CHUẨN
     const vnpay = new VNPay({
       tmnCode: 'R44LG29E',
-      secureSecret: 'KCQ84UBEE1XCJILCGK47N5YF5A6W3N6T', // <-- ĐÃ CẬP NHẬT MÃ MỚI
+      secureSecret: 'KCQ84UBEE1XCJILCGK47N5YF5A6W3N6T',
       testMode: true,
       hashAlgorithm: 'SHA512',
       enableLog: true,
@@ -86,10 +86,10 @@ router.get('/vnpay/return', async (req, res) => {
   try {
     const frontendReturnUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     
-    // Khởi tạo thư viện giống hệt hàm create với SECRET KEY MỚI
+    // Khởi tạo thư viện giống hệt hàm create
     const vnpay = new VNPay({
       tmnCode: 'R44LG29E',
-      secureSecret: 'KCQ84UBEE1XCJILCGK47N5YF5A6W3N6T', // <-- ĐÃ CẬP NHẬT MÃ MỚI
+      secureSecret: 'KCQ84UBEE1XCJILCGK47N5YF5A6W3N6T',
       testMode: true,
       hashAlgorithm: 'SHA512',
       enableLog: true,
