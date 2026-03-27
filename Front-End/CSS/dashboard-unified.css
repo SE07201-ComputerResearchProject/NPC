@@ -823,35 +823,125 @@ body.bg-dark .menu-item:hover{
    DASHBOARD-SPECIFIC STYLES
    ======================================== */
 .dashboard-container {
-    margin-left: auto;
-    margin-right: auto;
-    margin-top: calc(var(--dashboard-navbar-height) + 12px);
-    padding: 20px;
-    max-width: 1320px;
+    margin-top: 0;
+    padding: 16px 20px;
+    height: calc(100vh - 60px); /* body padding-top already offsets 60px for fixed navbar */
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
-body.bg-dark .dashboard-container {
-    margin-bottom: 20px;
-}
-
-.dashboard-layout {
+/* 7-column CSS grid (user-defined) */
+.dashboard-grid {
     display: grid;
-    grid-template-columns: minmax(500px, 0.78fr) minmax(340px, 0.52fr);
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    gap: 12px;
+    height: 100%;
+}
+
+/* div1+3 merged: build name + actions + stats — left top */
+.dash-navbar {
+    grid-column: span 5 / span 5;
+    grid-column-start: 1;
+    grid-row: span 3 / span 3;
+    grid-row-start: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 20px;
+    overflow-y: auto;
+}
+.dash-navbar .dash-navbar-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.dash-navbar .build-name-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.dash-navbar h2 {
+    margin: 0;
+    font-size: 20px;
+}
+.dash-navbar .dash-divider {
+    border: none;
+    border-top: 1px solid rgba(0,0,0,0.1);
+    margin: 0;
+}
+body.bg-dark .dash-navbar .dash-divider {
+    border-top-color: rgba(255,255,255,0.1);
+}
+.dash-navbar .dash-info-title {
+    margin: 0 0 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #6c757d;
+}
+.dash-navbar .stats-bar {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    flex-wrap: wrap;
     gap: 20px;
-    align-items: start;
+}
+/* light mode: stat values readable on white panel */
+body.bg-light .dash-navbar .stat-value {
+    color: #111827;
+}
+body.bg-light .dash-navbar .stat-value.compatible {
+    color: #16a34a;
+}
+body.bg-light .dash-navbar .stat-value.incompatible {
+    color: #dc2626;
+}
+/* dark mode: toned-down green instead of full neon */
+body.bg-dark .dash-navbar .stat-value {
+    color: #4ade80;
+}
+body.bg-dark .dash-navbar .stat-value.compatible {
+    color: #4ade80;
+}
+body.bg-dark .dash-navbar .stat-value.incompatible {
+    color: #f87171;
 }
 
-.dashboard-left-column {
-    min-width: 0;
+/* div2: parts list — right column, tall */
+.dash-parts {
+    grid-column: span 2 / span 2;
+    grid-row: span 8 / span 8;
+    grid-column-start: 6;
+    grid-row-start: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+.dash-parts h4 {
+    margin: 0 0 12px;
+}
+.dash-parts .additional-products {
+    background: transparent;
+    border: none;
+    padding: 12px 0 0;
+}
+body.bg-dark .dash-parts .additional-products {
+    background: transparent;
 }
 
-.dashboard-right-column {
-    min-width: 0;
+/* div4: 2D rig illustration — lower left */
+.dash-rig {
+    grid-column: span 5 / span 5;
+    grid-row: span 5 / span 5;
+    grid-row-start: 4;
+    overflow-y: auto;
+    padding: 16px;
 }
 
 .build-visualizer {
-    position: sticky;
-    top: 88px;
     border-radius: 10px;
 }
 
@@ -1487,14 +1577,28 @@ body.bg-dark .modal-content {
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .dashboard-container {
-        margin-left: auto;
-        margin-right: auto;
-        margin-top: calc(var(--dashboard-navbar-height) + 28px);
+        height: auto;
+        overflow: visible;
+        margin-top: 0;
         padding: 15px;
     }
 
-    .dashboard-layout {
+    .dashboard-grid {
         grid-template-columns: 1fr;
+        grid-template-rows: auto;
+        height: auto;
+    }
+
+    .dash-navbar,
+    .dash-parts,
+    .dash-info,
+    .dash-rig {
+        grid-column: 1 / -1;
+        grid-row: auto;
+    }
+
+    .dash-parts {
+        max-height: 60vh;
     }
 
     .build-visualizer {

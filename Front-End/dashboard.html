@@ -45,27 +45,38 @@
   <!-- background element – animation & blur active only when body has bg-dark -->
   <div class="background retrowave"></div>
   <div class="container-fluid dashboard-container">
-    <div class="dashboard-layout">
-      <section class="dashboard-left-column">
-        <!-- Header Stats -->
-        <div class="build-header">
-          <div class="header-top">
-            <div class="build-name-container">
-              <h2 id="buildName">New Build</h2>
-              <button class="btn-edit-name" onclick="editBuildName()" title="Edit Build Name">
-                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                  <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
-                  <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
-                </svg>
-              </button>
-            </div>
+    <div class="dashboard-grid">
+
+      <!-- div1+3 merged: build name + actions + build info -->
+      <div class="dash-navbar square-panel">
+        <div class="dash-navbar-top">
+          <div class="build-name-container">
+            <h2 id="buildName">New Build</h2>
+            <button class="btn-edit-name" onclick="editBuildName()" title="Edit Build Name">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
+              </svg>
+            </button>
             <span class="header-date"></span>
           </div>
+          <div class="action-buttons">
+            <button class="btn btn-sm btn-outline-secondary">Share</button>
+            <button class="btn btn-sm btn-outline-secondary">Clone Build</button>
+            <button class="btn btn-sm btn-outline-secondary">Build Settings</button>
+            <button id="checkoutBtn" class="btn btn-sm btn-outline-success">Checkout</button>
+            <button id="saveBuildBtn" class="btn btn-sm btn-outline-primary">Save Build</button>
+          </div>
+        </div>
 
+        <hr class="dash-divider">
+
+        <div>
+          <p class="dash-info-title">Build Information</p>
           <div class="stats-bar">
             <div class="stat-item">
               <span class="stat-label">Total Price</span>
-              <span class="stat-value" id="totalPrice">₫0</span>
+              <span class="stat-value" id="totalPrice">0 VND</span>
             </div>
             <div class="stat-item">
               <span class="stat-label">Compatibility</span>
@@ -76,27 +87,14 @@
               <span class="stat-value" id="powerDraw">0W</span>
             </div>
           </div>
-
           <div id="compatibilityWarnings" style="display: none; margin-top: 10px;"></div>
-
-          <div class="action-buttons">
-            <button class="btn btn-sm btn-outline-secondary">Share</button>
-            <button class="btn btn-sm btn-outline-secondary">Clone Build</button>
-            <button class="btn btn-sm btn-outline-secondary">Build Settings</button>
-            <button id="checkoutBtn" class="btn btn-sm btn-outline-success">Checkout</button>
-            <button id="saveBuildBtn" class="btn btn-sm btn-outline-primary">Save Build</button>
-          </div>
         </div>
-
-        <!-- Parts List -->
-        <div class="parts-section">
-          <h4>Parts List</h4>
-          <div class="parts-list" id="partsList">
-            <!-- Parts will be rendered here -->
-          </div>
+      </div>
+      <div class="dash-parts square-panel">
+        <h4>Parts List</h4>
+        <div class="parts-list" id="partsList">
+          <!-- Parts will be rendered here -->
         </div>
-
-        <!-- Additional Products -->
         <div class="additional-products">
           <h5>Additional Products</h5>
           <div class="additional-buttons">
@@ -106,10 +104,11 @@
             <button class="btn btn-sm btn-outline-secondary">Network Card</button>
           </div>
         </div>
-      </section>
+      </div>
 
-      <aside class="dashboard-right-column">
-        <section class="build-visualizer square-panel">
+      <!-- div4: 2D Rig Illustration -->
+      <div class="dash-rig square-panel">
+        <section class="build-visualizer">
           <p class="visualizer-kicker">Build Preview</p>
           <h4>2D Rig Illustration</h4>
           <p id="buildVisualizerHint" class="visualizer-hint">Select components from the left panel to light up matching parts in the model on the right.</p>
@@ -167,7 +166,8 @@
 
           <ul id="buildVisualizerList" class="visualizer-list"></ul>
         </section>
-      </aside>
+      </div>
+
     </div>
   </div>
 
