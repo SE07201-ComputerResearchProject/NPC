@@ -2,7 +2,7 @@ import express from 'express';
 import Build from '../models/Build.js';
 import Cart from '../models/Cart.js';
 import Order from '../models/Order.js';
-import { requireAuth } from '../middleware/adminMiddleware.js';
+import { requireAdmin, requireAuth } from '../middleware/adminMiddleware.js';
 import { loadOrderForCurrentUserOrAdmin, validateCheckoutSource, validateOrderIdParam } from '../middleware/commerceMiddleware.js';
 import { buildPartsToItems, calculateItemsTotal, hasAnyBuildParts } from '../utils/commerceUtils.js';
 
@@ -23,6 +23,42 @@ function serializeOrder(order) {
     updatedAt: order.updatedAt || null,
   };
 }
+
+function serializeAdminOrder(order) {
+  return {
+    id: order._id,
+    source: order.source,
+    buildName: order.buildName || '',
+    items: order.items || [],
+    totalAmount: order.totalAmount || 0,
+    currency: order.currency || 'VND',
+    status: order.status,
+    orderInfo: order.orderInfo || '',
+    payment: order.payment || {},
+    createdAt: order.createdAt || null,
+    updatedAt: order.updatedAt || null,
+    user: {
+      id: order.user?._id || null,
+      username: order.user?.username || '',
+      email: order.user?.email || '',
+      fullName: order.user?.fullName || '',
+      role: order.user?.role || '',
+    },
+  };
+}
+
+router.get('/admin/list', requireAdmin, async (req, res) => {
+  try {
+    const orders = await Order.find({})
+      .populate('user', 'username email fullName role')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.status(200).json(orders.map(serializeAdminOrder));
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to fetch admin order list', error: error.message });
+  }
+});
 
 router.get('/me', requireAuth, async (req, res) => {
   try {

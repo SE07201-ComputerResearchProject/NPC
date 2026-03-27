@@ -123,11 +123,28 @@
   justify-content: flex-end;
 }
 
-.admin-console-grid {
-  display: grid;
-  grid-template-columns: 1.45fr minmax(260px, 0.9fr) minmax(260px, 0.95fr);
-  gap: 16px;
+.admin-console-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-access-strip {
+  border-left: 4px solid rgba(13, 110, 253, 0.35);
+}
+
+.admin-console-showcase {
+  display: flex;
+  gap: 14px;
   align-items: stretch;
+}
+
+.admin-console-focus {
+  flex: 1.25;
+}
+
+.admin-console-metrics {
+  flex: 1;
 }
 
 .admin-access-card,
@@ -193,7 +210,7 @@
 
 .admin-metric-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -244,6 +261,25 @@
   box-shadow: 0 16px 36px rgba(0,0,0,0.08);
 }
 
+.admin-side-nav-clusters {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-side-nav-group {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.55);
+}
+
+.admin-side-nav-group-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
 .admin-side-nav-list {
   display: grid;
   gap: 10px;
@@ -291,6 +327,11 @@ body.bg-dark .admin-side-nav-btn {
   color: #e8e8e8;
 }
 
+body.bg-dark .admin-side-nav-group {
+  border-color: rgba(255,255,255,0.1);
+  background: rgba(10,10,10,0.42);
+}
+
 body.bg-dark .admin-side-nav-btn.is-active {
   border-color: rgba(110, 168, 254, 0.8);
   background: rgba(13, 110, 253, 0.22);
@@ -308,6 +349,164 @@ body.bg-dark .admin-side-nav-meta {
 .logs-toolbar {
   grid-template-columns: minmax(220px, 1fr) 170px 220px auto auto;
   align-items: center;
+}
+
+.orders-toolbar {
+  grid-template-columns: minmax(260px, 1fr) 180px 180px;
+  align-items: center;
+}
+
+.order-customer,
+.order-items {
+  display: grid;
+  gap: 2px;
+}
+
+.order-customer strong,
+.order-items strong {
+  font-size: 0.95rem;
+}
+
+.order-customer span,
+.order-items span {
+  color: #6c757d;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.order-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.order-status-badge.paid {
+  background: #e8f6e8;
+  color: #1f6a2a;
+}
+
+.order-status-badge.pending {
+  background: #fff4db;
+  color: #8b5e09;
+}
+
+.order-status-badge.failed,
+.order-status-badge.cancelled {
+  background: #ffe9e9;
+  color: #8b1f1f;
+}
+
+.order-detail-panel {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.88);
+}
+
+.order-detail-empty {
+  color: #6c757d;
+}
+
+.order-detail-meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  font-size: 14px;
+}
+
+.order-detail-note {
+  margin: 12px 0;
+  color: #4d5a66;
+}
+
+.order-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.order-detail-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.78);
+}
+
+.order-detail-card h4 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.analytics-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.analytics-kpi-card {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(244,247,250,0.94));
+}
+
+.analytics-kpi-card strong {
+  display: block;
+  font-size: clamp(1.35rem, 2.1vw, 1.9rem);
+  line-height: 1.1;
+}
+
+.analytics-kpi-card p {
+  margin: 8px 0 0;
+  color: #6c757d;
+  font-size: 13px;
+}
+
+.analytics-panels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.analytics-list {
+  display: grid;
+  gap: 10px;
+}
+
+.analytics-list-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.78);
+}
+
+.analytics-list-item strong {
+  font-size: 0.95rem;
+}
+
+.analytics-list-item span {
+  color: #6c757d;
+  font-size: 13px;
+}
+
+.analytics-empty {
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px dashed rgba(0,0,0,0.12);
+  color: #6c757d;
+  text-align: center;
 }
 
 @media (max-width: 1100px) {
@@ -427,11 +626,56 @@ body.bg-dark .admin-metric-card {
   background: linear-gradient(180deg, rgba(42,42,42,0.92), rgba(23,23,23,0.94));
 }
 
+body.bg-dark .analytics-kpi-card,
+body.bg-dark .analytics-list-item {
+  border-color: rgba(255,255,255,0.08);
+  background: linear-gradient(180deg, rgba(42,42,42,0.92), rgba(23,23,23,0.94));
+}
+
 body.bg-dark .admin-panel-copy,
 body.bg-dark .admin-module-rail p,
 body.bg-dark .admin-console-copy,
 body.bg-dark .admin-stage-copy {
   color: #c7d0d9;
+}
+
+body.bg-dark .order-customer span,
+body.bg-dark .order-items span,
+body.bg-dark .analytics-kpi-card p,
+body.bg-dark .analytics-list-item span,
+body.bg-dark .analytics-empty {
+  color: #b9c2cb;
+}
+
+body.bg-dark .order-detail-panel,
+body.bg-dark .order-detail-card {
+  border-color: rgba(255,255,255,0.12);
+  background: rgba(31,31,31,0.9);
+}
+
+body.bg-dark .order-detail-empty,
+body.bg-dark .order-detail-note {
+  color: #b9c2cb;
+}
+
+body.bg-dark .order-status-badge.paid {
+  background: rgba(45, 102, 52, 0.35);
+  color: #b9efc1;
+}
+
+body.bg-dark .order-status-badge.pending {
+  background: rgba(120, 88, 20, 0.36);
+  color: #ffd98a;
+}
+
+body.bg-dark .order-status-badge.failed,
+body.bg-dark .order-status-badge.cancelled {
+  background: rgba(127, 29, 29, 0.42);
+  color: #ffd0d0;
+}
+
+body.bg-dark .analytics-empty {
+  border-color: rgba(255,255,255,0.16);
 }
 
 .panel-head {
@@ -580,6 +824,10 @@ body.bg-dark .empty-state {
     grid-template-columns: 1fr;
   }
 
+  .admin-console-showcase {
+    flex-direction: column;
+  }
+
   .admin-side-nav-list {
     grid-template-columns: 1fr;
   }
@@ -623,6 +871,17 @@ body.bg-dark .empty-state {
   }
 
   .logs-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .orders-toolbar,
+  .analytics-kpi-grid,
+  .analytics-panels {
+    grid-template-columns: 1fr;
+  }
+
+  .order-detail-meta,
+  .order-detail-grid {
     grid-template-columns: 1fr;
   }
 

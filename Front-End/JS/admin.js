@@ -3,6 +3,7 @@ const USER_API_BASE = `${API_BASE}/users`;
 const PRODUCT_API_BASE = `${API_BASE}/components`;
 const LOG_API_BASE = `${API_BASE}/logs`;
 const FEATURED_BUILD_API_BASE = `${API_BASE}/featured-builds`;
+const ORDER_API_BASE = `${API_BASE}/orders`;
 
 const PRODUCT_CATEGORIES = [
   'case',
@@ -23,6 +24,8 @@ const state = {
   products: [],
   logs: [],
   featuredBuilds: [],
+  orders: [],
+  activeOrderId: null,
   editingUserId: null,
   editingProductId: null,
   editingProductImageUrls: [],
@@ -33,24 +36,40 @@ const state = {
 
 const ADMIN_MODULES = {
   usersSection: {
-    label: 'CRUD User',
+    cluster: 'Identity Model',
+    label: 'Manage User',
     description: 'Manage accounts, profile details, and role visibility from one place.',
     stageCopy: 'Create, update, search, and inspect user records inside the main dashboard area.',
   },
   productsSection: {
-    label: 'CRUD Product',
+    cluster: 'Catalog Model',
+    label: 'Manage Product',
     description: 'Update component catalog data including category, stock, pricing, and gallery images.',
     stageCopy: 'Run product CRUD operations with filters for category and keyword-driven search.',
   },
   prebuiltSection: {
-    label: 'CRUD Pre-Built',
+    cluster: 'Catalog Model',
+    label: 'Manage Pre-Built',
     description: 'Control preset PCs, tier tags, display order, and structured parts payloads.',
     stageCopy: 'Compose and maintain featured build presets through a single editing surface.',
   },
   logsSection: {
+    cluster: 'Monitoring Model',
     label: 'View Logs',
     description: 'Review recent events, isolate suspicious activity, and auto-refresh the stream.',
     stageCopy: 'Monitor the latest log entries with quick filters and activity severity markers.',
+  },
+  ordersSection: {
+    cluster: 'Sales Model',
+    label: 'View Orders',
+    description: 'Inspect who ordered, what they bought, and the current payment status.',
+    stageCopy: 'Browse all order history with filters for source, status, and customer keywords.',
+  },
+  analyticsSection: {
+    cluster: 'Sales Model',
+    label: 'Data Analyst',
+    description: 'Track paid revenue, sold units, top products, and status-level performance.',
+    stageCopy: 'Analyze live order data to understand sales output and revenue trends.',
   },
 };
 
@@ -62,6 +81,7 @@ const el = {
   adminWorkspace: document.getElementById('adminWorkspace'),
   adminUnauthorized: document.getElementById('adminUnauthorized'),
   adminNavButtons: Array.from(document.querySelectorAll('[data-admin-target]')),
+  activeModuleGroup: document.getElementById('activeModuleGroup'),
   activeModuleName: document.getElementById('activeModuleName'),
   activeModuleDescription: document.getElementById('activeModuleDescription'),
   activeModuleBadge: document.getElementById('activeModuleBadge'),
@@ -72,6 +92,8 @@ const el = {
   productsCount: document.getElementById('productsCount'),
   prebuiltCount: document.getElementById('prebuiltCount'),
   logsCount: document.getElementById('logsCount'),
+  ordersCount: document.getElementById('ordersCount'),
+  revenueCount: document.getElementById('revenueCount'),
 
   userForm: document.getElementById('userForm'),
   userId: document.getElementById('userId'),
@@ -137,11 +159,31 @@ const el = {
   reloadPrebuiltBtn: document.getElementById('reloadPrebuiltBtn'),
   prebuiltTableBody: document.querySelector('#prebuiltTable tbody'),
   prebuiltStatus: document.getElementById('prebuiltStatus'),
+
+  reloadOrdersBtn: document.getElementById('reloadOrdersBtn'),
+  orderSearch: document.getElementById('orderSearch'),
+  orderStatusFilter: document.getElementById('orderStatusFilter'),
+  orderSourceFilter: document.getElementById('orderSourceFilter'),
+  ordersTableBody: document.querySelector('#ordersTable tbody'),
+  orderStatus: document.getElementById('orderStatus'),
+  orderDetailPanel: document.getElementById('orderDetailPanel'),
+  orderDetailContent: document.getElementById('orderDetailContent'),
+
+  reloadAnalyticsBtn: document.getElementById('reloadAnalyticsBtn'),
+  analyticsRevenueValue: document.getElementById('analyticsRevenueValue'),
+  analyticsOrderCount: document.getElementById('analyticsOrderCount'),
+  analyticsUnitsSold: document.getElementById('analyticsUnitsSold'),
+  analyticsAverageOrder: document.getElementById('analyticsAverageOrder'),
+  analyticsTopItems: document.getElementById('analyticsTopItems'),
+  analyticsByStatus: document.getElementById('analyticsByStatus'),
 };
 
 function updateConsoleSurface(targetId) {
   const moduleMeta = ADMIN_MODULES[targetId] || ADMIN_MODULES.usersSection;
 
+  if (el.activeModuleGroup) {
+    el.activeModuleGroup.textContent = moduleMeta.cluster;
+  }
   if (el.activeModuleName) {
     el.activeModuleName.textContent = moduleMeta.label;
   }
@@ -175,10 +217,19 @@ function updateConsoleMetrics() {
   if (el.logsCount) {
     el.logsCount.textContent = String(state.logs.length);
   }
+  if (el.ordersCount) {
+    el.ordersCount.textContent = String(state.orders.length);
+  }
+  if (el.revenueCount) {
+    const paidRevenue = state.orders
+      .filter(order => String(order?.status || '').toLowerCase() === 'paid')
+      .reduce((sum, order) => sum + Number(order?.totalAmount || 0), 0);
+    el.revenueCount.textContent = `${Number(paidRevenue).toLocaleString()} VND`;
+  }
 }
 
 function switchAdminSection(targetId) {
-  const moduleIds = ['usersSection', 'productsSection', 'prebuiltSection', 'logsSection'];
+  const moduleIds = ['usersSection', 'productsSection', 'prebuiltSection', 'logsSection', 'ordersSection', 'analyticsSection'];
   moduleIds.forEach(id => {
     const section = document.getElementById(id);
     if (!section) return;
@@ -264,6 +315,387 @@ function formatDateTime(value) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return '-';
   return parsed.toLocaleString();
+}
+
+function formatMoney(value) {
+  const amount = Number(value || 0);
+  return `${amount.toLocaleString()} VND`;
+}
+
+function getOrderBuyerLabel(order) {
+  const fullName = String(order?.user?.fullName || '').trim();
+  const username = String(order?.user?.username || '').trim();
+  if (fullName) return fullName;
+  if (username) return username;
+  return 'Unknown user';
+}
+
+function getOrderBuyerSubLabel(order) {
+  const email = String(order?.user?.email || '').trim();
+  if (email) return email;
+  const userId = String(order?.user?.id || '').trim();
+  if (userId) return userId;
+  return '-';
+}
+
+function getOrderItemsPreview(order) {
+  const items = Array.isArray(order?.items) ? order.items : [];
+  if (!items.length) return { title: 'No items', sub: '-' };
+
+  const title = items
+    .slice(0, 2)
+    .map(item => String(item?.name || '').trim())
+    .filter(Boolean)
+    .join(', ') || 'Unnamed item';
+
+  const totalQty = items.reduce((sum, item) => sum + Number(item?.quantity || 0), 0);
+  const extra = items.length > 2 ? ` +${items.length - 2} more` : '';
+  const sub = `${totalQty} unit(s)${extra}`;
+  return { title, sub };
+}
+
+function getOrderIdentityKey(order) {
+  const id = String(order?.user?.id || '').trim();
+  if (id) return `id:${id}`;
+
+  const email = String(order?.user?.email || '').trim().toLowerCase();
+  if (email) return `email:${email}`;
+
+  const username = String(order?.user?.username || '').trim().toLowerCase();
+  if (username) return `username:${username}`;
+
+  return '';
+}
+
+function renderOrderDetailPanel(order) {
+  if (!el.orderDetailContent) return;
+
+  if (!order) {
+    el.orderDetailContent.innerHTML = 'Select an order to view customer details.';
+    return;
+  }
+
+  const buyerLabel = escapeHtml(getOrderBuyerLabel(order));
+  const buyerSub = escapeHtml(getOrderBuyerSubLabel(order));
+  const orderCode = escapeHtml(String(order?.id || '-'));
+  const createdAt = escapeHtml(formatDateTime(order?.createdAt));
+  const updatedAt = escapeHtml(formatDateTime(order?.updatedAt));
+  const source = escapeHtml(String(order?.source || '-').toUpperCase());
+  const status = escapeHtml(String(order?.status || 'pending').toUpperCase());
+  const total = escapeHtml(formatMoney(order?.totalAmount));
+  const orderInfo = escapeHtml(String(order?.orderInfo || '-'));
+
+  const items = Array.isArray(order?.items) ? order.items : [];
+  const itemsRows = items.length
+    ? items.map(item => `
+        <tr>
+          <td>${escapeHtml(String(item?.name || '-'))}</td>
+          <td>${escapeHtml(String(item?.category || '-'))}</td>
+          <td>${escapeHtml(String(item?.quantity || 0))}</td>
+          <td>${escapeHtml(formatMoney(item?.price || 0))}</td>
+        </tr>
+      `).join('')
+    : '<tr><td colspan="4" class="empty-state">No items in this order.</td></tr>';
+
+  const currentKey = getOrderIdentityKey(order);
+  const customerOrders = currentKey
+    ? state.orders.filter(item => getOrderIdentityKey(item) === currentKey)
+    : [];
+
+  const historyRows = customerOrders.length
+    ? customerOrders
+      .slice(0, 8)
+      .map(item => {
+        const isCurrent = String(item?.id || '') === String(order?.id || '');
+        const currentBadge = isCurrent ? ' (current)' : '';
+        return `
+          <tr>
+            <td>${escapeHtml(formatDateTime(item?.createdAt))}</td>
+            <td>${escapeHtml(String(item?.status || '-').toUpperCase())}</td>
+            <td>${escapeHtml(formatMoney(item?.totalAmount || 0))}</td>
+            <td>${escapeHtml(String(item?.source || '-').toUpperCase())}${currentBadge}</td>
+          </tr>
+        `;
+      }).join('')
+    : '<tr><td colspan="4" class="empty-state">No other orders found for this customer.</td></tr>';
+
+  el.orderDetailContent.innerHTML = `
+    <div class="order-detail-meta">
+      <div><strong>Customer:</strong> ${buyerLabel}</div>
+      <div><strong>Contact:</strong> ${buyerSub}</div>
+      <div><strong>Order ID:</strong> ${orderCode}</div>
+      <div><strong>Status:</strong> ${status}</div>
+      <div><strong>Source:</strong> ${source}</div>
+      <div><strong>Total:</strong> ${total}</div>
+      <div><strong>Created:</strong> ${createdAt}</div>
+      <div><strong>Updated:</strong> ${updatedAt}</div>
+    </div>
+
+    <p class="order-detail-note"><strong>Order Info:</strong> ${orderInfo}</p>
+
+    <div class="order-detail-grid">
+      <section class="order-detail-card">
+        <h4>Ordered Items</h4>
+        <div class="table-wrap">
+          <table class="table table-sm table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Category</th>
+                <th>Qty</th>
+                <th>Price</th>
+              </tr>
+            </thead>
+            <tbody>${itemsRows}</tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="order-detail-card">
+        <h4>Customer Order History</h4>
+        <div class="table-wrap">
+          <table class="table table-sm table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Status</th>
+                <th>Total</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody>${historyRows}</tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderOrdersTable(ordersToRender) {
+  if (!el.ordersTableBody) return;
+
+  if (!ordersToRender.length) {
+    el.ordersTableBody.innerHTML = '<tr><td colspan="7" class="empty-state">No orders found.</td></tr>';
+    state.activeOrderId = null;
+    renderOrderDetailPanel(null);
+    return;
+  }
+
+  el.ordersTableBody.innerHTML = ordersToRender
+    .map(order => {
+      const buyerLabel = escapeHtml(getOrderBuyerLabel(order));
+      const buyerSub = escapeHtml(getOrderBuyerSubLabel(order));
+      const source = escapeHtml(String(order?.source || '-').toUpperCase());
+      const status = String(order?.status || 'pending').toLowerCase();
+      const safeStatus = escapeHtml(status);
+      const statusClass = /^(paid|pending|failed|cancelled)$/.test(status) ? status : 'pending';
+      const createdAt = escapeHtml(formatDateTime(order?.createdAt));
+      const money = escapeHtml(formatMoney(order?.totalAmount));
+      const itemsPreview = getOrderItemsPreview(order);
+      const itemTitle = escapeHtml(itemsPreview.title);
+      const itemSub = escapeHtml(itemsPreview.sub);
+      const orderId = escapeHtml(String(order?.id || ''));
+      const isActive = String(state.activeOrderId || '') === String(order?.id || '');
+      const detailLabel = isActive ? 'Selected' : 'View';
+
+      return `
+        <tr>
+          <td>${createdAt}</td>
+          <td>
+            <div class="order-customer">
+              <strong>${buyerLabel}</strong>
+              <span>${buyerSub}</span>
+            </div>
+          </td>
+          <td>${source}</td>
+          <td>
+            <div class="order-items">
+              <strong>${itemTitle}</strong>
+              <span>${itemSub}</span>
+            </div>
+          </td>
+          <td>${money}</td>
+          <td><span class="order-status-badge ${statusClass}">${safeStatus}</span></td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary" data-action="view-order-detail" data-id="${orderId}">${detailLabel}</button>
+          </td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  const activeOrder = ordersToRender.find(item => String(item?.id || '') === String(state.activeOrderId || ''));
+  if (activeOrder) {
+    renderOrderDetailPanel(activeOrder);
+  } else {
+    state.activeOrderId = null;
+    renderOrderDetailPanel(null);
+  }
+}
+
+function handleOrdersTableClick(event) {
+  const button = event.target.closest('button[data-action="view-order-detail"]');
+  if (!button) return;
+
+  const orderId = String(button.dataset.id || '');
+  if (!orderId) return;
+
+  const selectedOrder = state.orders.find(order => String(order?.id || '') === orderId);
+  if (!selectedOrder) return;
+
+  state.activeOrderId = orderId;
+  renderOrderDetailPanel(selectedOrder);
+  filterOrders();
+}
+
+function filterOrders() {
+  const keyword = (el.orderSearch?.value || '').toLowerCase().trim();
+  const statusFilter = String(el.orderStatusFilter?.value || 'all').toLowerCase();
+  const sourceFilter = String(el.orderSourceFilter?.value || 'all').toLowerCase();
+
+  const filtered = state.orders.filter(order => {
+    const status = String(order?.status || '').toLowerCase();
+    const source = String(order?.source || '').toLowerCase();
+    const buyer = `${order?.user?.fullName || ''} ${order?.user?.username || ''} ${order?.user?.email || ''}`.toLowerCase();
+    const info = `${order?.orderInfo || ''} ${(order?.items || []).map(item => item?.name || '').join(' ')}`.toLowerCase();
+
+    const keywordMatch = !keyword || buyer.includes(keyword) || info.includes(keyword);
+    const statusMatch = statusFilter === 'all' || status === statusFilter;
+    const sourceMatch = sourceFilter === 'all' || source === sourceFilter;
+    return keywordMatch && statusMatch && sourceMatch;
+  });
+
+  renderOrdersTable(filtered);
+  if (el.orderStatus) {
+    setStatus(el.orderStatus, `Showing ${filtered.length}/${state.orders.length} order(s).`, 'ok');
+  }
+}
+
+function renderAnalyticsList(target, rows, emptyMessage) {
+  if (!target) return;
+
+  if (!rows.length) {
+    target.innerHTML = `<div class="analytics-empty">${escapeHtml(emptyMessage)}</div>`;
+    return;
+  }
+
+  target.innerHTML = rows
+    .map(row => {
+      return `
+        <div class="analytics-list-item">
+          <strong>${escapeHtml(row.title)}</strong>
+          <span>${escapeHtml(row.sub)}</span>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+function renderAnalytics() {
+  const paidOrders = state.orders.filter(order => String(order?.status || '').toLowerCase() === 'paid');
+  const paidRevenue = paidOrders.reduce((sum, order) => sum + Number(order?.totalAmount || 0), 0);
+  const unitsSold = paidOrders.reduce((sum, order) => {
+    const items = Array.isArray(order?.items) ? order.items : [];
+    return sum + items.reduce((itemSum, item) => itemSum + Number(item?.quantity || 0), 0);
+  }, 0);
+  const avgOrder = paidOrders.length ? Math.round(paidRevenue / paidOrders.length) : 0;
+
+  if (el.analyticsRevenueValue) el.analyticsRevenueValue.textContent = formatMoney(paidRevenue);
+  if (el.analyticsOrderCount) el.analyticsOrderCount.textContent = String(paidOrders.length);
+  if (el.analyticsUnitsSold) el.analyticsUnitsSold.textContent = String(unitsSold);
+  if (el.analyticsAverageOrder) el.analyticsAverageOrder.textContent = formatMoney(avgOrder);
+
+  const productMap = new Map();
+  paidOrders.forEach(order => {
+    const items = Array.isArray(order?.items) ? order.items : [];
+    items.forEach(item => {
+      const name = String(item?.name || 'Unknown item').trim() || 'Unknown item';
+      const qty = Number(item?.quantity || 0);
+      const price = Number(item?.price || 0);
+
+      const current = productMap.get(name) || { qty: 0, revenue: 0 };
+      current.qty += qty;
+      current.revenue += qty * price;
+      productMap.set(name, current);
+    });
+  });
+
+  const topItems = Array.from(productMap.entries())
+    .map(([name, stats]) => ({ name, ...stats }))
+    .sort((a, b) => {
+      if (b.qty !== a.qty) return b.qty - a.qty;
+      return b.revenue - a.revenue;
+    })
+    .slice(0, 6)
+    .map(item => ({
+      title: item.name,
+      sub: `${item.qty} unit(s) | ${formatMoney(item.revenue)}`,
+    }));
+
+  const statusMap = new Map();
+  state.orders.forEach(order => {
+    const status = String(order?.status || 'pending').toLowerCase();
+    const current = statusMap.get(status) || { count: 0, revenue: 0 };
+    current.count += 1;
+    current.revenue += Number(order?.totalAmount || 0);
+    statusMap.set(status, current);
+  });
+
+  const byStatus = Array.from(statusMap.entries())
+    .map(([status, stats]) => ({
+      status,
+      count: stats.count,
+      revenue: stats.revenue,
+    }))
+    .sort((a, b) => {
+      if (b.revenue !== a.revenue) return b.revenue - a.revenue;
+      return b.count - a.count;
+    })
+    .map(item => ({
+      title: item.status.toUpperCase(),
+      sub: `${item.count} order(s) | ${formatMoney(item.revenue)}`,
+    }));
+
+  renderAnalyticsList(el.analyticsTopItems, topItems, 'No sold item data yet.');
+  renderAnalyticsList(el.analyticsByStatus, byStatus, 'No order status data yet.');
+}
+
+async function loadOrders() {
+  if (!el.orderStatus) return;
+
+  setStatus(el.orderStatus, 'Loading orders...', 'info');
+  try {
+    const orders = await requestJson(`${ORDER_API_BASE}/admin/list`);
+    state.orders = Array.isArray(orders) ? orders : [];
+    if (state.activeOrderId) {
+      const stillExists = state.orders.some(order => String(order?.id || '') === String(state.activeOrderId));
+      if (!stillExists) {
+        state.activeOrderId = null;
+      }
+    }
+    updateConsoleMetrics();
+    filterOrders();
+    renderAnalytics();
+  } catch (error) {
+    if (isMissingRouteError(error)) {
+      setStatus(el.orderStatus, 'Admin order route is not available yet.', 'info');
+      if (el.ordersTableBody) {
+        el.ordersTableBody.innerHTML = '<tr><td colspan="7" class="empty-state">Waiting for Back-End admin order route.</td></tr>';
+      }
+      state.activeOrderId = null;
+      renderOrderDetailPanel(null);
+      renderAnalyticsList(el.analyticsTopItems, [], 'No sold item data yet.');
+      renderAnalyticsList(el.analyticsByStatus, [], 'No order status data yet.');
+      return;
+    }
+
+    setStatus(el.orderStatus, toErrorMessage(error, 'Failed to load orders.'), 'error');
+    if (el.ordersTableBody) {
+      el.ordersTableBody.innerHTML = '<tr><td colspan="7" class="empty-state">Cannot load orders.</td></tr>';
+    }
+    state.activeOrderId = null;
+    renderOrderDetailPanel(null);
+  }
 }
 
 function isSuspiciousLog(log) {
@@ -1232,6 +1664,25 @@ function bindEvents() {
     el.prebuiltTableBody.addEventListener('click', handlePrebuiltTableClick);
   }
 
+  if (el.reloadOrdersBtn) {
+    el.reloadOrdersBtn.addEventListener('click', loadOrders);
+  }
+  if (el.orderSearch) {
+    el.orderSearch.addEventListener('input', filterOrders);
+  }
+  if (el.orderStatusFilter) {
+    el.orderStatusFilter.addEventListener('change', filterOrders);
+  }
+  if (el.orderSourceFilter) {
+    el.orderSourceFilter.addEventListener('change', filterOrders);
+  }
+  if (el.ordersTableBody) {
+    el.ordersTableBody.addEventListener('click', handleOrdersTableClick);
+  }
+  if (el.reloadAnalyticsBtn) {
+    el.reloadAnalyticsBtn.addEventListener('click', renderAnalytics);
+  }
+
   el.adminNavButtons.forEach(button => {
     button.addEventListener('click', () => {
       const target = button.dataset.adminTarget;
@@ -1268,9 +1719,10 @@ async function init() {
   updateConsoleMetrics();
   bindEvents();
   switchAdminSection('usersSection');
+  renderOrderDetailPanel(null);
 
   setStatus(el.globalStatus, 'Admin page ready.', 'info');
-  await Promise.all([loadUsers(), loadProducts(), loadFeaturedBuilds(), loadLogs()]);
+  await Promise.all([loadUsers(), loadProducts(), loadFeaturedBuilds(), loadLogs(), loadOrders()]);
 }
 
 init();

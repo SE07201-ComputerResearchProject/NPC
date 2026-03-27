@@ -46,28 +46,69 @@
           <p class="admin-panel-copy">Switch between all four management flows without leaving the current workspace.</p>
         </div>
 
-        <div class="admin-side-nav-list" role="tablist" aria-label="Admin panel sections">
-          <button class="admin-side-nav-btn is-active" type="button" data-admin-target="usersSection">
-            <span class="admin-side-nav-label">CRUD User</span>
-            <span class="admin-side-nav-meta">Accounts, profile fields, permission checks</span>
-          </button>
-          <button class="admin-side-nav-btn" type="button" data-admin-target="productsSection">
-            <span class="admin-side-nav-label">CRUD Product</span>
-            <span class="admin-side-nav-meta">Components, stock, price, images</span>
-          </button>
-          <button class="admin-side-nav-btn" type="button" data-admin-target="prebuiltSection">
-            <span class="admin-side-nav-label">CRUD Pre-Built</span>
-            <span class="admin-side-nav-meta">Preset PCs, tiers, ordering, parts JSON</span>
-          </button>
-          <button class="admin-side-nav-btn" type="button" data-admin-target="logsSection">
-            <span class="admin-side-nav-label">View Logs</span>
-            <span class="admin-side-nav-meta">Activity stream, suspicious events, refresh</span>
-          </button>
+        <div class="admin-side-nav-clusters" role="tablist" aria-label="Admin panel sections">
+          <section class="admin-side-nav-group" aria-label="Identity Model">
+            <div class="admin-side-nav-group-head">
+              <h3>Identity Model</h3>
+            </div>
+            <div class="admin-side-nav-list">
+              <button class="admin-side-nav-btn is-active" type="button" data-admin-target="usersSection">
+                <span class="admin-side-nav-label">Manage User</span>
+                <span class="admin-side-nav-meta">Accounts, profile fields, permission checks</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="admin-side-nav-group" aria-label="Catalog Model">
+            <div class="admin-side-nav-group-head">
+              <h3>Catalog Model</h3>
+            </div>
+            <div class="admin-side-nav-list">
+              <button class="admin-side-nav-btn" type="button" data-admin-target="productsSection">
+                <span class="admin-side-nav-label">Manage Product</span>
+                <span class="admin-side-nav-meta">Components, stock, price, images</span>
+              </button>
+              <button class="admin-side-nav-btn" type="button" data-admin-target="prebuiltSection">
+                <span class="admin-side-nav-label">Manage Pre-Built</span>
+                <span class="admin-side-nav-meta">Preset PCs, tiers, ordering, parts JSON</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="admin-side-nav-group" aria-label="Monitoring Model">
+            <div class="admin-side-nav-group-head">
+              <h3>Monitoring Model</h3>
+            </div>
+            <div class="admin-side-nav-list">
+              <button class="admin-side-nav-btn" type="button" data-admin-target="logsSection">
+                <span class="admin-side-nav-label">View Logs</span>
+                <span class="admin-side-nav-meta">Activity stream, suspicious events, refresh</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="admin-side-nav-group" aria-label="Sales Model">
+            <div class="admin-side-nav-group-head">
+              <h3>Sales Model</h3>
+            </div>
+            <div class="admin-side-nav-list">
+              <button class="admin-side-nav-btn" type="button" data-admin-target="ordersSection">
+                <span class="admin-side-nav-label">View Orders</span>
+                <span class="admin-side-nav-meta">Who ordered, what they bought, payment status</span>
+              </button>
+              <button class="admin-side-nav-btn" type="button" data-admin-target="analyticsSection">
+                <span class="admin-side-nav-label">Data Analyst</span>
+                <span class="admin-side-nav-meta">Revenue, sold units, top products, status breakdown</span>
+              </button>
+            </div>
+          </section>
         </div>
 
         <div class="admin-module-rail">
-          <span class="admin-module-rail-label">Selected</span>
-          <strong id="activeModuleName">CRUD User</strong>
+          <span class="admin-module-rail-label">Selected Cluster</span>
+          <strong id="activeModuleGroup">Identity Model</strong>
+          <span class="admin-module-rail-label">Selected Surface</span>
+          <strong id="activeModuleName">Manage User</strong>
           <p id="activeModuleDescription">Manage accounts, profile details, and role visibility from one place.</p>
         </div>
       </aside>
@@ -76,7 +117,7 @@
         <div class="admin-console-head">
           <div>
             <p class="products-kicker">Management Console</p>
-            <h1>Admin CRUD Dashboard</h1>
+            <h1>Admin Dashboard</h1>
             <p class="admin-subtitle">A centralized admin grid: module selector on the left, management console on top, and the active CRUD dashboard on the right.</p>
           </div>
           <div class="admin-hero-actions">
@@ -85,8 +126,8 @@
           </div>
         </div>
 
-        <div class="admin-console-grid">
-          <section id="adminAccessPanel" class="admin-access-card">
+        <div class="admin-console-stack">
+          <section id="adminAccessPanel" class="admin-access-card admin-access-strip">
             <div class="admin-console-section-head">
               <h2>Admin Access</h2>
               <span class="admin-console-chip">Stored locally</span>
@@ -104,43 +145,6 @@
             <div id="globalStatus" class="status-box" role="status" aria-live="polite"></div>
           </section>
 
-          <section class="admin-console-card admin-console-focus">
-            <div class="admin-console-section-head">
-              <h2>Active Surface</h2>
-              <span id="activeModuleBadge" class="admin-console-chip">CRUD User</span>
-            </div>
-            <p id="activeModuleConsoleCopy" class="admin-console-copy">Manage user records, update profile fields, and inspect account data without leaving the main grid.</p>
-            <div class="admin-console-tags">
-              <span class="admin-console-tag">Single-page workflow</span>
-              <span class="admin-console-tag">Live API data</span>
-              <span class="admin-console-tag">CRUD preserved</span>
-            </div>
-          </section>
-
-          <section class="admin-console-card admin-console-metrics">
-            <div class="admin-console-section-head">
-              <h2>Live Counters</h2>
-              <span class="admin-console-chip">Snapshot</span>
-            </div>
-            <div class="admin-metric-grid">
-              <article class="admin-metric-card">
-                <span class="admin-metric-label">Users</span>
-                <strong id="usersCount">0</strong>
-              </article>
-              <article class="admin-metric-card">
-                <span class="admin-metric-label">Products</span>
-                <strong id="productsCount">0</strong>
-              </article>
-              <article class="admin-metric-card">
-                <span class="admin-metric-label">Pre-Built</span>
-                <strong id="prebuiltCount">0</strong>
-              </article>
-              <article class="admin-metric-card">
-                <span class="admin-metric-label">Logs</span>
-                <strong id="logsCount">0</strong>
-              </article>
-            </div>
-          </section>
         </div>
       </section>
 
@@ -155,7 +159,7 @@
           <div class="admin-stage-head square-panel">
             <div>
               <p class="products-kicker">Dashboard Surface</p>
-              <h2 id="stageModuleTitle">CRUD User</h2>
+              <h2 id="stageModuleTitle">Manage Users</h2>
               <p id="stageModuleDescription" class="admin-stage-copy">Create, update, search, and inspect user records inside the main dashboard area.</p>
             </div>
           </div>
@@ -163,7 +167,7 @@
           <div class="admin-content-stack">
       <article class="square-panel admin-panel admin-module is-active" id="usersSection">
         <div class="panel-head">
-          <h2>User CRUD</h2>
+          <h2>Manage User</h2>
           <button id="reloadUsersBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Users</button>
         </div>
 
@@ -237,7 +241,7 @@
 
       <article class="square-panel admin-panel admin-module" id="productsSection">
         <div class="panel-head">
-          <h2>Products CRUD</h2>
+          <h2>Manage Products</h2>
           <button id="reloadProductsBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Products</button>
         </div>
 
@@ -316,7 +320,7 @@
 
       <article class="square-panel admin-panel admin-module" id="prebuiltSection">
         <div class="panel-head">
-          <h2>Pre-Built PC CRUD</h2>
+          <h2>Manage Pre-Built PC</h2>
           <button id="reloadPrebuiltBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Pre-Built</button>
         </div>
 
@@ -429,6 +433,97 @@
             </thead>
             <tbody></tbody>
           </table>
+        </div>
+      </article>
+
+      <article class="square-panel admin-panel admin-module" id="ordersSection">
+        <div class="panel-head">
+          <h2>View Orders</h2>
+          <button id="reloadOrdersBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Orders</button>
+        </div>
+
+        <div class="toolbar-row orders-toolbar">
+          <input id="orderSearch" class="form-control" placeholder="Search customer, email, order info, item" />
+          <select id="orderStatusFilter" class="form-select">
+            <option value="all" selected>All status</option>
+            <option value="paid">Paid</option>
+            <option value="pending">Pending</option>
+            <option value="failed">Failed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <select id="orderSourceFilter" class="form-select">
+            <option value="all" selected>All sources</option>
+            <option value="cart">Cart</option>
+            <option value="build">Build</option>
+          </select>
+        </div>
+
+        <div id="orderStatus" class="status-box" role="status" aria-live="polite"></div>
+
+        <div class="table-wrap">
+          <table class="table table-hover align-middle" id="ordersTable">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Customer</th>
+                <th>Source</th>
+                <th>Items</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Detail</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <section class="order-detail-panel" id="orderDetailPanel">
+          <div class="panel-head">
+            <h3>Order Detail</h3>
+          </div>
+          <div id="orderDetailContent" class="order-detail-empty">Select an order to view customer details.</div>
+        </section>
+      </article>
+
+      <article class="square-panel admin-panel admin-module" id="analyticsSection">
+        <div class="panel-head">
+          <h2>Data Analyst</h2>
+          <button id="reloadAnalyticsBtn" type="button" class="btn btn-outline-primary btn-sm">Recompute</button>
+        </div>
+
+        <div class="analytics-kpi-grid">
+          <article class="analytics-kpi-card">
+            <strong id="analyticsRevenueValue">0 VND</strong>
+            <p>Total paid revenue</p>
+          </article>
+          <article class="analytics-kpi-card">
+            <strong id="analyticsOrderCount">0</strong>
+            <p>Paid orders</p>
+          </article>
+          <article class="analytics-kpi-card">
+            <strong id="analyticsUnitsSold">0</strong>
+            <p>Units sold</p>
+          </article>
+          <article class="analytics-kpi-card">
+            <strong id="analyticsAverageOrder">0 VND</strong>
+            <p>Average order value</p>
+          </article>
+        </div>
+
+        <div class="analytics-panels">
+          <section class="crud-form">
+            <div class="panel-head">
+              <h3>Top Sold Items</h3>
+            </div>
+            <div id="analyticsTopItems" class="analytics-list"></div>
+          </section>
+
+          <section class="crud-form">
+            <div class="panel-head">
+              <h3>Revenue By Status</h3>
+            </div>
+            <div id="analyticsByStatus" class="analytics-list"></div>
+          </section>
         </div>
       </article>
 
