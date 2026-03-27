@@ -98,6 +98,26 @@ const userSchema = new mongoose.Schema({
       default: '',
     },
   },
+  mfa: {
+    enabled: {
+      type: Boolean,
+      default: false,
+    },
+    secret: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    tempSecret: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    enabledAt: {
+      type: Date,
+      default: null,
+    },
+  },
   createdAt: {
     type: Date,
     default: Date.now,

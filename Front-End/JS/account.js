@@ -22,6 +22,7 @@ function switchTab(tab) {
   const tabs = [
     { key: 'userInfo',        panelId: 'tabUserInfo',        navId: 'navUserInfo' },
     { key: 'addressBilling',  panelId: 'tabAddressBilling',  navId: 'navAddressBilling' },
+    { key: 'security',        panelId: 'tabSecurity',        navId: 'navSecurity' },
   ];
 
   tabs.forEach(({ key, panelId, navId }) => {
@@ -33,6 +34,11 @@ function switchTab(tab) {
     panel.classList.toggle('active', isActive);
     btn.classList.toggle('active', isActive);
   });
+
+  // Load MFA status when switching to security tab
+  if (tab === 'security') {
+    loadMfaStatus();
+  }
 }
 
 // ── Billing address toggle ───────────────────────────────────────────────────
@@ -390,6 +396,176 @@ async function saveAddressInfo(e) {
   }
 }
 
+// ── MFA Functions (Tab 3: Security) ─────────────────────────────────────────
+
+async function loadMfaStatus() {
+  try {
+    const response = await fetch(`${ACCOUNT_USER_API_BASE_URL}/mfa/status`, {
+      headers: buildAuthHeaders(),
+    });
+    const data = await response.json();
+
+    if (response.status === 401 || response.status === 403) {
+      showPopup('Session expired. Please log in again.');
+      logout();
+      return;
+    }
+
+    if (!response.ok) {
+      showPopup('Failed to load MFA status');
+      return;
+    }
+
+    const mfaEnabled = data.enabled || false;
+    updateMfaUI(mfaEnabled);
+  } catch {
+    showPopup('Cannot connect to server.');
+  }
+}
+
+function updateMfaUI(enabled) {
+  const statusText = document.getElementById('mfaStatusText');
+  const enableSection = document.getElementById('mfaEnableSection');
+  const disableSection = document.getElementById('mfaDisableSection');
+  const actionContainer = document.getElementById('mfaActionContainer');
+
+  if (!statusText) return;
+
+  if (enabled) {
+    statusText.innerHTML = '<i data-lucide="check-circle" style="width:16px;height:16px;color:#28a745;vertical-align:-2px;margin-right:4px;"></i> Enabled';
+    if (enableSection) enableSection.style.display = 'none';
+    if (disableSection) disableSection.style.display = '';
+    actionContainer.innerHTML = '';
+  } else {
+    statusText.innerHTML = '<i data-lucide="alert-circle" style="width:16px;height:16px;color:#ffc107;vertical-align:-2px;margin-right:4px;"></i> Disabled';
+    if (enableSection) enableSection.style.display = '';
+    if (disableSection) disableSection.style.display = 'none';
+    actionContainer.innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary" onclick="startMfaSetup()">Enable 2FA</button>';
+  }
+
+  lucide.createIcons();
+}
+
+async function startMfaSetup() {
+  try {
+    const response = await fetch(`${ACCOUNT_USER_API_BASE_URL}/mfa/setup`, {
+      method: 'POST',
+      headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+    });
+    const data = await response.json();
+
+    if (response.status === 401 || response.status === 403) {
+      showPopup('Session expired. Please log in again.');
+      logout();
+      return;
+    }
+
+    if (!response.ok) {
+      showPopup(data.message || 'Failed to start MFA setup');
+      return;
+    }
+
+    // Display QR code
+    const qrCodeDisplay = document.getElementById('qrCodeDisplay');
+    const setupKey = document.getElementById('setupKey');
+
+    if (qrCodeDisplay) {
+      qrCodeDisplay.innerHTML = '';
+      if (window.QRCode) {
+        new window.QRCode(qrCodeDisplay, {
+          text: data.otpauthUrl,
+          width: 200,
+          height: 200,
+          colorDark: '#000000',
+          colorLight: '#ffffff'
+        });
+      } else {
+        qrCodeDisplay.innerHTML = '<p class="text-danger">QR Code library not loaded</p>';
+      }
+    }
+
+    if (setupKey) {
+      setupKey.textContent = data.secret || '';
+    }
+
+    showPopup('Scan the QR code with your Google Authenticator app');
+  } catch {
+    showPopup('Cannot connect to server.');
+  }
+}
+
+async function verifyMfaSetup(e) {
+  e.preventDefault();
+
+  const code = (document.getElementById('mfaVerifyCode')?.value || '').trim();
+  if (!code || code.length !== 6) {
+    showPopup('Please enter a valid 6-digit code');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${ACCOUNT_USER_API_BASE_URL}/mfa/verify-setup`, {
+      method: 'POST',
+      headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ otpToken: code }),
+    });
+    const data = await response.json();
+
+    if (response.status === 401 || response.status === 403) {
+      showPopup('Session expired. Please log in again.');
+      logout();
+      return;
+    }
+
+    if (!response.ok) {
+      showPopup(data.message || 'Invalid code');
+      return;
+    }
+
+    showPopup('Two-Factor Authentication enabled successfully!');
+    document.getElementById('mfaVerifyCode').value = '';
+    updateMfaUI(true);
+  } catch {
+    showPopup('Cannot connect to server.');
+  }
+}
+
+async function disableMfa(e) {
+  e.preventDefault();
+
+  const code = (document.getElementById('mfaDisableCode')?.value || '').trim();
+  if (!code || code.length !== 6) {
+    showPopup('Please enter a valid 6-digit code');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${ACCOUNT_USER_API_BASE_URL}/mfa/disable`, {
+      method: 'POST',
+      headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ otpToken: code }),
+    });
+    const data = await response.json();
+
+    if (response.status === 401 || response.status === 403) {
+      showPopup('Session expired. Please log in again.');
+      logout();
+      return;
+    }
+
+    if (!response.ok) {
+      showPopup(data.message || 'Invalid code');
+      return;
+    }
+
+    showPopup('Two-Factor Authentication disabled successfully!');
+    document.getElementById('mfaDisableCode').value = '';
+    updateMfaUI(false);
+  } catch {
+    showPopup('Cannot connect to server.');
+  }
+}
+
 // ── DOMContentLoaded entry point ─────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -418,6 +594,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const addressForm = document.getElementById('addressForm');
   if (addressForm) addressForm.addEventListener('submit', saveAddressInfo);
+
+  const mfaVerifyForm = document.getElementById('mfaVerifyForm');
+  if (mfaVerifyForm) mfaVerifyForm.addEventListener('submit', verifyMfaSetup);
+
+  const mfaDisableForm = document.getElementById('mfaDisableForm');
+  if (mfaDisableForm) mfaDisableForm.addEventListener('submit', disableMfa);
 
   // Initialise billing fields state (hidden by default since checkbox starts checked)
   toggleBillingFields(true);

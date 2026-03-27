@@ -38,7 +38,13 @@
   <div class="background retrowave"></div>
 
   <main class="admin-page">
-    <section class="admin-shell parent">
+    <section id="adminDeniedFull" class="square-panel admin-denied-full d-none">
+      <h1>Admin Only</h1>
+      <p>Bạn không có quyền truy cập trang này. Vui lòng đăng nhập bằng tài khoản admin.</p>
+      <a class="btn btn-primary" href="index.html">Quay về trang chủ</a>
+    </section>
+
+    <section id="adminShell" class="admin-shell parent d-none">
       <aside class="square-panel admin-modules-panel div1" aria-label="Admin modules">
         <div class="admin-panel-intro">
           <p class="products-kicker">Modules</p>
@@ -70,7 +76,7 @@
               </button>
               <button class="admin-side-nav-btn" type="button" data-admin-target="prebuiltSection">
                 <span class="admin-side-nav-label">Manage Pre-Built</span>
-                <span class="admin-side-nav-meta">Preset PCs, tiers, ordering, parts JSON</span>
+                <span class="admin-side-nav-meta">Preset PCs, tiers, ordering, parts editor</span>
               </button>
             </div>
           </section>
@@ -314,7 +320,7 @@
               </tr>
             </thead>
             <tbody></tbody>
-          </table>
+          </table>xx
         </div>
       </article>
 
@@ -356,8 +362,13 @@
               <input id="prebuiltEstimatedPrice" class="form-control" placeholder="~50,000,000 VND" />
             </div>
             <div class="col-12">
-              <label for="prebuiltPartsJson" class="form-label">Parts JSON</label>
-              <textarea id="prebuiltPartsJson" class="form-control" rows="6" placeholder='{"cpu":{"name":"Intel Core i7-13700K"},"gpu":{"name":"RTX 4070 SUPER"}}'></textarea>
+              <div class="parts-builder-label-row">
+                <label class="form-label mb-0">Parts</label>
+                <button type="button" id="addPartRowBtn" class="btn btn-outline-secondary btn-sm">
+                  <i data-lucide="plus" style="width:13px;height:13px;vertical-align:-2px;"></i> Add Part
+                </button>
+              </div>
+              <div id="partsBuilderRows" class="parts-builder-rows"></div>
             </div>
           </div>
           <div class="form-actions">

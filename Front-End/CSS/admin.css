@@ -4,6 +4,28 @@
   padding: 96px 20px 120px;
 }
 
+.admin-denied-full {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 34px 28px;
+  border-left: 6px solid #dc3545;
+  text-align: center;
+}
+
+.admin-denied-full h1 {
+  margin: 0 0 10px;
+  font-size: clamp(1.6rem, 3.4vw, 2.2rem);
+}
+
+.admin-denied-full p {
+  margin: 0 0 16px;
+  color: #6c757d;
+}
+
+body.bg-dark .admin-denied-full p {
+  color: #aeb8c2;
+}
+
 .parent {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -704,6 +726,57 @@ body.bg-dark .crud-form {
 }
 
 .form-actions {
+
+  /* Parts builder — replaces raw JSON textarea */
+  .parts-builder-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .parts-builder-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .parts-builder-rows:empty::before {
+    content: 'No parts added yet — click "Add Part" to begin.';
+    display: block;
+    padding: 14px;
+    border-radius: 8px;
+    border: 1px dashed rgba(0,0,0,0.16);
+    color: #9ca3af;
+    font-size: 0.875rem;
+    text-align: center;
+  }
+
+  body.bg-dark .parts-builder-rows:empty::before {
+    border-color: rgba(255,255,255,0.14);
+    color: #6b7280;
+  }
+
+  .parts-builder-row {
+    display: grid;
+    grid-template-columns: 150px 1fr 36px;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+
+  body.bg-dark .parts-builder-row {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.1);
+  }
+
+  .parts-row-remove {
+    padding: 4px 8px;
+    flex-shrink: 0;
+  }
   margin-top: 12px;
   display: flex;
   gap: 10px;

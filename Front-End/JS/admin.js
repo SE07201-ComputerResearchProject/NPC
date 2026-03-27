@@ -74,6 +74,8 @@ const ADMIN_MODULES = {
 };
 
 const el = {
+  adminShell: document.getElementById('adminShell'),
+  adminDeniedFull: document.getElementById('adminDeniedFull'),
   adminUserId: document.getElementById('adminUserId'),
   saveAdminIdBtn: document.getElementById('saveAdminIdBtn'),
   globalStatus: document.getElementById('globalStatus'),
@@ -152,7 +154,8 @@ const el = {
   prebuiltTier: document.getElementById('prebuiltTier'),
   prebuiltEstimatedPrice: document.getElementById('prebuiltEstimatedPrice'),
   prebuiltOrder: document.getElementById('prebuiltOrder'),
-  prebuiltPartsJson: document.getElementById('prebuiltPartsJson'),
+  partsBuilderRows: document.getElementById('partsBuilderRows'),
+  addPartRowBtn: document.getElementById('addPartRowBtn'),
   prebuiltSubmitBtn: document.getElementById('prebuiltSubmitBtn'),
   prebuiltResetBtn: document.getElementById('prebuiltResetBtn'),
   prebuiltSearch: document.getElementById('prebuiltSearch'),
@@ -222,7 +225,7 @@ function updateConsoleMetrics() {
   }
   if (el.revenueCount) {
     const paidRevenue = state.orders
-      .filter(order => String(order?.status || '').toLowerCase() === 'paid')
+      .filter(order => normalizeOrderStatus(order) === 'paid')
       .reduce((sum, order) => sum + Number(order?.totalAmount || 0), 0);
     el.revenueCount.textContent = `${Number(paidRevenue).toLocaleString()} VND`;
   }
@@ -282,6 +285,12 @@ function getAuthStateSafe() {
 }
 
 function setWorkspaceAccess(isAllowed) {
+  if (el.adminShell) {
+    el.adminShell.classList.toggle('d-none', !isAllowed);
+  }
+  if (el.adminDeniedFull) {
+    el.adminDeniedFull.classList.toggle('d-none', isAllowed);
+  }
   if (el.adminAccessPanel) {
     el.adminAccessPanel.classList.toggle('d-none', !isAllowed);
   }
@@ -320,6 +329,27 @@ function formatDateTime(value) {
 function formatMoney(value) {
   const amount = Number(value || 0);
   return `${amount.toLocaleString()} VND`;
+}
+
+function normalizeOrderStatus(order) {
+  const raw = String(order?.status || '').toLowerCase().trim();
+  const responseCode = String(order?.payment?.responseCode || '').trim();
+
+  if (raw === 'paid') return 'paid';
+  if (raw === 'pending') return 'pending';
+  if (raw === 'failed') return 'failed';
+  if (raw === 'cancelled' || raw === 'canceled' || raw === 'cancel') return 'cancelled';
+  if (['failure', 'declined', 'error', 'payment_failed', 'failed_payment'].includes(raw)) return 'failed';
+
+  if (responseCode && responseCode !== '00') {
+    return 'failed';
+  }
+
+  if (order?.payment?.paidAt) {
+    return 'paid';
+  }
+
+  return 'pending';
 }
 
 function getOrderBuyerLabel(order) {
@@ -381,7 +411,7 @@ function renderOrderDetailPanel(order) {
   const createdAt = escapeHtml(formatDateTime(order?.createdAt));
   const updatedAt = escapeHtml(formatDateTime(order?.updatedAt));
   const source = escapeHtml(String(order?.source || '-').toUpperCase());
-  const status = escapeHtml(String(order?.status || 'pending').toUpperCase());
+  const status = escapeHtml(normalizeOrderStatus(order).toUpperCase());
   const total = escapeHtml(formatMoney(order?.totalAmount));
   const orderInfo = escapeHtml(String(order?.orderInfo || '-'));
 
@@ -411,7 +441,7 @@ function renderOrderDetailPanel(order) {
         return `
           <tr>
             <td>${escapeHtml(formatDateTime(item?.createdAt))}</td>
-            <td>${escapeHtml(String(item?.status || '-').toUpperCase())}</td>
+            <td>${escapeHtml(normalizeOrderStatus(item).toUpperCase())}</td>
             <td>${escapeHtml(formatMoney(item?.totalAmount || 0))}</td>
             <td>${escapeHtml(String(item?.source || '-').toUpperCase())}${currentBadge}</td>
           </tr>
@@ -486,9 +516,9 @@ function renderOrdersTable(ordersToRender) {
       const buyerLabel = escapeHtml(getOrderBuyerLabel(order));
       const buyerSub = escapeHtml(getOrderBuyerSubLabel(order));
       const source = escapeHtml(String(order?.source || '-').toUpperCase());
-      const status = String(order?.status || 'pending').toLowerCase();
+      const status = normalizeOrderStatus(order);
       const safeStatus = escapeHtml(status);
-      const statusClass = /^(paid|pending|failed|cancelled)$/.test(status) ? status : 'pending';
+      const statusClass = status;
       const createdAt = escapeHtml(formatDateTime(order?.createdAt));
       const money = escapeHtml(formatMoney(order?.totalAmount));
       const itemsPreview = getOrderItemsPreview(order);
@@ -554,7 +584,7 @@ function filterOrders() {
   const sourceFilter = String(el.orderSourceFilter?.value || 'all').toLowerCase();
 
   const filtered = state.orders.filter(order => {
-    const status = String(order?.status || '').toLowerCase();
+    const status = normalizeOrderStatus(order);
     const source = String(order?.source || '').toLowerCase();
     const buyer = `${order?.user?.fullName || ''} ${order?.user?.username || ''} ${order?.user?.email || ''}`.toLowerCase();
     const info = `${order?.orderInfo || ''} ${(order?.items || []).map(item => item?.name || '').join(' ')}`.toLowerCase();
@@ -592,7 +622,7 @@ function renderAnalyticsList(target, rows, emptyMessage) {
 }
 
 function renderAnalytics() {
-  const paidOrders = state.orders.filter(order => String(order?.status || '').toLowerCase() === 'paid');
+  const paidOrders = state.orders.filter(order => normalizeOrderStatus(order) === 'paid');
   const paidRevenue = paidOrders.reduce((sum, order) => sum + Number(order?.totalAmount || 0), 0);
   const unitsSold = paidOrders.reduce((sum, order) => {
     const items = Array.isArray(order?.items) ? order.items : [];
@@ -634,7 +664,7 @@ function renderAnalytics() {
 
   const statusMap = new Map();
   state.orders.forEach(order => {
-    const status = String(order?.status || 'pending').toLowerCase();
+    const status = normalizeOrderStatus(order);
     const current = statusMap.get(status) || { count: 0, revenue: 0 };
     current.count += 1;
     current.revenue += Number(order?.totalAmount || 0);
@@ -1382,38 +1412,51 @@ function handleProductTableClick(event) {
   }
 }
 
-function parsePrebuiltPartsJson(rawValue) {
-  const raw = String(rawValue || '').trim();
-  if (!raw) {
-    return {};
-  }
+const PREBUILT_PART_CATEGORIES = [
+  { key: 'cpu',         label: 'CPU' },
+  { key: 'gpu',         label: 'GPU' },
+  { key: 'ram',         label: 'RAM' },
+  { key: 'motherboard', label: 'Motherboard' },
+  { key: 'psu',         label: 'PSU' },
+  { key: 'storage',     label: 'Storage' },
+  { key: 'cooler',      label: 'Cooler' },
+  { key: 'case',        label: 'Case' },
+  { key: 'fan',         label: 'Fan' },
+];
 
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error('Parts JSON is invalid. Please provide a valid object.');
-  }
+function buildPartCategoryOptions(selectedKey) {
+  return PREBUILT_PART_CATEGORIES
+    .map(c => `<option value="${c.key}"${c.key === selectedKey ? ' selected' : ''}>${c.label}</option>`)
+    .join('');
+}
 
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('Parts JSON must be an object.');
-  }
+function addPrebuiltPartRow(category = 'cpu', name = '') {
+  const row = document.createElement('div');
+  row.className = 'parts-builder-row';
+  row.innerHTML = `
+    <select class="form-select parts-row-category">
+      ${buildPartCategoryOptions(category)}
+    </select>
+    <input type="text" class="form-control parts-row-name" placeholder="e.g. Intel Core i7-13700K" value="${escapeHtml(name)}" />
+    <button type="button" class="btn btn-outline-danger btn-sm parts-row-remove" title="Remove part">
+      <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+    </button>
+  `;
+  row.querySelector('.parts-row-remove').addEventListener('click', () => row.remove());
+  el.partsBuilderRows.appendChild(row);
+  if (window.lucide) lucide.createIcons({ nodes: [row] });
+}
 
-  const normalized = {};
-  Object.entries(parsed).forEach(([category, value]) => {
-    if (!value || typeof value !== 'object') {
-      return;
+function readPartsFromBuilder() {
+  const result = {};
+  el.partsBuilderRows.querySelectorAll('.parts-builder-row').forEach(row => {
+    const category = row.querySelector('.parts-row-category').value.trim();
+    const name = row.querySelector('.parts-row-name').value.trim();
+    if (category && name) {
+      result[category] = { name };
     }
-
-    const partName = String(value.name || '').trim();
-    if (!partName) {
-      return;
-    }
-
-    normalized[category] = { name: partName };
   });
-
-  return normalized;
+  return result;
 }
 
 function readPrebuiltForm() {
@@ -1424,7 +1467,7 @@ function readPrebuiltForm() {
     tier: el.prebuiltTier.value,
     estimatedPrice: el.prebuiltEstimatedPrice.value.trim(),
     order: Number(el.prebuiltOrder.value || 0),
-    parts: parsePrebuiltPartsJson(el.prebuiltPartsJson.value),
+    parts: readPartsFromBuilder(),
   };
 }
 
@@ -1439,7 +1482,7 @@ function clearPrebuiltForm() {
   el.prebuiltId.value = '';
   el.prebuiltTier.value = 'mid';
   el.prebuiltOrder.value = 0;
-  el.prebuiltPartsJson.value = '';
+  el.partsBuilderRows.innerHTML = '';
   setPrebuiltFormMode(false);
 }
 
@@ -1452,7 +1495,10 @@ function fillPrebuiltForm(build) {
   el.prebuiltEstimatedPrice.value = build.estimatedPrice || '';
   el.prebuiltOrder.value = Number(build.order || 0);
   const partsObject = build.parts && typeof build.parts === 'object' ? build.parts : {};
-  el.prebuiltPartsJson.value = JSON.stringify(partsObject, null, 2);
+  el.partsBuilderRows.innerHTML = '';
+  Object.entries(partsObject).forEach(([cat, val]) => {
+    addPrebuiltPartRow(cat, val && val.name ? val.name : '');
+  });
   setPrebuiltFormMode(true);
 }
 
@@ -1653,6 +1699,9 @@ function bindEvents() {
   }
   if (el.prebuiltResetBtn) {
     el.prebuiltResetBtn.addEventListener('click', clearPrebuiltForm);
+    if (el.addPartRowBtn) {
+      el.addPartRowBtn.addEventListener('click', () => addPrebuiltPartRow());
+    }
   }
   if (el.prebuiltSearch) {
     el.prebuiltSearch.addEventListener('input', filterPrebuiltBuilds);

@@ -76,6 +76,10 @@
               <i data-lucide="map-pin"></i>
               <span>Address &amp; Billing</span>
             </button>
+            <button class="account-nav-item" id="navSecurity" onclick="switchTab('security')">
+              <i data-lucide="shield-lock"></i>
+              <span>Security</span>
+            </button>
           </nav>
 
           <!-- Logout -->
@@ -211,6 +215,66 @@
             </form>
           </div>
 
+          <!-- ── Tab 3: Security (MFA) ── -->
+          <div id="tabSecurity" class="square-panel account-tab-panel">
+            <div class="section-label">Two-Factor Authentication (Google Authenticator)</div>
+            <p class="text-muted small mb-4">Add an extra layer of security by requiring a code from your Google Authenticator app when logging in.</p>
+
+            <!-- MFA Status Card -->
+            <div class="card mb-4" id="mfaStatusCard" style="border-left: 4px solid var(--primary-color);">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <h5 class="card-title mb-1">Status</h5>
+                  <p class="text-muted mb-0" id="mfaStatusText">Loading...</p>
+                </div>
+                <div id="mfaActionContainer"></div>
+              </div>
+            </div>
+
+            <!-- Enable MFA Section (shown when MFA is disabled) -->
+            <div id="mfaEnableSection" style="display: none;">
+              <div class="section-label">Step 1: Scan QR Code</div>
+              <p class="text-muted small mb-3">Open Google Authenticator and scan this QR code, or enter the setup key manually:</p>
+              
+              <div class="card mb-4 text-center p-4" id="qrCodeContainer" style="background-color: #f8f9fa;">
+                <div id="qrCodeDisplay" style="display:inline-block; margin: 0 auto;"></div>
+                <p class="text-muted small mt-3 mb-0">Setup Key: <code id="setupKey" style="font-family:monospace;background:#e9ecef;padding:2px 6px;border-radius:3px;"></code></p>
+              </div>
+
+              <div class="section-label">Step 2: Verify Code</div>
+              <p class="text-muted small mb-3">Enter the 6-digit code from your authenticator to confirm:</p>
+              
+              <form id="mfaVerifyForm" novalidate class="mb-4">
+                <div class="mb-3">
+                  <input type="text" id="mfaVerifyCode" class="form-control" placeholder="000000" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" required>
+                </div>
+                <button type="submit" class="btn btn-success">
+                  <i data-lucide="check" style="width:16px;height:16px;margin-right:6px;"></i>
+                  Enable 2FA
+                </button>
+              </form>
+            </div>
+
+            <!-- Disable MFA Section (shown when MFA is enabled) -->
+            <div id="mfaDisableSection" style="display: none;">
+              <div class="alert alert-info mb-4" role="alert">
+                <i data-lucide="info" style="width:18px;height:18px;vertical-align:-3px;margin-right:8px;"></i>
+                <strong>Two-Factor Authentication is enabled.</strong> You must provide a code from your authenticator app to disable it.
+              </div>
+
+              <form id="mfaDisableForm" novalidate>
+                <div class="mb-3">
+                  <label for="mfaDisableCode" class="form-label fw-semibold">Enter current 6-digit code:</label>
+                  <input type="text" id="mfaDisableCode" class="form-control" placeholder="000000" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" required>
+                </div>
+                <button type="submit" class="btn btn-danger">
+                  <i data-lucide="lock-open" style="width:16px;height:16px;margin-right:6px;"></i>
+                  Disable 2FA
+                </button>
+              </form>
+            </div>
+          </div>
+
         </main>
       </div><!-- /.account-layout -->
     </div><!-- /.container -->
@@ -246,6 +310,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script>lucide.createIcons();</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="JS/app.js"></script>
   <script src="JS/components-menu.js"></script>
   <script src="JS/auth-popup.js"></script>

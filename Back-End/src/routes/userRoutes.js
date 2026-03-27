@@ -1,12 +1,18 @@
 import express from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
+import speakeasy from 'speakeasy';
+import QRCode from 'qrcode';
 import User from '../models/User.js';
 import Log from '../models/Log.js';
 import { requireAuth, requireAdmin, requireSelfOrAdmin } from '../middleware/adminMiddleware.js';
 
 const router = express.Router();
 const googleClient = new OAuth2Client();
+const loginAttempts = new Map();
+const LOGIN_SPAM_WINDOW_MS = 10 * 60 * 1000;
+const LOGIN_CAPTCHA_AFTER_FAILURES = 5;
+const LOGIN_CAPTCHA_LOCK_MS = 15 * 60 * 1000;
 
 function serializeUserForClient(user) {
   return {
@@ -22,7 +28,58 @@ function serializeUserForClient(user) {
     billingSameAsShipping: user.billingSameAsShipping !== false,
     billingAddress: user.billingAddress || { street: '', city: '', state: '', zip: '' },
     avatarUrl: user.avatarUrl || '',
+    mfaEnabled: Boolean(user?.mfa?.enabled),
   };
+}
+
+function getMfaIssuer() {
+  return String(process.env.MFA_ISSUER || 'Breaking Bad Builder').trim();
+}
+
+function getLoginAttemptKey(req, email) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const ip = String(req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown');
+  return `${normalizedEmail}|${ip}`;
+}
+
+function getLoginAttemptState(key) {
+  const current = loginAttempts.get(key);
+  if (!current) {
+    return { failCount: 0, firstFailedAt: 0, captchaUntil: 0 };
+  }
+
+  const now = Date.now();
+  if (current.firstFailedAt && now - current.firstFailedAt > LOGIN_SPAM_WINDOW_MS) {
+    loginAttempts.delete(key);
+    return { failCount: 0, firstFailedAt: 0, captchaUntil: 0 };
+  }
+
+  return current;
+}
+
+function requiresCaptchaForAttempt(state) {
+  return Boolean(state?.captchaUntil && state.captchaUntil > Date.now());
+}
+
+function registerFailedLoginAttempt(key) {
+  const now = Date.now();
+  const current = getLoginAttemptState(key);
+  const next = {
+    failCount: current.failCount + 1,
+    firstFailedAt: current.firstFailedAt || now,
+    captchaUntil: current.captchaUntil || 0,
+  };
+
+  if (next.failCount >= LOGIN_CAPTCHA_AFTER_FAILURES) {
+    next.captchaUntil = now + LOGIN_CAPTCHA_LOCK_MS;
+  }
+
+  loginAttempts.set(key, next);
+  return next;
+}
+
+function clearLoginAttempt(key) {
+  loginAttempts.delete(key);
 }
 
 function buildJwtForUser(user) {
@@ -133,7 +190,7 @@ async function verifyRecaptchaToken(captchaToken) {
 
 router.post('/google', async (req, res) => {
   try {
-    const { idToken, captchaToken } = req.body;
+    const { idToken, otpToken, captchaToken } = req.body;
 
     const recaptcha = await verifyRecaptchaToken(captchaToken);
     if (!recaptcha.success) {
@@ -193,6 +250,33 @@ router.post('/google', async (req, res) => {
       if (shouldSave) {
         user.updatedAt = new Date();
         await user.save();
+      }
+    }
+
+    // Check if MFA is enabled
+    const mfaSecret = String(user?.mfa?.secret || '').trim();
+    if (user?.mfa?.enabled && mfaSecret) {
+      if (!otpToken) {
+        return res.status(202).json({
+          message: 'OTP is required to complete Google login.',
+          requiresOtp: true,
+          idToken: idToken, // Return idToken so frontend can reuse it
+        });
+      }
+
+      const isOtpValid = speakeasy.totp.verify({
+        secret: mfaSecret,
+        encoding: 'base32',
+        token: String(otpToken).trim(),
+        window: 1,
+      });
+
+      if (!isOtpValid) {
+        Log.create({ user: user.email, activity: 'Google login failed due to invalid MFA OTP' }).catch(() => {});
+        return res.status(401).json({
+          message: 'Invalid OTP code',
+          requiresOtp: true,
+        });
       }
     }
 
@@ -256,29 +340,77 @@ router.post('/register', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password, captchaToken } = req.body;
+    const { email, password, otpToken, captchaToken } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const attemptKey = getLoginAttemptKey(req, normalizedEmail);
+    const attemptState = getLoginAttemptState(attemptKey);
 
-    const recaptcha = await verifyRecaptchaToken(captchaToken);
-    if (!recaptcha.success) {
-      return res.status(400).json({ message: recaptcha.message });
+    if (requiresCaptchaForAttempt(attemptState)) {
+      const recaptcha = await verifyRecaptchaToken(captchaToken);
+      if (!recaptcha.success) {
+        return res.status(400).json({
+          message: recaptcha.message,
+          requiresCaptcha: true,
+        });
+      }
     }
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Please provide email and password' });
+    if (!normalizedEmail || !password) {
+      return res.status(400).json({
+        message: 'Please provide email and password',
+        requiresCaptcha: requiresCaptchaForAttempt(attemptState),
+      });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-      Log.create({ user: 'anon', activity: `Login failed, email attempted: ${email}` }).catch(() => {});
-      return res.status(401).json({ message: 'Invalid email or password' });
+      const nextAttempt = registerFailedLoginAttempt(attemptKey);
+      Log.create({ user: 'anon', activity: `Login failed, email attempted: ${normalizedEmail}` }).catch(() => {});
+      return res.status(401).json({
+        message: 'Invalid email or password',
+        requiresCaptcha: requiresCaptchaForAttempt(nextAttempt),
+      });
     }
 
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
-      Log.create({ user: 'anon', activity: `Login failed, email attempted: ${email}` }).catch(() => {});
-      return res.status(401).json({ message: 'Invalid email or password' });
+      const nextAttempt = registerFailedLoginAttempt(attemptKey);
+      Log.create({ user: 'anon', activity: `Login failed, email attempted: ${normalizedEmail}` }).catch(() => {});
+      return res.status(401).json({
+        message: 'Invalid email or password',
+        requiresCaptcha: requiresCaptchaForAttempt(nextAttempt),
+      });
     }
 
+    const mfaSecret = String(user?.mfa?.secret || '').trim();
+    if (user?.mfa?.enabled && mfaSecret) {
+      if (!otpToken) {
+        return res.status(202).json({
+          message: 'OTP is required to complete login.',
+          requiresOtp: true,
+          requiresCaptcha: requiresCaptchaForAttempt(attemptState),
+        });
+      }
+
+      const isOtpValid = speakeasy.totp.verify({
+        secret: mfaSecret,
+        encoding: 'base32',
+        token: String(otpToken).trim(),
+        window: 1,
+      });
+
+      if (!isOtpValid) {
+        const nextAttempt = registerFailedLoginAttempt(attemptKey);
+        Log.create({ user: user.email, activity: 'Login failed due to invalid MFA OTP' }).catch(() => {});
+        return res.status(401).json({
+          message: 'Invalid OTP code',
+          requiresOtp: true,
+          requiresCaptcha: requiresCaptchaForAttempt(nextAttempt),
+        });
+      }
+    }
+
+    clearLoginAttempt(attemptKey);
     const token = buildJwtForUser(user);
     Log.create({ user: user.email, activity: 'Login successful' }).catch(() => {});
 
@@ -290,6 +422,161 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Login failed', error: error.message });
+  }
+});
+
+// Create Google Authenticator QR for current user
+router.get('/mfa/status', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.currentUser.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.status(200).json({
+      enabled: Boolean(user.mfa?.enabled),
+      enabledAt: user.mfa?.enabledAt || null,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to get MFA status', error: error.message });
+  }
+});
+
+router.post('/mfa/setup', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.currentUser.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const issuer = getMfaIssuer();
+    const accountName = user.email || user.username || String(user._id);
+    const secret = speakeasy.generateSecret({
+      name: `${issuer}:${accountName}`,
+      issuer,
+      length: 20,
+    });
+
+    user.mfa = {
+      ...(user.mfa || {}),
+      enabled: false,
+      secret: '',
+      tempSecret: secret.base32,
+      enabledAt: null,
+    };
+    user.updatedAt = new Date();
+    await user.save();
+
+    const qrDataUrl = await QRCode.toDataURL(secret.otpauth_url);
+
+    return res.status(200).json({
+      message: 'Scan this QR code with Google Authenticator, then verify with a 6-digit code.',
+      qrDataUrl,
+      otpauthUrl: secret.otpauth_url,
+      manualEntryKey: secret.base32,
+      issuer,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to setup MFA', error: error.message });
+  }
+});
+
+// Verify initial setup code and enable MFA
+router.post('/mfa/verify-setup', requireAuth, async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ message: 'MFA code is required' });
+    }
+
+    const user = await User.findById(req.currentUser.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const tempSecret = String(user?.mfa?.tempSecret || '').trim();
+    if (!tempSecret) {
+      return res.status(400).json({ message: 'MFA setup is not initialized. Please call /mfa/setup first.' });
+    }
+
+    const verified = speakeasy.totp.verify({
+      secret: tempSecret,
+      encoding: 'base32',
+      token: String(token).trim(),
+      window: 1,
+    });
+
+    if (!verified) {
+      return res.status(400).json({ message: 'Invalid MFA code' });
+    }
+
+    user.mfa = {
+      ...(user.mfa || {}),
+      enabled: true,
+      secret: tempSecret,
+      tempSecret: '',
+      enabledAt: new Date(),
+    };
+    user.updatedAt = new Date();
+    await user.save();
+
+    Log.create({ user: user.email, activity: 'MFA enabled via Google Authenticator' }).catch(() => {});
+
+    return res.status(200).json({
+      message: 'MFA enabled successfully',
+      user: serializeUserForClient(user),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to verify MFA setup', error: error.message });
+  }
+});
+
+// Disable MFA for current user (must provide current TOTP code)
+router.post('/mfa/disable', requireAuth, async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ message: 'MFA code is required to disable MFA' });
+    }
+
+    const user = await User.findById(req.currentUser.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const activeSecret = String(user?.mfa?.secret || '').trim();
+    if (!user?.mfa?.enabled || !activeSecret) {
+      return res.status(400).json({ message: 'MFA is not enabled for this account' });
+    }
+
+    const verified = speakeasy.totp.verify({
+      secret: activeSecret,
+      encoding: 'base32',
+      token: String(token).trim(),
+      window: 1,
+    });
+
+    if (!verified) {
+      return res.status(400).json({ message: 'Invalid MFA code' });
+    }
+
+    user.mfa = {
+      enabled: false,
+      secret: '',
+      tempSecret: '',
+      enabledAt: null,
+    };
+    user.updatedAt = new Date();
+    await user.save();
+
+    Log.create({ user: user.email, activity: 'MFA disabled' }).catch(() => {});
+
+    return res.status(200).json({
+      message: 'MFA disabled successfully',
+      user: serializeUserForClient(user),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to disable MFA', error: error.message });
   }
 });
 

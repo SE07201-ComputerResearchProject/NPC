@@ -12,6 +12,10 @@ let googleInitialized = false;
 let activeAuthMode = 'login';
 let loginRecaptchaId = null;
 let signupRecaptchaId = null;
+let loginRequiresCaptcha = false;
+let loginRequiresOtp = false;
+let googleIdToken = ''; // For OTP challenge flow
+let googleOtpMode = false; // Flag to know if handling Google OTP
 
 async function fetchWithFallback(urls, options = {}) {
   let lastError = null;
@@ -175,25 +179,47 @@ async function handleGoogleCredentialResponse(response) {
     }
 
     const captchaToken = getRecaptchaResponseByMode(activeAuthMode);
-    const key = recaptchaSiteKey || (await fetchRecaptchaSiteKey());
-    if (key && !captchaToken) {
-      showPopup('Please verify captcha first.');
-      return;
-    }
+    const otpToken = document.getElementById('loginOtp')?.value || '';
 
     const res = await fetchWithFallback(buildUserApiUrls('google'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken, captchaToken }),
+      body: JSON.stringify({ idToken, otpToken, captchaToken }),
     });
 
     const data = await res.json();
-    if (!res.ok) {
-      showPopup(data.message || 'Google sign-in failed');
-      resetRecaptchaByMode(activeAuthMode);
+
+    if (res.status === 202 && data.requiresOtp) {
+      // OTP challenge required
+      googleIdToken = idToken;
+      googleOtpMode = true;
+      applyLoginChallengeState({
+        requiresOtp: true,
+        requiresCaptcha: data.requiresCaptcha || false,
+        message: data.message,
+      });
+      showPopup(data.message);
       return;
     }
 
+    if (!res.ok) {
+      resetRecaptchaByMode(activeAuthMode);
+      if (data.requiresOtp) {
+        googleIdToken = idToken;
+        googleOtpMode = true;
+        applyLoginChallengeState({
+          requiresOtp: true,
+          requiresCaptcha: data.requiresCaptcha || false,
+          message: data.message,
+        });
+      }
+      showPopup(data.message || 'Google sign-in failed');
+      return;
+    }
+
+    // Success
+    googleIdToken = '';
+    googleOtpMode = false;
     applyAuthSuccess(data, 'Logged in with Google');
   } catch {
     showPopup('Google sign-in is unavailable right now.');
@@ -240,6 +266,48 @@ function resetRecaptchaByMode(mode) {
   const widgetId = mode === 'login' ? loginRecaptchaId : signupRecaptchaId;
   if (widgetId === null || widgetId === undefined) return;
   window.grecaptcha.reset(widgetId);
+}
+
+function applyLoginChallengeState({ requiresOtp = false, requiresCaptcha = false, message = '' } = {}) {
+  loginRequiresOtp = Boolean(requiresOtp);
+  loginRequiresCaptcha = Boolean(requiresCaptcha);
+
+  const otpWrap = document.getElementById('loginOtpWrap');
+  const otpInput = document.getElementById('loginOtp');
+  const captchaWrap = document.getElementById('loginRecaptchaWrap');
+  const subtitle = document.getElementById('authSubtitle');
+
+  if (otpWrap) {
+    otpWrap.classList.toggle('d-none', !loginRequiresOtp);
+  }
+
+  if (captchaWrap) {
+    captchaWrap.classList.toggle('d-none', !loginRequiresCaptcha);
+  }
+
+  if (subtitle) {
+    if (loginRequiresOtp) {
+      subtitle.textContent = 'Enter your password and the 6-digit OTP from Google Authenticator.';
+    } else if (loginRequiresCaptcha) {
+      subtitle.textContent = 'Too many failed attempts detected. Please complete captcha and try again.';
+    } else {
+      subtitle.textContent = 'Enter your credentials to access your account';
+    }
+  }
+
+  if (loginRequiresCaptcha && captchaWrap) {
+    renderRecaptcha('loginRecaptcha', 'login').catch(() => {
+      showPopup('Cannot load captcha. Please refresh page.');
+    });
+  }
+
+  if (message) {
+    showPopup(message);
+  }
+
+  if (loginRequiresOtp && otpInput) {
+    otpInput.focus();
+  }
 }
 
 function toggleAuthPopup(event) {
@@ -325,6 +393,8 @@ function showSignIn() {
   const footer = document.getElementById('authFooter');
   if (!content || !title || !subtitle || !footer) return;
   activeAuthMode = 'login';
+  loginRequiresCaptcha = false;
+  loginRequiresOtp = false;
 
   title.textContent = 'Log In';
   subtitle.textContent = 'Enter your credentials to access your account';
@@ -343,7 +413,13 @@ function showSignIn() {
           <i data-lucide="eye" class="toggle-password"></i>
         </div>
       </div>
-      <div class="form-group mb-3">
+      <div class="form-group mb-3 d-none" id="loginOtpWrap">
+        <label>OTP</label>
+        <div class="input-icon">
+          <input type="text" id="loginOtp" class="form-control" placeholder="6-digit code" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+        </div>
+      </div>
+      <div class="form-group mb-3 d-none" id="loginRecaptchaWrap">
         <div id="loginRecaptcha"></div>
       </div>
       <button type="submit" class="btn btn-primary w-100">Log in</button>
@@ -356,9 +432,6 @@ function showSignIn() {
     window.lucide.createIcons();
   }
   attachPasswordToggle();
-  renderRecaptcha('loginRecaptcha', 'login').catch(() => {
-    showPopup('Cannot load captcha. Please refresh page.');
-  });
   renderGoogleButton('googleSignInLogin', 'login').catch(() => {
     // Keep local login working if Google script fails.
   });
@@ -369,32 +442,74 @@ function showSignIn() {
       e.preventDefault();
       const emailVal = document.getElementById('loginEmail').value.trim();
       const passwordVal = document.getElementById('loginPassword').value.trim();
+      const otpToken = document.getElementById('loginOtp')?.value.trim() || '';
       const captchaToken = getRecaptchaResponseByMode('login');
 
-      if (!captchaToken) {
+      if (loginRequiresCaptcha && !captchaToken) {
         showPopup('Please verify captcha first.');
         return;
       }
 
+      if (loginRequiresOtp && !otpToken) {
+        showPopup('Please enter your OTP code.');
+        return;
+      }
+
       try {
-        const response = await fetchWithFallback(buildUserApiUrls('login'), {
+        let endpoint, requestBody;
+
+        // Check if we're in Google OTP challenge mode
+        if (googleOtpMode && googleIdToken) {
+          endpoint = 'google';
+          requestBody = { idToken: googleIdToken, otpToken, captchaToken };
+        } else {
+          endpoint = 'login';
+          requestBody = { email: emailVal, password: passwordVal, otpToken, captchaToken };
+        }
+
+        const response = await fetchWithFallback(buildUserApiUrls(endpoint), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: emailVal, password: passwordVal, captchaToken })
+          body: JSON.stringify(requestBody)
         });
 
         const data = await response.json();
 
-        if (response.ok) {
+        if (response.ok && data.token) {
+          googleIdToken = '';
+          googleOtpMode = false;
           applyAuthSuccess(data, 'Logged in successfully');
+        } else if (response.ok && data.requiresOtp) {
+          // Preserve OTP mode for next attempt
+          if (endpoint === 'google') {
+            googleIdToken = googleIdToken; // Keep stored
+            googleOtpMode = true;
+          }
+          applyLoginChallengeState({
+            requiresOtp: true,
+            requiresCaptcha: Boolean(data.requiresCaptcha),
+            message: data.message || 'OTP is required to complete login.',
+          });
         } else {
-          showPopup(data.message || 'Login failed');
-          resetRecaptchaByMode('login');
+          googleIdToken = '';
+          googleOtpMode = false;
+          applyLoginChallengeState({
+            requiresOtp: Boolean(data.requiresOtp),
+            requiresCaptcha: Boolean(data.requiresCaptcha),
+            message: data.message || 'Login failed',
+          });
+          if (loginRequiresCaptcha) {
+            resetRecaptchaByMode('login');
+          }
         }
       } catch (err) {
         console.error(err);
+        googleIdToken = '';
+        googleOtpMode = false;
         showPopup('Cannot connect to server.');
-        resetRecaptchaByMode('login');
+        if (loginRequiresCaptcha) {
+          resetRecaptchaByMode('login');
+        }
       }
     });
   }

@@ -1049,13 +1049,33 @@ body.bg-dark .product-card {
   border-color: rgba(255,255,255,0.08);
 }
 
+body.bg-dark .product-card .btn-outline-dark {
+  color: #e0e0e0;
+  border-color: rgba(255,255,255,0.35);
+}
+
+body.bg-dark .product-card .btn-outline-dark:hover {
+  background-color: rgba(255,255,255,0.12);
+  color: #ffffff;
+  border-color: rgba(255,255,255,0.6);
+}
+
 .product-card-top,
-.product-meta,
-.product-card-actions {
+.product-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.product-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 4px;
 }
 
 .product-category,
@@ -1112,7 +1132,7 @@ body.bg-dark .image-slot {
 
 .product-description {
   margin: 0;
-  min-height: 72px;
+  flex: 1;
   line-height: 1.5;
 }
 
@@ -1120,6 +1140,7 @@ body.bg-dark .image-slot {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  min-height: 32px;
 }
 
 .product-highlights span {
@@ -2029,6 +2050,7 @@ body.fade-in-animation {
 
   .hero-content-left {
     padding-top: 128px;
+    padding-right: clamp(20px, 5vw, 60px);
     padding-bottom: 340px;
   }
 }
@@ -2046,6 +2068,32 @@ body.fade-in-animation {
   .hero-slider-btn {
     justify-content: center;
     flex: 1;
+  }
+
+  /* hide ALL floating chips — not enough room on phones */
+  .floating-chip {
+    display: none;
+  }
+
+  /* hero bottom text overlaps slider card on phones */
+  .hero-content-bottom {
+    display: none;
+  }
+
+  /* hero scroll indicator stays, but ensure it doesn't collide */
+  .hero-scroll-indicator {
+    display: none;
+  }
+
+  .hero-content-left {
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-bottom: 320px;
+  }
+
+  /* hide welcome text in navbar on small phones — saves space */
+  .navbar-welcome {
+    display: none;
   }
 }
 
@@ -2891,5 +2939,92 @@ body.bg-dark .cart-empty {
 
   .cart-item-qty {
     max-width: 140px;
+  }
+}
+
+/* ============================================================
+   HOME PAGE — EXTRA SMALL (≤ 480px)
+   ============================================================ */
+@media (max-width: 480px) {
+  .home-section {
+    padding: 48px 0;
+  }
+
+  .section-header {
+    margin-bottom: 28px;
+  }
+
+  .highlight-card {
+    padding: 22px 18px;
+  }
+
+  .build-preset-card {
+    padding: 1.25rem;
+  }
+
+  .about-chip {
+    padding: 10px 4px;
+    gap: 6px;
+  }
+
+  .about-chip span {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+  }
+
+  .about-chip svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .about-stats {
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .stat-value {
+    font-size: 1.9rem;
+  }
+
+  .contact-form {
+    padding: 18px 14px;
+  }
+
+  .contact-info-panel {
+    padding: 18px 14px;
+    gap: 18px;
+  }
+
+  .preset-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}
+
+/* ============================================================
+   HOME PAGE — MICRO (≤ 380px)
+   ============================================================ */
+@media (max-width: 380px) {
+  .floating-menu {
+    gap: 4px;
+    padding: 8px 10px;
+  }
+
+  .menu-item {
+    padding: 8px 10px;
+  }
+
+  .about-chip-grid {
+    gap: 8px;
+  }
+
+  .hero-content-left h1 {
+    font-size: clamp(1.55rem, 8vw, 2rem);
+  }
+
+  .hero-content-left {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
