@@ -15,7 +15,9 @@ let signupRecaptchaId = null;
 let loginRequiresCaptcha = false;
 let loginRequiresOtp = false;
 let googleIdToken = ''; // For OTP challenge flow
-let googleOtpMode = false; // Flag to know if handling Google OTP
+let googleOtpMode = false; // Flag to know if handling Google TOTP
+let googleEmailOtpMode = false; // Flag to know if handling Google email OTP
+let googleCaptchaMode = false; // Flag to know if captcha required for Google login retry
 
 async function fetchWithFallback(urls, options = {}) {
   let lastError = null;
@@ -190,13 +192,29 @@ async function handleGoogleCredentialResponse(response) {
     const data = await res.json();
 
     if (res.status === 202 && data.requiresOtp) {
-      // OTP challenge required
+      // TOTP challenge required
       googleIdToken = idToken;
       googleOtpMode = true;
+      googleEmailOtpMode = false;
       applyLoginChallengeState({
         requiresOtp: true,
         requiresCaptcha: data.requiresCaptcha || false,
         message: data.message,
+      });
+      showPopup(data.message);
+      return;
+    }
+
+    if (res.status === 202 && data.requiresEmailOtp) {
+      // Email OTP challenge required
+      googleIdToken = idToken;
+      googleEmailOtpMode = true;
+      googleOtpMode = false;
+      applyLoginChallengeState({
+        requiresOtp: true,
+        requiresCaptcha: false,
+        message: data.message,
+        emailOtpMode: true,
       });
       showPopup(data.message);
       return;
@@ -207,9 +225,32 @@ async function handleGoogleCredentialResponse(response) {
       if (data.requiresOtp) {
         googleIdToken = idToken;
         googleOtpMode = true;
+        googleEmailOtpMode = false;
+        googleCaptchaMode = false;
         applyLoginChallengeState({
           requiresOtp: true,
           requiresCaptcha: data.requiresCaptcha || false,
+          message: data.message,
+        });
+      } else if (data.requiresEmailOtp) {
+        googleIdToken = idToken;
+        googleEmailOtpMode = true;
+        googleOtpMode = false;
+        googleCaptchaMode = false;
+        applyLoginChallengeState({
+          requiresOtp: true,
+          requiresCaptcha: data.requiresCaptcha || false,
+          message: data.message,
+          emailOtpMode: true,
+        });
+      } else if (data.requiresCaptcha) {
+        // Spam protection: captcha required before Google login can proceed
+        googleIdToken = idToken;
+        googleCaptchaMode = true;
+        googleOtpMode = false;
+        googleEmailOtpMode = false;
+        applyLoginChallengeState({
+          requiresCaptcha: true,
           message: data.message,
         });
       }
@@ -220,6 +261,8 @@ async function handleGoogleCredentialResponse(response) {
     // Success
     googleIdToken = '';
     googleOtpMode = false;
+    googleEmailOtpMode = false;
+    googleCaptchaMode = false;
     applyAuthSuccess(data, 'Logged in with Google');
   } catch {
     showPopup('Google sign-in is unavailable right now.');
@@ -268,17 +311,30 @@ function resetRecaptchaByMode(mode) {
   window.grecaptcha.reset(widgetId);
 }
 
-function applyLoginChallengeState({ requiresOtp = false, requiresCaptcha = false, message = '' } = {}) {
+function applyLoginChallengeState({ requiresOtp = false, requiresCaptcha = false, message = '', emailOtpMode = false } = {}) {
   loginRequiresOtp = Boolean(requiresOtp);
   loginRequiresCaptcha = Boolean(requiresCaptcha);
 
   const otpWrap = document.getElementById('loginOtpWrap');
   const otpInput = document.getElementById('loginOtp');
+  const otpLabel = document.getElementById('loginOtpLabel');
   const captchaWrap = document.getElementById('loginRecaptchaWrap');
   const subtitle = document.getElementById('authSubtitle');
 
+  // When in Google OTP/captcha mode, email+password fields are irrelevant
+  // Remove `required` so browser validation doesn't block the form submission
+  const isGoogleChallenge = googleOtpMode || googleEmailOtpMode || googleCaptchaMode;
+  const emailInput = document.getElementById('loginEmail');
+  const passwordInput = document.getElementById('loginPassword');
+  if (emailInput) emailInput.required = !isGoogleChallenge;
+  if (passwordInput) passwordInput.required = !isGoogleChallenge;
+
   if (otpWrap) {
     otpWrap.classList.toggle('d-none', !loginRequiresOtp);
+  }
+
+  if (otpLabel) {
+    otpLabel.textContent = emailOtpMode ? 'Email Verification Code' : 'Authenticator Code';
   }
 
   if (captchaWrap) {
@@ -287,7 +343,11 @@ function applyLoginChallengeState({ requiresOtp = false, requiresCaptcha = false
 
   if (subtitle) {
     if (loginRequiresOtp) {
-      subtitle.textContent = 'Enter your password and the 6-digit OTP from Google Authenticator.';
+      if (emailOtpMode) {
+        subtitle.textContent = 'A verification code has been sent to your email. Enter it below to complete sign-in.';
+      } else {
+        subtitle.textContent = 'Enter your password and the 6-digit OTP from Google Authenticator.';
+      }
     } else if (loginRequiresCaptcha) {
       subtitle.textContent = 'Too many failed attempts detected. Please complete captcha and try again.';
     } else {
@@ -414,7 +474,7 @@ function showSignIn() {
         </div>
       </div>
       <div class="form-group mb-3 d-none" id="loginOtpWrap">
-        <label>OTP</label>
+        <label id="loginOtpLabel">Verification Code</label>
         <div class="input-icon">
           <input type="text" id="loginOtp" class="form-control" placeholder="6-digit code" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
         </div>
@@ -462,6 +522,13 @@ function showSignIn() {
         if (googleOtpMode && googleIdToken) {
           endpoint = 'google';
           requestBody = { idToken: googleIdToken, otpToken, captchaToken };
+        } else if (googleEmailOtpMode && googleIdToken) {
+          endpoint = 'google';
+          requestBody = { idToken: googleIdToken, emailOtpToken: otpToken, captchaToken };
+        } else if (googleCaptchaMode && googleIdToken) {
+          // Captcha was required — resubmit Google token with solved captcha
+          endpoint = 'google';
+          requestBody = { idToken: googleIdToken, captchaToken };
         } else {
           endpoint = 'login';
           requestBody = { email: emailVal, password: passwordVal, otpToken, captchaToken };
@@ -478,34 +545,80 @@ function showSignIn() {
         if (response.ok && data.token) {
           googleIdToken = '';
           googleOtpMode = false;
+          googleEmailOtpMode = false;
+          googleCaptchaMode = false;
           applyAuthSuccess(data, 'Logged in successfully');
         } else if (response.ok && data.requiresOtp) {
-          // Preserve OTP mode for next attempt
+          // Preserve TOTP mode for next attempt
           if (endpoint === 'google') {
-            googleIdToken = googleIdToken; // Keep stored
             googleOtpMode = true;
+            googleEmailOtpMode = false;
+            googleCaptchaMode = false;
           }
           applyLoginChallengeState({
             requiresOtp: true,
             requiresCaptcha: Boolean(data.requiresCaptcha),
             message: data.message || 'OTP is required to complete login.',
           });
-        } else {
-          googleIdToken = '';
-          googleOtpMode = false;
+        } else if (response.ok && data.requiresEmailOtp) {
+          if (endpoint === 'google') {
+            googleEmailOtpMode = true;
+            googleOtpMode = false;
+            googleCaptchaMode = false;
+          }
           applyLoginChallengeState({
-            requiresOtp: Boolean(data.requiresOtp),
-            requiresCaptcha: Boolean(data.requiresCaptcha),
-            message: data.message || 'Login failed',
+            requiresOtp: true,
+            requiresCaptcha: false,
+            message: data.message || 'Check your email for a verification code.',
+            emailOtpMode: true,
           });
-          if (loginRequiresCaptcha) {
-            resetRecaptchaByMode('login');
+        } else {
+          // 4xx / 5xx error — check whether we should preserve the OTP challenge
+          if (data.requiresEmailOtp && endpoint === 'google') {
+            if (response.status === 401) {
+              // Wrong code — stay in email OTP mode so user can retry without re-clicking Google
+              applyLoginChallengeState({
+                requiresOtp: true,
+                requiresCaptcha: false,
+                message: data.message || 'Invalid verification code.',
+                emailOtpMode: true,
+              });
+            } else {
+              // Expired (400) or too many attempts (429) — need to restart the Google flow
+              googleIdToken = '';
+              googleEmailOtpMode = false;
+              googleOtpMode = false;
+              googleCaptchaMode = false;
+              applyLoginChallengeState({ requiresOtp: false, requiresCaptcha: false, message: data.message || 'Please sign in with Google again to get a new code.' });
+            }
+          } else if (data.requiresOtp && endpoint === 'google') {
+            // Wrong TOTP — stay in TOTP mode so user can retry
+            applyLoginChallengeState({
+              requiresOtp: true,
+              requiresCaptcha: Boolean(data.requiresCaptcha),
+              message: data.message || 'Invalid OTP code.',
+            });
+          } else {
+            googleIdToken = '';
+            googleOtpMode = false;
+            googleEmailOtpMode = false;
+            googleCaptchaMode = false;
+            applyLoginChallengeState({
+              requiresOtp: Boolean(data.requiresOtp),
+              requiresCaptcha: Boolean(data.requiresCaptcha),
+              message: data.message || 'Login failed',
+            });
+            if (loginRequiresCaptcha) {
+              resetRecaptchaByMode('login');
+            }
           }
         }
       } catch (err) {
         console.error(err);
         googleIdToken = '';
         googleOtpMode = false;
+        googleEmailOtpMode = false;
+        googleCaptchaMode = false;
         showPopup('Cannot connect to server.');
         if (loginRequiresCaptcha) {
           resetRecaptchaByMode('login');

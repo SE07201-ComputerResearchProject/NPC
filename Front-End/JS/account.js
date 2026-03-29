@@ -417,7 +417,9 @@ async function loadMfaStatus() {
     }
 
     const mfaEnabled = data.enabled || false;
+    const emailMfaEnabled = data.emailMfaEnabled || false;
     updateMfaUI(mfaEnabled);
+    updateEmailMfaUI(emailMfaEnabled);
   } catch {
     showPopup('Cannot connect to server.');
   }
@@ -485,7 +487,7 @@ async function startMfaSetup() {
     }
 
     if (setupKey) {
-      setupKey.textContent = data.secret || '';
+      setupKey.textContent = data.manualEntryKey || '';
     }
 
     showPopup('Scan the QR code with your Google Authenticator app');
@@ -507,7 +509,7 @@ async function verifyMfaSetup(e) {
     const response = await fetch(`${ACCOUNT_USER_API_BASE_URL}/mfa/verify-setup`, {
       method: 'POST',
       headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ otpToken: code }),
+      body: JSON.stringify({ token: code }),
     });
     const data = await response.json();
 
@@ -543,7 +545,7 @@ async function disableMfa(e) {
     const response = await fetch(`${ACCOUNT_USER_API_BASE_URL}/mfa/disable`, {
       method: 'POST',
       headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ otpToken: code }),
+      body: JSON.stringify({ token: code }),
     });
     const data = await response.json();
 
@@ -561,6 +563,144 @@ async function disableMfa(e) {
     showPopup('Two-Factor Authentication disabled successfully!');
     document.getElementById('mfaDisableCode').value = '';
     updateMfaUI(false);
+  } catch {
+    showPopup('Cannot connect to server.');
+  }
+}
+
+// ── Email MFA Functions ───────────────────────────────────────────────────────
+
+function updateEmailMfaUI(enabled) {
+  const statusText = document.getElementById('emailMfaStatusText');
+  const enableSection = document.getElementById('emailMfaEnableSection');
+  const disableSection = document.getElementById('emailMfaDisableSection');
+  const actionContainer = document.getElementById('emailMfaActionContainer');
+
+  if (!statusText) return;
+
+  // Populate the user email hint
+  const profile = typeof getProfile === 'function' ? getProfile() : {};
+  const emailEl = document.getElementById('emailMfaUserEmail');
+  if (emailEl) emailEl.textContent = profile.email || 'your email';
+
+  if (enabled) {
+    statusText.innerHTML = '<i data-lucide="check-circle" style="width:16px;height:16px;color:#28a745;vertical-align:-2px;margin-right:4px;"></i> Enabled';
+    if (enableSection) enableSection.style.display = 'none';
+    if (disableSection) disableSection.style.display = '';
+    if (actionContainer) actionContainer.innerHTML = '';
+  } else {
+    statusText.innerHTML = '<i data-lucide="alert-circle" style="width:16px;height:16px;color:#ffc107;vertical-align:-2px;margin-right:4px;"></i> Disabled';
+    if (enableSection) enableSection.style.display = '';
+    if (disableSection) disableSection.style.display = 'none';
+    if (actionContainer) actionContainer.innerHTML = '';
+    // Reset form visibility
+    const verifyForm = document.getElementById('emailMfaVerifyForm');
+    if (verifyForm) verifyForm.style.display = 'none';
+  }
+
+  lucide.createIcons();
+}
+
+async function requestEmailMfaCode(action) {
+  try {
+    const response = await fetch(`${ACCOUNT_USER_API_BASE_URL}/mfa/email/send-code`, {
+      method: 'POST',
+      headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+    });
+    const data = await response.json();
+
+    if (response.status === 401 || response.status === 403) {
+      showPopup('Session expired. Please log in again.');
+      logout();
+      return;
+    }
+
+    if (!response.ok) {
+      showPopup(data.message || 'Failed to send code');
+      return;
+    }
+
+    showPopup(data.message || 'Verification code sent!');
+
+    if (action === 'enable') {
+      const verifyForm = document.getElementById('emailMfaVerifyForm');
+      if (verifyForm) verifyForm.style.display = '';
+    } else {
+      const disableForm = document.getElementById('emailMfaDisableForm');
+      if (disableForm) disableForm.style.display = '';
+    }
+  } catch {
+    showPopup('Cannot connect to server.');
+  }
+}
+
+async function submitEmailMfaEnable(e) {
+  e.preventDefault();
+
+  const code = (document.getElementById('emailMfaVerifyCode')?.value || '').trim();
+  if (!code || code.length !== 6) {
+    showPopup('Please enter a valid 6-digit code');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${ACCOUNT_USER_API_BASE_URL}/mfa/email/enable`, {
+      method: 'POST',
+      headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ token: code }),
+    });
+    const data = await response.json();
+
+    if (response.status === 401 || response.status === 403) {
+      showPopup('Session expired. Please log in again.');
+      logout();
+      return;
+    }
+
+    if (!response.ok) {
+      showPopup(data.message || 'Invalid code');
+      return;
+    }
+
+    showPopup('Email Verification enabled successfully!');
+    document.getElementById('emailMfaVerifyCode').value = '';
+    updateEmailMfaUI(true);
+  } catch {
+    showPopup('Cannot connect to server.');
+  }
+}
+
+async function submitEmailMfaDisable(e) {
+  e.preventDefault();
+
+  const code = (document.getElementById('emailMfaDisableCode')?.value || '').trim();
+  if (!code || code.length !== 6) {
+    showPopup('Please enter a valid 6-digit code');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${ACCOUNT_USER_API_BASE_URL}/mfa/email/disable`, {
+      method: 'POST',
+      headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ token: code }),
+    });
+    const data = await response.json();
+
+    if (response.status === 401 || response.status === 403) {
+      showPopup('Session expired. Please log in again.');
+      logout();
+      return;
+    }
+
+    if (!response.ok) {
+      showPopup(data.message || 'Invalid code');
+      return;
+    }
+
+    showPopup('Email Verification disabled successfully!');
+    document.getElementById('emailMfaDisableCode').value = '';
+    updateEmailMfaUI(false);
   } catch {
     showPopup('Cannot connect to server.');
   }
@@ -600,6 +740,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const mfaDisableForm = document.getElementById('mfaDisableForm');
   if (mfaDisableForm) mfaDisableForm.addEventListener('submit', disableMfa);
+
+  const emailMfaVerifyForm = document.getElementById('emailMfaVerifyForm');
+  if (emailMfaVerifyForm) emailMfaVerifyForm.addEventListener('submit', submitEmailMfaEnable);
+
+  const emailMfaDisableForm = document.getElementById('emailMfaDisableForm');
+  if (emailMfaDisableForm) emailMfaDisableForm.addEventListener('submit', submitEmailMfaDisable);
 
   // Initialise billing fields state (hidden by default since checkbox starts checked)
   toggleBillingFields(true);

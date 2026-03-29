@@ -118,6 +118,32 @@ const userSchema = new mongoose.Schema({
       default: null,
     },
   },
+  emailMfa: {
+    enabled: {
+      type: Boolean,
+      default: false,
+    },
+    enabledAt: {
+      type: Date,
+      default: null,
+    },
+    pendingOtp: {
+      type: String,
+      default: '',
+    },
+    otpExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    otpSentAt: {
+      type: Date,
+      default: null,
+    },
+    otpAttempts: {
+      type: Number,
+      default: 0,
+    },
+  },
   createdAt: {
     type: Date,
     default: Date.now,

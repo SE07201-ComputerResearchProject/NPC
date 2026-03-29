@@ -3,9 +3,11 @@ import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
+import crypto from 'crypto';
 import User from '../models/User.js';
 import Log from '../models/Log.js';
 import { requireAuth, requireAdmin, requireSelfOrAdmin } from '../middleware/adminMiddleware.js';
+import { sendOtpEmail } from '../utils/emailUtils.js';
 
 const router = express.Router();
 const googleClient = new OAuth2Client();
@@ -29,6 +31,7 @@ function serializeUserForClient(user) {
     billingAddress: user.billingAddress || { street: '', city: '', state: '', zip: '' },
     avatarUrl: user.avatarUrl || '',
     mfaEnabled: Boolean(user?.mfa?.enabled),
+    emailMfaEnabled: Boolean(user?.emailMfa?.enabled),
   };
 }
 
@@ -190,15 +193,24 @@ async function verifyRecaptchaToken(captchaToken) {
 
 router.post('/google', async (req, res) => {
   try {
-    const { idToken, otpToken, captchaToken } = req.body;
+    const { idToken, otpToken, emailOtpToken, captchaToken } = req.body;
 
-    const recaptcha = await verifyRecaptchaToken(captchaToken);
-    if (!recaptcha.success) {
-      return res.status(400).json({ message: recaptcha.message });
+    // IP-based spam protection — only kicks in after repeated failures
+    const googleAttemptKey = `google:${String(req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown')}`;
+    const googleAttemptState = getLoginAttemptState(googleAttemptKey);
+    if (requiresCaptchaForAttempt(googleAttemptState)) {
+      const recaptcha = await verifyRecaptchaToken(captchaToken);
+      if (!recaptcha.success) {
+        return res.status(400).json({
+          message: 'Too many failed attempts. Please complete the captcha to continue.',
+          requiresCaptcha: true,
+        });
+      }
     }
 
     const verified = await verifyGoogleIdToken(idToken);
     if (!verified.success) {
+      registerFailedLoginAttempt(googleAttemptKey);
       return res.status(401).json({ message: verified.message });
     }
 
@@ -253,14 +265,14 @@ router.post('/google', async (req, res) => {
       }
     }
 
-    // Check if MFA is enabled
+    // Check TOTP MFA (Google Authenticator)
     const mfaSecret = String(user?.mfa?.secret || '').trim();
     if (user?.mfa?.enabled && mfaSecret) {
       if (!otpToken) {
         return res.status(202).json({
           message: 'OTP is required to complete Google login.',
           requiresOtp: true,
-          idToken: idToken, // Return idToken so frontend can reuse it
+          requiresCaptcha: requiresCaptchaForAttempt(googleAttemptState),
         });
       }
 
@@ -272,14 +284,84 @@ router.post('/google', async (req, res) => {
       });
 
       if (!isOtpValid) {
+        const nextState = registerFailedLoginAttempt(googleAttemptKey);
         Log.create({ user: user.email, activity: 'Google login failed due to invalid MFA OTP' }).catch(() => {});
         return res.status(401).json({
           message: 'Invalid OTP code',
           requiresOtp: true,
+          requiresCaptcha: requiresCaptchaForAttempt(nextState),
         });
       }
+    } else if (user?.emailMfa?.enabled) {
+      // Email OTP MFA
+      if (!emailOtpToken) {
+        // Generate and send OTP
+        const RESEND_COOLDOWN_MS = 60 * 1000;
+        const lastSent = user.emailMfa?.otpSentAt;
+        if (lastSent && Date.now() - new Date(lastSent).getTime() < RESEND_COOLDOWN_MS) {
+          return res.status(202).json({
+            message: 'A verification code was already sent to your email. Please check your inbox.',
+            requiresEmailOtp: true,
+          });
+        }
+
+        const otp = String(crypto.randomInt(100000, 1000000));
+        const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+        user.emailMfa = {
+          ...(user.emailMfa?.toObject ? user.emailMfa.toObject() : (user.emailMfa || {})),
+          pendingOtp: otpHash,
+          otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          otpSentAt: new Date(),
+          otpAttempts: 0,
+        };
+        user.updatedAt = new Date();
+        await user.save();
+
+        sendOtpEmail(user.email, otp).catch(() => {});
+        Log.create({ user: user.email, activity: 'Google login email OTP sent' }).catch(() => {});
+
+        return res.status(202).json({
+          message: 'A 6-digit verification code has been sent to your email.',
+          requiresEmailOtp: true,
+        });
+      }
+
+      // Verify the email OTP
+      const isExpired = !user.emailMfa?.otpExpiresAt || new Date(user.emailMfa.otpExpiresAt) < new Date();
+      if (isExpired) {
+        return res.status(400).json({
+          message: 'Verification code has expired. Please sign in again to receive a new code.',
+          requiresEmailOtp: true,
+        });
+      }
+
+      if ((user.emailMfa?.otpAttempts || 0) >= 5) {
+        return res.status(429).json({
+          message: 'Too many failed attempts. Please sign in again to receive a new code.',
+          requiresEmailOtp: true,
+        });
+      }
+
+      const providedHash = crypto.createHash('sha256').update(String(emailOtpToken).trim()).digest('hex');
+      if (providedHash !== user.emailMfa?.pendingOtp) {
+        user.emailMfa.otpAttempts = (user.emailMfa.otpAttempts || 0) + 1;
+        await user.save();
+        Log.create({ user: user.email, activity: 'Google login failed due to invalid email OTP' }).catch(() => {});
+        return res.status(401).json({ message: 'Invalid verification code.', requiresEmailOtp: true });
+      }
+
+      // Clear OTP on success
+      user.emailMfa = {
+        ...(user.emailMfa?.toObject ? user.emailMfa.toObject() : (user.emailMfa || {})),
+        pendingOtp: '',
+        otpExpiresAt: null,
+        otpAttempts: 0,
+      };
+      user.updatedAt = new Date();
+      await user.save();
     }
 
+    clearLoginAttempt(googleAttemptKey);
     const token = buildJwtForUser(user);
     Log.create({ user: user.email, activity: 'Google login successful' }).catch(() => {});
 
@@ -436,6 +518,8 @@ router.get('/mfa/status', requireAuth, async (req, res) => {
     return res.status(200).json({
       enabled: Boolean(user.mfa?.enabled),
       enabledAt: user.mfa?.enabledAt || null,
+      emailMfaEnabled: Boolean(user.emailMfa?.enabled),
+      emailMfaEnabledAt: user.emailMfa?.enabledAt || null,
     });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to get MFA status', error: error.message });
@@ -577,6 +661,138 @@ router.post('/mfa/disable', requireAuth, async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to disable MFA', error: error.message });
+  }
+});
+
+// ── Email MFA Routes ─────────────────────────────────────────────────────────
+const EMAIL_MFA_RESEND_COOLDOWN_MS = 60 * 1000;
+const EMAIL_MFA_OTP_EXPIRY_MS = 10 * 60 * 1000;
+const EMAIL_MFA_MAX_ATTEMPTS = 5;
+
+function generateEmailOtp() {
+  const otp = String(crypto.randomInt(100000, 1000000));
+  const hash = crypto.createHash('sha256').update(otp).digest('hex');
+  return { otp, hash };
+}
+
+// Send OTP to email (used for enable/disable from Account page)
+router.post('/mfa/email/send-code', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.currentUser.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const lastSent = user.emailMfa?.otpSentAt;
+    if (lastSent && Date.now() - new Date(lastSent).getTime() < EMAIL_MFA_RESEND_COOLDOWN_MS) {
+      return res.status(429).json({ message: 'Please wait a moment before requesting another code.' });
+    }
+
+    const { otp, hash } = generateEmailOtp();
+    user.emailMfa = {
+      ...(user.emailMfa?.toObject ? user.emailMfa.toObject() : (user.emailMfa || {})),
+      pendingOtp: hash,
+      otpExpiresAt: new Date(Date.now() + EMAIL_MFA_OTP_EXPIRY_MS),
+      otpSentAt: new Date(),
+      otpAttempts: 0,
+    };
+    user.updatedAt = new Date();
+    await user.save();
+
+    await sendOtpEmail(user.email, otp);
+    return res.status(200).json({ message: 'Verification code sent to your email.' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to send verification code', error: error.message });
+  }
+});
+
+// Enable email MFA (verify the OTP that was sent)
+router.post('/mfa/email/enable', requireAuth, async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ message: 'Verification code is required' });
+
+    const user = await User.findById(req.currentUser.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const isExpired = !user.emailMfa?.otpExpiresAt || new Date(user.emailMfa.otpExpiresAt) < new Date();
+    if (isExpired) return res.status(400).json({ message: 'Code has expired. Please request a new one.' });
+
+    if ((user.emailMfa?.otpAttempts || 0) >= EMAIL_MFA_MAX_ATTEMPTS) {
+      return res.status(429).json({ message: 'Too many failed attempts. Please request a new code.' });
+    }
+
+    const providedHash = crypto.createHash('sha256').update(String(token).trim()).digest('hex');
+    if (providedHash !== user.emailMfa?.pendingOtp) {
+      user.emailMfa.otpAttempts = (user.emailMfa.otpAttempts || 0) + 1;
+      await user.save();
+      return res.status(400).json({ message: 'Invalid verification code' });
+    }
+
+    user.emailMfa = {
+      enabled: true,
+      enabledAt: new Date(),
+      pendingOtp: '',
+      otpExpiresAt: null,
+      otpSentAt: null,
+      otpAttempts: 0,
+    };
+    user.updatedAt = new Date();
+    await user.save();
+
+    Log.create({ user: user.email, activity: 'Email MFA enabled' }).catch(() => {});
+    return res.status(200).json({
+      message: 'Email verification enabled successfully',
+      user: serializeUserForClient(user),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to enable email MFA', error: error.message });
+  }
+});
+
+// Disable email MFA (verify OTP first)
+router.post('/mfa/email/disable', requireAuth, async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ message: 'Verification code is required' });
+
+    const user = await User.findById(req.currentUser.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (!user?.emailMfa?.enabled) {
+      return res.status(400).json({ message: 'Email MFA is not enabled' });
+    }
+
+    const isExpired = !user.emailMfa?.otpExpiresAt || new Date(user.emailMfa.otpExpiresAt) < new Date();
+    if (isExpired) return res.status(400).json({ message: 'Code has expired. Please request a new one.' });
+
+    if ((user.emailMfa?.otpAttempts || 0) >= EMAIL_MFA_MAX_ATTEMPTS) {
+      return res.status(429).json({ message: 'Too many failed attempts. Please request a new code.' });
+    }
+
+    const providedHash = crypto.createHash('sha256').update(String(token).trim()).digest('hex');
+    if (providedHash !== user.emailMfa?.pendingOtp) {
+      user.emailMfa.otpAttempts = (user.emailMfa.otpAttempts || 0) + 1;
+      await user.save();
+      return res.status(400).json({ message: 'Invalid verification code' });
+    }
+
+    user.emailMfa = {
+      enabled: false,
+      enabledAt: null,
+      pendingOtp: '',
+      otpExpiresAt: null,
+      otpSentAt: null,
+      otpAttempts: 0,
+    };
+    user.updatedAt = new Date();
+    await user.save();
+
+    Log.create({ user: user.email, activity: 'Email MFA disabled' }).catch(() => {});
+    return res.status(200).json({
+      message: 'Email verification disabled successfully',
+      user: serializeUserForClient(user),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to disable email MFA', error: error.message });
   }
 });
 

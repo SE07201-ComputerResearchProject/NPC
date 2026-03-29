@@ -33,12 +33,20 @@ const CATEGORY_HERO_IMAGES = {
 const productsState = {
   categories: [],
   components: [],
+  allComponents: [],        // unfiltered master list for current category + search
   activeCategory: initialCategory,
   searchText: '',
   currentPage: initialPage,
   pageSize: 9,
   currentPageByCategory: {
     [initialCategory]: initialPage,
+  },
+  filter: {
+    priceMin: 0,
+    priceMax: Infinity,
+    priceAbsMin: 0,
+    priceAbsMax: 0,
+    brands: new Set(),      // empty = all brands shown
   },
 };
 
@@ -459,6 +467,139 @@ function updateProductsTitle() {
   heroEl.style.setProperty('--hero-image', `url('${imagePath}')`);
 }
 
+// ─── Filter helpers ────────────────────────────────────────────
+
+function formatPriceShort(price) {
+  if (price >= 1_000_000) return `${(price / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (price >= 1_000)     return `${(price / 1_000).toFixed(0)}K`;
+  return `${Math.round(price)}`;
+}
+
+function updatePriceFill() {
+  const fill   = document.getElementById('filterPriceFill');
+  const minEl  = document.getElementById('filterRangeMin');
+  const maxEl  = document.getElementById('filterRangeMax');
+  if (!fill || !minEl || !maxEl) return;
+  const lo = Number(minEl.value);
+  const hi = Number(maxEl.value);
+  fill.style.left  = `${lo}%`;
+  fill.style.width = `${hi - lo}%`;
+}
+
+function applyFilters() {
+  const { filter, allComponents } = productsState;
+  productsState.components = allComponents.filter(c => {
+    const price = c.price || 0;
+    if (price < filter.priceMin || price > filter.priceMax) return false;
+    if (filter.brands.size > 0 && !filter.brands.has(String(c.brand || 'Generic').trim())) return false;
+    return true;
+  });
+  setCurrentPage(1);
+  renderComponents();
+}
+
+function renderFilterSidebar() {
+  const { allComponents, filter } = productsState;
+
+  // ── Price bounds ──────────────────────────────────────────────
+  const prices = allComponents.map(c => c.price || 0).filter(p => p > 0);
+  const absMin = prices.length ? Math.min(...prices) : 0;
+  const absMax = prices.length ? Math.max(...prices) : 0;
+
+  if (filter.priceAbsMin !== absMin || filter.priceAbsMax !== absMax) {
+    filter.priceAbsMin = absMin;
+    filter.priceAbsMax = absMax;
+    filter.priceMin    = absMin;
+    filter.priceMax    = absMax;
+  }
+
+  // Update labels
+  const minLabel = document.getElementById('filterPriceMin');
+  const maxLabel = document.getElementById('filterPriceMax');
+  if (minLabel) minLabel.textContent = `${formatPriceShort(filter.priceMin)} VND`;
+  if (maxLabel) maxLabel.textContent = `${formatPriceShort(filter.priceMax)} VND`;
+
+  // Update sliders — replace nodes to clear previous listeners
+  const oldMin = document.getElementById('filterRangeMin');
+  const oldMax = document.getElementById('filterRangeMax');
+  if (oldMin && oldMax) {
+    const newMin = oldMin.cloneNode(true);
+    const newMax = oldMax.cloneNode(true);
+    const range  = absMax > absMin ? absMax - absMin : 1;
+
+    newMin.value = absMax > absMin ? Math.round(((filter.priceMin - absMin) / range) * 100) : 0;
+    newMax.value = absMax > absMin ? Math.round(((filter.priceMax - absMin) / range) * 100) : 100;
+
+    oldMin.replaceWith(newMin);
+    oldMax.replaceWith(newMax);
+    updatePriceFill();
+
+    function onSlider() {
+      let lo = Number(newMin.value);
+      let hi = Number(newMax.value);
+      if (lo > hi) { if (this === newMin) { newMin.value = hi; lo = hi; } else { newMax.value = lo; hi = lo; } }
+      filter.priceMin = absMin + Math.round((lo / 100) * range);
+      filter.priceMax = absMin + Math.round((hi / 100) * range);
+      if (minLabel) minLabel.textContent = `${formatPriceShort(filter.priceMin)} VND`;
+      if (maxLabel) maxLabel.textContent = `${formatPriceShort(filter.priceMax)} VND`;
+      updatePriceFill();
+      applyFilters();
+    }
+    newMin.addEventListener('input', onSlider);
+    newMax.addEventListener('input', onSlider);
+  }
+
+  // ── Brand list ────────────────────────────────────────────────
+  const brandMap = new Map();
+  allComponents.forEach(c => {
+    const b = String(c.brand || 'Generic').trim();
+    brandMap.set(b, (brandMap.get(b) || 0) + 1);
+  });
+  const sortedBrands = [...brandMap.entries()].sort((a, b) => b[1] - a[1]);
+
+  const brandList = document.getElementById('filterBrandList');
+  if (brandList) {
+    if (!sortedBrands.length) {
+      brandList.innerHTML = '<span style="color:#adb5bd;font-size:12px;">No brands</span>';
+    } else {
+      brandList.innerHTML = sortedBrands.map(([brand, count]) => {
+        const checked = filter.brands.size === 0 || filter.brands.has(brand) ? 'checked' : '';
+        return `
+          <label class="filter-brand-item">
+            <input type="checkbox" data-brand="${escapeHtml(brand)}" ${checked}>
+            <span class="filter-brand-name">${escapeHtml(brand)}</span>
+            <span class="filter-brand-count">${count}</span>
+          </label>`;
+      }).join('');
+
+      brandList.querySelectorAll('input[data-brand]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const all  = [...brandList.querySelectorAll('input[data-brand]')];
+          const chkd = all.filter(el => el.checked).map(el => el.dataset.brand);
+          filter.brands = (chkd.length === 0 || chkd.length === all.length)
+            ? new Set()
+            : new Set(chkd);
+          applyFilters();
+        });
+      });
+    }
+  }
+
+  // Reset button — replace node to avoid stacking listeners
+  const oldReset = document.getElementById('filterResetBtn');
+  if (oldReset) {
+    const newReset = oldReset.cloneNode(true);
+    oldReset.replaceWith(newReset);
+    newReset.addEventListener('click', () => {
+      filter.brands   = new Set();
+      filter.priceMin = filter.priceAbsMin;
+      filter.priceMax = filter.priceAbsMax;
+      renderFilterSidebar();
+      applyFilters();
+    });
+  }
+}
+
 function renderCategoryFilters() {
   const filtersEl = document.getElementById('categoryFilters');
   if (!filtersEl) return;
@@ -727,9 +868,19 @@ async function loadComponents() {
     throw new Error('Failed to load components');
   }
 
-  productsState.components = await response.json();
+  const data = await response.json();
+
+  // Reset filter bounds on every fresh load (new category / search)
+  productsState.allComponents       = data;
+  productsState.filter.priceAbsMin  = 0;
+  productsState.filter.priceAbsMax  = 0;
+  productsState.filter.priceMin     = 0;
+  productsState.filter.priceMax     = Infinity;
+  productsState.filter.brands       = new Set();
   productsState.currentPage = productsState.currentPageByCategory[productsState.activeCategory] || 1;
-  renderComponents();
+
+  renderFilterSidebar();
+  applyFilters();
   } finally {
     endProductsLoading();
   }

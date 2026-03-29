@@ -52,7 +52,7 @@
     <section class="products-toolbar square-panel">
       <div class="products-search-group">
         <label for="componentSearch" class="form-label">Search</label>
-        <input type="search" id="componentSearch" class="form-control" placeholder="Search by name, brand, description">
+        <input type="search" id="componentSearch" class="form-control" placeholder="Search by name, brand, description...">
       </div>
       <div class="products-actions">
         <a href="dashboard.html" class="btn btn-outline-primary">Open Build</a>
@@ -60,11 +60,47 @@
       </div>
     </section>
 
-    <section class="products-filters" id="categoryFilters"></section>
+    <div class="products-body-layout">
 
-    <section id="productsStatus" class="products-status">Loading components...</section>
-    <section class="products-grid" id="productsGrid"></section>
-    <section class="products-pagination" id="productsPagination"></section>
+      <!-- ── Left Filter Sidebar ── -->
+      <aside class="products-filter-sidebar" id="filterSidebar">
+        <div class="filter-sidebar-header">
+          <span class="filter-sidebar-title">Filters</span>
+          <button type="button" class="filter-reset-btn" id="filterResetBtn">Reset all</button>
+        </div>
+
+        <div class="filter-section">
+          <p class="filter-section-title">Category</p>
+          <div class="filter-category-list" id="categoryFilters"></div>
+        </div>
+
+        <div class="filter-section">
+          <p class="filter-section-title">Price Range</p>
+          <div class="filter-price-labels">
+            <span id="filterPriceMin">0 VND</span>
+            <span id="filterPriceMax">0 VND</span>
+          </div>
+          <div class="filter-price-track">
+            <div class="filter-price-fill" id="filterPriceFill"></div>
+            <input type="range" class="filter-range" id="filterRangeMin" min="0" max="100" value="0">
+            <input type="range" class="filter-range" id="filterRangeMax" min="0" max="100" value="100">
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <p class="filter-section-title">Brand</p>
+          <div class="filter-brand-list" id="filterBrandList"></div>
+        </div>
+      </aside>
+
+      <!-- ── Right Content Area ── -->
+      <div class="products-main-content">
+        <section id="productsStatus" class="products-status">Loading components...</section>
+        <section class="products-grid" id="productsGrid"></section>
+        <section class="products-pagination" id="productsPagination"></section>
+      </div>
+
+    </div>
   </main>
 
   <div class="floating-menu">
