@@ -164,15 +164,6 @@ function formatPrice(price) {
   return `${Number(price || 0).toLocaleString()} VND`;
 }
 
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 function formatSpecLabel(label) {
   const text = String(label || '')
     .replace(/[_-]+/g, ' ')

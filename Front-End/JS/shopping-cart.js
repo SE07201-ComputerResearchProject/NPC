@@ -169,20 +169,6 @@ async function handleCheckout() {
   }
 }
 
-async function handlePaymentReturn() {
-  const params = new URLSearchParams(window.location.search);
-  const status = params.get('paymentStatus');
-  if (!status) return;
-
-  if (status === 'success') {
-    await clearCart().catch(() => null);
-    renderCart();
-    showPopup('Payment successful. Thank you for your order!');
-  } else {
-    showPopup('Payment failed or cancelled. Please try again.');
-  }
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
   if (window.awaitCommerceStateReady) {
     await window.awaitCommerceStateReady();
@@ -190,5 +176,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   renderCart();
   bindCartEvents();
-  await handlePaymentReturn();
 });

@@ -14,6 +14,15 @@ const LEGACY_COMMERCE_STORAGE_KEYS = ['pcBuild', 'shoppingCart', 'buildName'];
 const GUEST_BUILD_STORAGE_KEY = 'guestPcBuild';
 const GUEST_BUILD_NAME_STORAGE_KEY = 'guestBuildName';
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const commerceState = {
   cart: [],
   build: createEmptyBuildState(),

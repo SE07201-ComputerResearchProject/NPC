@@ -1,20 +1,24 @@
 import nodemailer from 'nodemailer';
 
-function createTransporter() {
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
+// Lazy singleton — created on first use so dotenv has already loaded by then.
+let _transporter = null;
+function getTransporter() {
+  if (!_transporter) {
+    _transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+  }
+  return _transporter;
 }
 
 export async function sendOtpEmail(toEmail, otp) {
   const issuer = String(process.env.MFA_ISSUER || 'Breaking Bad Builder').trim();
-  const transporter = createTransporter();
 
-  await transporter.sendMail({
+  await getTransporter().sendMail({
     from: `"${issuer}" <${process.env.EMAIL_USER}>`,
     to: toEmail,
     subject: `[${issuer}] Your Login Verification Code`,

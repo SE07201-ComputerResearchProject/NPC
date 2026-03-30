@@ -437,12 +437,12 @@ function updateMfaUI(enabled) {
     statusText.innerHTML = '<i data-lucide="check-circle" style="width:16px;height:16px;color:#28a745;vertical-align:-2px;margin-right:4px;"></i> Enabled';
     if (enableSection) enableSection.style.display = 'none';
     if (disableSection) disableSection.style.display = '';
-    actionContainer.innerHTML = '';
+    if (actionContainer) actionContainer.innerHTML = '';
   } else {
     statusText.innerHTML = '<i data-lucide="alert-circle" style="width:16px;height:16px;color:#ffc107;vertical-align:-2px;margin-right:4px;"></i> Disabled';
     if (enableSection) enableSection.style.display = '';
     if (disableSection) disableSection.style.display = 'none';
-    actionContainer.innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary" onclick="startMfaSetup()">Enable 2FA</button>';
+    if (actionContainer) actionContainer.innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary" onclick="startMfaSetup()">Enable 2FA</button>';
   }
 
   lucide.createIcons();

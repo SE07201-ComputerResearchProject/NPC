@@ -1,9 +1,7 @@
-import featuredBuildRoutes from './routes/featuredBuildRoutes.js';
-import { seedFeaturedBuildsIfNeeded } from './routes/featuredBuildRoutes.js';
+import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import userRoutes from './routes/userRoutes.js';
 import componentRoutes from './routes/componentRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
@@ -12,12 +10,15 @@ import orderRoutes from './routes/orderRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import logRoutes from './routes/logRoutes.js';
 import compatibilityRoutes from './routes/compatibilityRoutes.js';
+import featuredBuildRoutes, { seedFeaturedBuildsIfNeeded } from './routes/featuredBuildRoutes.js';
 import Component from './models/Component.js';
-import Log from './models/Log.js'
+import Log from './models/Log.js';
 import { seedComponentsIfNeeded } from './utils/componentData.js';
 import { seedLogsIfNeeded } from './utils/logData.js';
 
 dotenv.config();
+
+if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
 
 const app = express();
 

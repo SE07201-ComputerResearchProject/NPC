@@ -37,15 +37,6 @@ const compatibilityState = {
   debounceTimer: null,
 };
 
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 async function fetchComponentsByCategory(categoryKey) {
   if (componentsCache[categoryKey]) return componentsCache[categoryKey];
   const res = await fetch(`${COMPONENT_API_BASE_URL}?category=${categoryKey}`);
@@ -724,16 +715,6 @@ function showPaymentModal(amount) {
   document.body.appendChild(modal);
   requestAnimationFrame(() => backdrop.classList.add('show'));
 
-  document.getElementById('payCard').addEventListener('click', () => {
-    if (!window.isLoggedIn) {
-      closePaymentModal();
-      toggleAuthPopup(new Event('click'));
-      showPopup('Please log in before paying.');
-      return;
-    }
-    showPopup('Processing card payment...');
-    closePaymentModal();
-  });
   document.getElementById('payPaypal').addEventListener('click', () => {
     if (!window.isLoggedIn) {
       closePaymentModal();
@@ -781,24 +762,12 @@ function closePaymentModal() {
   }
 }
 
-function notifyPaymentResultFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  const paymentStatus = params.get('paymentStatus');
-  if (!paymentStatus) {
-    return;
-  }
-
-  const paymentCode = params.get('paymentCode') || 'N/A';
-  if (paymentStatus === 'success') {
-    showPopup(`VNPay payment successful (code: ${paymentCode})`, { duration: 3500, center: true });
-  } else {
-    showPopup(`VNPay payment failed (code: ${paymentCode})`, { duration: 3500, center: true });
-  }
-
-  window.history.replaceState({}, '', window.location.pathname);
-}
-
 async function startVnpayPayment(amount) {
+  // Always sync currentBuild to the server before creating the checkout order.
+  // This covers cases where currentBuild was populated without being persisted
+  // (e.g. featured preset load, post-login rehydration).
+  await saveBuild(currentBuild);
+
   const orderPayload = await createCheckoutOrder('build');
   const orderId = orderPayload?.order?.id;
   if (!orderId) {
@@ -827,8 +796,6 @@ async function startVnpayPayment(amount) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  notifyPaymentResultFromUrl();
-
   const checkoutBtn = document.getElementById('checkoutBtn');
   if (checkoutBtn) {
     checkoutBtn.addEventListener('click', handleCheckout);

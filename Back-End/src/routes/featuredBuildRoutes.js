@@ -1,10 +1,11 @@
 import express from 'express';
 import FeaturedBuild from '../models/FeaturedBuild.js';
+import { COMPONENT_CATEGORIES } from '../models/Component.js';
 import { requireAdmin } from '../middleware/adminMiddleware.js';
 
 const router = express.Router();
 const VALID_TIERS = ['high', 'mid', 'budget'];
-const VALID_PART_CATEGORIES = ['case', 'cpu', 'motherboard', 'gpu', 'ram', 'cooler', 'storage', 'psu', 'fan'];
+const VALID_PART_CATEGORIES = COMPONENT_CATEGORIES;
 
 function normalizeParts(partsInput) {
   if (!partsInput || typeof partsInput !== 'object' || Array.isArray(partsInput)) {

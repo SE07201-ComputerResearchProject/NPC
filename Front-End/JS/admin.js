@@ -302,16 +302,6 @@ function setWorkspaceAccess(isAllowed) {
   }
 }
 
-function escapeHtml(value) {
-  const text = String(value ?? '');
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 function formatDateForInput(value) {
   if (!value) return '';
   const parsed = new Date(value);

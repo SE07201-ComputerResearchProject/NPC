@@ -88,7 +88,7 @@ function clearLoginAttempt(key) {
 function buildJwtForUser(user) {
   return jwt.sign(
     { userId: String(user._id), role: user.role, email: user.email },
-    process.env.JWT_SECRET || 'dev_secret_change_in_prod',
+    process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
 }
@@ -193,7 +193,7 @@ async function verifyRecaptchaToken(captchaToken) {
 
 router.post('/google', async (req, res) => {
   try {
-    const { idToken, otpToken, emailOtpToken, captchaToken } = req.body;
+    const { idToken, otpToken, emailOtpToken, mfaMethod, captchaToken } = req.body;
 
     // IP-based spam protection — only kicks in after repeated failures
     const googleAttemptKey = `google:${String(req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown')}`;
@@ -265,12 +265,26 @@ router.post('/google', async (req, res) => {
       }
     }
 
-    // Check TOTP MFA (Google Authenticator)
+    // Check MFA
     const mfaSecret = String(user?.mfa?.secret || '').trim();
-    if (user?.mfa?.enabled && mfaSecret) {
+    const hasTOTPGoogle = Boolean(user?.mfa?.enabled && mfaSecret);
+    const hasEmailOTPGoogle = Boolean(user?.emailMfa?.enabled);
+
+    if (hasTOTPGoogle && hasEmailOTPGoogle && !mfaMethod) {
+      return res.status(202).json({
+        message: 'This account has two verification methods. Please choose one to continue.',
+        requiresMfaChoice: true,
+        hasTOTP: true,
+        hasEmailOTP: true,
+      });
+    }
+
+    const effectiveMethodGoogle = mfaMethod || (hasTOTPGoogle ? 'totp' : hasEmailOTPGoogle ? 'email' : null);
+
+    if (effectiveMethodGoogle === 'totp' && hasTOTPGoogle) {
       if (!otpToken) {
         return res.status(202).json({
-          message: 'OTP is required to complete Google login.',
+          message: 'Enter the code from your authenticator app.',
           requiresOtp: true,
           requiresCaptcha: requiresCaptchaForAttempt(googleAttemptState),
         });
@@ -292,13 +306,12 @@ router.post('/google', async (req, res) => {
           requiresCaptcha: requiresCaptchaForAttempt(nextState),
         });
       }
-    } else if (user?.emailMfa?.enabled) {
+    } else if (effectiveMethodGoogle === 'email' && hasEmailOTPGoogle) {
       // Email OTP MFA
       if (!emailOtpToken) {
         // Generate and send OTP
-        const RESEND_COOLDOWN_MS = 60 * 1000;
         const lastSent = user.emailMfa?.otpSentAt;
-        if (lastSent && Date.now() - new Date(lastSent).getTime() < RESEND_COOLDOWN_MS) {
+        if (lastSent && Date.now() - new Date(lastSent).getTime() < EMAIL_MFA_RESEND_COOLDOWN_MS) {
           return res.status(202).json({
             message: 'A verification code was already sent to your email. Please check your inbox.',
             requiresEmailOtp: true,
@@ -317,7 +330,9 @@ router.post('/google', async (req, res) => {
         user.updatedAt = new Date();
         await user.save();
 
-        sendOtpEmail(user.email, otp).catch(() => {});
+        sendOtpEmail(user.email, otp).catch((err) => {
+          console.error('Failed to send email OTP for Google login:', err.message);
+        });
         Log.create({ user: user.email, activity: 'Google login email OTP sent' }).catch(() => {});
 
         return res.status(202).json({
@@ -422,7 +437,7 @@ router.post('/register', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password, otpToken, captchaToken } = req.body;
+    const { email, password, otpToken, emailOtpToken, mfaMethod, captchaToken } = req.body;
     const normalizedEmail = String(email || '').trim().toLowerCase();
     const attemptKey = getLoginAttemptKey(req, normalizedEmail);
     const attemptState = getLoginAttemptState(attemptKey);
@@ -465,10 +480,24 @@ router.post('/login', async (req, res) => {
     }
 
     const mfaSecret = String(user?.mfa?.secret || '').trim();
-    if (user?.mfa?.enabled && mfaSecret) {
+    const hasTOTP = Boolean(user?.mfa?.enabled && mfaSecret);
+    const hasEmailOTP = Boolean(user?.emailMfa?.enabled);
+
+    if (hasTOTP && hasEmailOTP && !mfaMethod) {
+      return res.status(202).json({
+        message: 'This account has two verification methods. Please choose one to continue.',
+        requiresMfaChoice: true,
+        hasTOTP: true,
+        hasEmailOTP: true,
+      });
+    }
+
+    const effectiveMethod = mfaMethod || (hasTOTP ? 'totp' : hasEmailOTP ? 'email' : null);
+
+    if (effectiveMethod === 'totp' && hasTOTP) {
       if (!otpToken) {
         return res.status(202).json({
-          message: 'OTP is required to complete login.',
+          message: 'Enter the code from your authenticator app.',
           requiresOtp: true,
           requiresCaptcha: requiresCaptchaForAttempt(attemptState),
         });
@@ -490,6 +519,61 @@ router.post('/login', async (req, res) => {
           requiresCaptcha: requiresCaptchaForAttempt(nextAttempt),
         });
       }
+    } else if (effectiveMethod === 'email' && hasEmailOTP) {
+      if (!emailOtpToken) {
+        const lastSent = user.emailMfa?.otpSentAt;
+        if (lastSent && Date.now() - new Date(lastSent).getTime() < EMAIL_MFA_RESEND_COOLDOWN_MS) {
+          return res.status(202).json({
+            message: 'A verification code was already sent to your email. Please check your inbox.',
+            requiresEmailOtp: true,
+          });
+        }
+        const { otp, hash } = generateEmailOtp();
+        await sendOtpEmail(user.email, otp);
+        user.emailMfa = {
+          ...(user.emailMfa?.toObject ? user.emailMfa.toObject() : (user.emailMfa || {})),
+          pendingOtp: hash,
+          otpExpiresAt: new Date(Date.now() + EMAIL_MFA_OTP_EXPIRY_MS),
+          otpSentAt: new Date(),
+          otpAttempts: 0,
+        };
+        user.updatedAt = new Date();
+        await user.save();
+        Log.create({ user: user.email, activity: 'Login email OTP sent' }).catch(() => {});
+        return res.status(202).json({
+          message: 'A 6-digit verification code has been sent to your email.',
+          requiresEmailOtp: true,
+        });
+      }
+
+      const isExpired = !user.emailMfa?.otpExpiresAt || new Date(user.emailMfa.otpExpiresAt) < new Date();
+      if (isExpired) {
+        return res.status(400).json({
+          message: 'Verification code has expired. Please log in again.',
+          requiresEmailOtp: true,
+        });
+      }
+      if ((user.emailMfa?.otpAttempts || 0) >= EMAIL_MFA_MAX_ATTEMPTS) {
+        return res.status(429).json({
+          message: 'Too many failed attempts. Please log in again.',
+          requiresEmailOtp: true,
+        });
+      }
+      const providedHash = crypto.createHash('sha256').update(String(emailOtpToken).trim()).digest('hex');
+      if (providedHash !== user.emailMfa?.pendingOtp) {
+        user.emailMfa.otpAttempts = (user.emailMfa.otpAttempts || 0) + 1;
+        await user.save();
+        Log.create({ user: user.email, activity: 'Login failed due to invalid email OTP' }).catch(() => {});
+        return res.status(401).json({ message: 'Invalid verification code.', requiresEmailOtp: true });
+      }
+      user.emailMfa = {
+        ...(user.emailMfa?.toObject ? user.emailMfa.toObject() : (user.emailMfa || {})),
+        pendingOtp: '',
+        otpExpiresAt: null,
+        otpAttempts: 0,
+      };
+      user.updatedAt = new Date();
+      await user.save();
     }
 
     clearLoginAttempt(attemptKey);
@@ -687,6 +771,9 @@ router.post('/mfa/email/send-code', requireAuth, async (req, res) => {
     }
 
     const { otp, hash } = generateEmailOtp();
+
+    await sendOtpEmail(user.email, otp);
+
     user.emailMfa = {
       ...(user.emailMfa?.toObject ? user.emailMfa.toObject() : (user.emailMfa || {})),
       pendingOtp: hash,
@@ -697,7 +784,6 @@ router.post('/mfa/email/send-code', requireAuth, async (req, res) => {
     user.updatedAt = new Date();
     await user.save();
 
-    await sendOtpEmail(user.email, otp);
     return res.status(200).json({ message: 'Verification code sent to your email.' });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to send verification code', error: error.message });

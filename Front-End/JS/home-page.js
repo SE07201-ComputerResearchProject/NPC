@@ -179,7 +179,9 @@
   }
 
   function tierBadgeClass(tier) {
-    return tier === 'mid' ? 'preset-badge--mid' : 'preset-badge--high';
+    if (tier === 'mid') return 'preset-badge--mid';
+    if (tier === 'budget') return 'preset-badge--budget';
+    return 'preset-badge--high';
   }
 
   function tierLabel(tier) {
@@ -228,15 +230,6 @@
 
     // Re-run Lucide so newly injected SVG icons render.
     if (window.lucide) window.lucide.createIcons();
-  }
-
-  function escapeHtml(str) {
-    return String(str ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
   }
 
   /**

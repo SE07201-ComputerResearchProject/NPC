@@ -1079,7 +1079,96 @@ body.bg-dark .auth-subtitle {
 .auth-footer a {color: #007bff; text-decoration: none;}
 .auth-footer a:hover {text-decoration: underline;}
 
-/* Components catalog page */
+/* ── MFA Method Choice ─────────────────────────────────────────────────────── */
+.mfa-choice-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.mfa-choice-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.75);
+  border: 1.5px solid rgba(0,0,0,0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.18s, background 0.18s, transform 0.12s;
+}
+
+.mfa-choice-btn:hover {
+  border-color: #cc95c0;
+  background: rgba(255,255,255,0.95);
+  transform: translateY(-1px);
+}
+
+.mfa-choice-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.mfa-choice-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #cc95c0, #8e64a8);
+  flex-shrink: 0;
+}
+
+.mfa-choice-icon i {
+  color: #fff;
+  width: 18px;
+  height: 18px;
+}
+
+.mfa-choice-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mfa-choice-text strong {
+  font-size: 0.93rem;
+  color: #222;
+}
+
+.mfa-choice-text span {
+  font-size: 0.78rem;
+  color: #777;
+  line-height: 1.3;
+}
+
+.mfa-choice-arrow {
+  color: #aaa;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+body.bg-dark .mfa-choice-btn {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.12);
+}
+
+body.bg-dark .mfa-choice-btn:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: #cc95c0;
+}
+
+body.bg-dark .mfa-choice-text strong { color: #f1f1f1; }
+body.bg-dark .mfa-choice-text span   { color: #aaa; }
+
+
 .products-loader-overlay {
   position: fixed;
   inset: 0;

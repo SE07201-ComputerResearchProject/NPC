@@ -26,17 +26,7 @@ function serializeOrder(order) {
 
 function serializeAdminOrder(order) {
   return {
-    id: order._id,
-    source: order.source,
-    buildName: order.buildName || '',
-    items: order.items || [],
-    totalAmount: order.totalAmount || 0,
-    currency: order.currency || 'VND',
-    status: order.status,
-    orderInfo: order.orderInfo || '',
-    payment: order.payment || {},
-    createdAt: order.createdAt || null,
-    updatedAt: order.updatedAt || null,
+    ...serializeOrder(order),
     user: {
       id: order.user?._id || null,
       username: order.user?.username || '',
@@ -123,9 +113,6 @@ router.post('/checkout', requireAuth, validateCheckoutSource, async (req, res) =
       currency: 'VND',
       status: 'pending',
       orderInfo,
-      payment: {
-        provider: 'momo',
-      },
     });
 
     return res.status(201).json({

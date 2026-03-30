@@ -9,7 +9,7 @@ function verifyTokenFromRequest(req) {
   const token = authHeader.slice(7);
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev_secret_change_in_prod');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     return { ok: true, decoded };
   } catch {
     return { ok: false, status: 401, message: 'Invalid or expired token' };

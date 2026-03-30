@@ -23,8 +23,13 @@ router.post('/', requireAdmin, async (req, res) => {
 
 // List (GET /api/logs)
 router.get('/', async (req, res) => {
-  const docs = await Log.find().sort({ timeStamp: -1 }).limit(50).lean();
-  res.json(docs);
+  try {
+    const docs = await Log.find().sort({ timeStamp: -1 }).limit(50).lean();
+    res.json(docs);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // Get by id (GET /api/logs/:id) — only match 24-hex ObjectId

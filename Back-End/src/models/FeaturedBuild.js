@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
+import { COMPONENT_CATEGORIES } from './Component.js';
 
-const VALID_CATEGORIES = ['case', 'cpu', 'motherboard', 'gpu', 'ram', 'cooler', 'storage', 'psu', 'fan'];
+const VALID_CATEGORIES = COMPONENT_CATEGORIES;
 
 const presetPartSchema = new mongoose.Schema(
   {
