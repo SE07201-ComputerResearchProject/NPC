@@ -1,6 +1,9 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import userRoutes from './routes/userRoutes.js';
 import componentRoutes from './routes/componentRoutes.js';
@@ -21,6 +24,36 @@ dotenv.config();
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
 
 const app = express();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Security headers
+app.use(helmet());
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com", "https://cdnjs.cloudflare.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"],
+      imgSrc: ["'self'", 'data:'],
+      fontSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+      connectSrc: ["'self'", "https://www.googleapis.com", "https://www.google.com"],
+      frameAncestors: ["'none'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"]
+    },
+  })
+);
+
+app.use(helmet.referrerPolicy({ policy: 'no-referrer' }));
+app.use(helmet.hidePoweredBy());
+app.use(helmet.crossOriginResourcePolicy({ policy: 'same-origin' }));
+app.use(helmet.noSniff());
+
+// serve static front-end files securely if needed
+app.use(express.static(path.join(__dirname, '..', '..', 'Front-End'), { dotfiles: 'deny', index: false }));
 
 // Middleware
 app.use(cors());
