@@ -1,4 +1,4 @@
-const FAILED_ORDER_API_BASE_URL = 'http://localhost:3001/api/orders';
+const FAILED_ORDER_API_BASE_URL = 'http://127.0.0.1:3001/api/orders';
 
 function formatFailedCurrency(value) {
   return `${Number(value || 0).toLocaleString()} VND`;

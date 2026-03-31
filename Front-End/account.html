@@ -76,6 +76,10 @@
               <i data-lucide="map-pin"></i>
               <span>Address &amp; Billing</span>
             </button>
+            <button class="account-nav-item" id="navOrders" onclick="switchTab('orders')">
+              <i data-lucide="receipt-text"></i>
+              <span>Orders</span>
+            </button>
             <button class="account-nav-item" id="navSecurity" onclick="switchTab('security')">
               <i data-lucide="shield-user"></i>
               <span>Security</span>
@@ -215,7 +219,20 @@
             </form>
           </div>
 
-          <!-- ── Tab 3: Security (MFA) ── -->
+          <!-- ── Tab 3: Orders ── -->
+          <div id="tabOrders" class="square-panel account-tab-panel">
+            <div class="section-label">Order History</div>
+            <p class="text-muted small mb-3">View your previous orders and payment status.</p>
+
+            <div id="ordersSummary" class="orders-summary" style="display:none;"></div>
+            <div id="ordersLoading" class="orders-loading" style="display:none;">Loading orders...</div>
+            <div id="ordersEmpty" class="orders-empty" style="display:none;">You do not have any orders yet.</div>
+            <div id="ordersError" class="orders-error" style="display:none;"></div>
+
+            <div id="ordersList" class="orders-list"></div>
+          </div>
+
+          <!-- ── Tab 4: Security (MFA) ── -->
           <div id="tabSecurity" class="square-panel account-tab-panel">
             <div class="section-label">Two-Factor Authentication (Google Authenticator)</div>
             <p class="text-muted small mb-4">Add an extra layer of security by requiring a code from your Google Authenticator app when logging in.</p>

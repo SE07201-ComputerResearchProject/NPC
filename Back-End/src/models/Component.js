@@ -82,5 +82,6 @@ const componentSchema = new mongoose.Schema(
 
 componentSchema.index({ category: 1, name: 1 }, { unique: true });
 componentSchema.index({ category: 1, price: 1 });
+componentSchema.index({ category: 1, name: 'text', brand: 'text', description: 'text' });
 
 export default mongoose.model('Component', componentSchema);

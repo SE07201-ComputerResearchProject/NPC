@@ -17,18 +17,7 @@ const CATEGORY_LABELS = {
   fan: 'Case Fan',
 };
 
-const CATEGORY_HERO_IMAGES = {
-  all: 'Assets/Floating/motherboard-card.svg',
-  case: 'Assets/Floating/case-card.svg',
-  cpu: 'Assets/Floating/cpu-card.svg',
-  motherboard: 'Assets/Floating/motherboard-card.svg',
-  gpu: 'Assets/Floating/gpu-card.svg',
-  ram: 'Assets/Floating/ram-card.svg',
-  storage: 'Assets/Floating/storage-card.svg',
-  psu: 'Assets/Floating/power-card.svg',
-  cooler: 'Assets/Floating/cooling-card.svg',
-  fan: 'Assets/Floating/fan-card.svg',
-};
+const DEFAULT_COMPONENT_IMAGE = 'Assets/Logo/logo.png';
 
 const productsState = {
   categories: [],
@@ -53,6 +42,11 @@ const productsState = {
 let pendingProductsRequests = 0;
 let productCardRevealObserver = null;
 let productDetailsEscHandler = null;
+let componentsAbortController = null;
+let componentsSearchDebounceTimer = null;
+
+const COMPONENTS_CACHE_TTL_MS = 60_000;
+const componentsCache = new Map();
 
 function getComponentImages(component, maxItems = 3) {
   const fromArray = Array.isArray(component?.imageUrls)
@@ -68,8 +62,7 @@ function getComponentImages(component, maxItems = 3) {
     return [single];
   }
 
-  const fallback = CATEGORY_HERO_IMAGES[component?.category] || CATEGORY_HERO_IMAGES.all;
-  return fallback ? [fallback] : [];
+  return [DEFAULT_COMPONENT_IMAGE];
 }
 
 function setProductsLoaderVisible(isVisible) {
@@ -450,12 +443,6 @@ function updateProductsTitle() {
   const title = document.getElementById('productsTitle');
   if (!title) return;
   title.textContent = CATEGORY_LABELS[productsState.activeCategory] || 'Browse Components';
-
-  const heroEl = document.querySelector('.products-hero');
-  if (!heroEl) return;
-
-  const imagePath = CATEGORY_HERO_IMAGES[productsState.activeCategory] || CATEGORY_HERO_IMAGES.all;
-  heroEl.style.setProperty('--hero-image', `url('${imagePath}')`);
 }
 
 // ─── Filter helpers ────────────────────────────────────────────
@@ -839,6 +826,12 @@ async function loadCategories() {
 async function loadComponents() {
   beginProductsLoading();
 
+  if (componentsAbortController) {
+    componentsAbortController.abort();
+  }
+  componentsAbortController = new AbortController();
+  const currentController = componentsAbortController;
+
   try {
   const statusEl = document.getElementById('productsStatus');
   if (statusEl) {
@@ -854,12 +847,32 @@ async function loadComponents() {
   }
 
   const queryString = params.toString();
-  const response = await fetch(`${COMPONENT_API_BASE_URL}${queryString ? `?${queryString}` : ''}`);
-  if (!response.ok) {
-    throw new Error('Failed to load components');
+  const cacheKey = queryString || 'all';
+  const cachedEntry = componentsCache.get(cacheKey);
+  const isCacheFresh = cachedEntry && (Date.now() - cachedEntry.cachedAt) < COMPONENTS_CACHE_TTL_MS;
+
+  let data;
+  if (isCacheFresh) {
+    data = cachedEntry.data;
+  } else {
+    const response = await fetch(`${COMPONENT_API_BASE_URL}${queryString ? `?${queryString}` : ''}`, {
+      signal: currentController.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to load components');
+    }
+
+    data = await response.json();
+    componentsCache.set(cacheKey, {
+      data,
+      cachedAt: Date.now(),
+    });
   }
 
-  const data = await response.json();
+  if (currentController.signal.aborted) {
+    return;
+  }
 
   // Reset filter bounds on every fresh load (new category / search)
   productsState.allComponents       = data;
@@ -872,7 +885,15 @@ async function loadComponents() {
 
   renderFilterSidebar();
   applyFilters();
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      return;
+    }
+    throw error;
   } finally {
+    if (componentsAbortController === currentController) {
+      componentsAbortController = null;
+    }
     endProductsLoading();
   }
 }
@@ -887,13 +908,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       setCurrentPage(1);
       scrollProductsPageToTop();
 
-      loadComponents().catch(error => {
-        console.error(error);
-        const statusEl = document.getElementById('productsStatus');
-        if (statusEl) {
-          statusEl.textContent = 'Cannot load components right now.';
-        }
-      });
+      clearTimeout(componentsSearchDebounceTimer);
+      componentsSearchDebounceTimer = setTimeout(() => {
+        loadComponents().catch(error => {
+          console.error(error);
+          const statusEl = document.getElementById('productsStatus');
+          if (statusEl) {
+            statusEl.textContent = 'Cannot load components right now.';
+          }
+        });
+      }, 280);
     });
   }
 

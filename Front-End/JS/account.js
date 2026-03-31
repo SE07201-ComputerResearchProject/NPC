@@ -2,7 +2,9 @@
 
 const ACCOUNT_USER_API_BASE_URL = 'http://localhost:3001/api/users';
 const CURRENT_USER_API_URL = `${ACCOUNT_USER_API_BASE_URL}/me`;
+const ACCOUNT_ORDER_API_URL = 'http://localhost:3001/api/orders/me';
 const MAX_AVATAR_FILE_MB = 2;
+let ordersLoadedOnce = false;
 
 // ── Auth helpers ────────────────────────────────────────────────────────────
 
@@ -16,12 +18,22 @@ function normalizeUserPayload(payload) {
   return payload && payload.user ? payload.user : payload;
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ── Tab switching ────────────────────────────────────────────────────────────
 
 function switchTab(tab) {
   const tabs = [
     { key: 'userInfo',        panelId: 'tabUserInfo',        navId: 'navUserInfo' },
     { key: 'addressBilling',  panelId: 'tabAddressBilling',  navId: 'navAddressBilling' },
+    { key: 'orders',          panelId: 'tabOrders',          navId: 'navOrders' },
     { key: 'security',        panelId: 'tabSecurity',        navId: 'navSecurity' },
   ];
 
@@ -38,6 +50,161 @@ function switchTab(tab) {
   // Load MFA status when switching to security tab
   if (tab === 'security') {
     loadMfaStatus();
+  }
+
+  if (tab === 'orders' && !ordersLoadedOnce) {
+    loadOrderHistory();
+  }
+}
+
+function formatOrderDate(value) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return 'Unknown date';
+  return date.toLocaleString('vi-VN', {
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatOrderCurrency(amount, currency = 'VND') {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(Number(amount || 0));
+}
+
+function normalizeOrderStatus(status) {
+  const value = String(status || '').toLowerCase();
+  if (value === 'paid' || value === 'completed' || value === 'success') return 'paid';
+  if (value === 'failed' || value === 'cancelled') return 'failed';
+  return 'pending';
+}
+
+function getOrderStatusLabel(status) {
+  const normalized = normalizeOrderStatus(status);
+  if (normalized === 'paid') return 'Paid';
+  if (normalized === 'failed') return 'Failed';
+  return 'Pending';
+}
+
+function setOrdersUiState({ loading = false, error = '', empty = false }) {
+  const loadingEl = document.getElementById('ordersLoading');
+  const emptyEl = document.getElementById('ordersEmpty');
+  const errorEl = document.getElementById('ordersError');
+
+  if (loadingEl) loadingEl.style.display = loading ? '' : 'none';
+  if (emptyEl) emptyEl.style.display = empty ? '' : 'none';
+  if (errorEl) {
+    errorEl.style.display = error ? '' : 'none';
+    errorEl.textContent = error || '';
+  }
+}
+
+function renderOrdersSummary(orders) {
+  const summaryEl = document.getElementById('ordersSummary');
+  if (!summaryEl) return;
+
+  if (!Array.isArray(orders) || !orders.length) {
+    summaryEl.style.display = 'none';
+    summaryEl.textContent = '';
+    return;
+  }
+
+  const totalSpend = orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+  summaryEl.style.display = '';
+  summaryEl.textContent = `Total orders: ${orders.length} • Total spend: ${formatOrderCurrency(totalSpend)}`;
+}
+
+function renderOrderItems(items) {
+  if (!Array.isArray(items) || !items.length) {
+    return '<p class="order-items-empty">No item details.</p>';
+  }
+
+  return `
+    <ul class="order-items-list">
+      ${items.slice(0, 5).map(item => `
+        <li>
+          <span>${escapeHtml(item.name || 'Item')}</span>
+          <strong>x${Number(item.quantity || 1)}</strong>
+        </li>
+      `).join('')}
+    </ul>
+  `;
+}
+
+function renderOrderHistory(orders) {
+  const listEl = document.getElementById('ordersList');
+  if (!listEl) return;
+
+  if (!Array.isArray(orders) || !orders.length) {
+    listEl.innerHTML = '';
+    renderOrdersSummary([]);
+    setOrdersUiState({ empty: true });
+    return;
+  }
+
+  listEl.innerHTML = orders.map(order => {
+    const status = normalizeOrderStatus(order.status);
+    const orderId = String(order.id || '').slice(-8).toUpperCase() || 'N/A';
+    const sourceLabel = order.source === 'build' ? 'Build' : 'Cart';
+
+    return `
+      <article class="order-card">
+        <div class="order-card-head">
+          <div>
+            <p class="order-id">#${escapeHtml(orderId)}</p>
+            <p class="order-date">${escapeHtml(formatOrderDate(order.createdAt))}</p>
+          </div>
+          <span class="order-status ${status}">${getOrderStatusLabel(order.status)}</span>
+        </div>
+
+        <div class="order-meta-row">
+          <span>Source: <strong>${escapeHtml(sourceLabel)}</strong></span>
+          <span>Items: <strong>${Array.isArray(order.items) ? order.items.length : 0}</strong></span>
+          <span>Total: <strong>${escapeHtml(formatOrderCurrency(order.totalAmount, order.currency || 'VND'))}</strong></span>
+        </div>
+
+        ${renderOrderItems(order.items)}
+      </article>
+    `;
+  }).join('');
+
+  renderOrdersSummary(orders);
+  setOrdersUiState({});
+}
+
+async function loadOrderHistory() {
+  setOrdersUiState({ loading: true });
+
+  try {
+    const response = await fetch(ACCOUNT_ORDER_API_URL, {
+      headers: buildAuthHeaders(),
+    });
+    const data = await response.json();
+
+    if (response.status === 401 || response.status === 403) {
+      showPopup('Session expired. Please log in again.');
+      logout();
+      return;
+    }
+
+    if (!response.ok) {
+      setOrdersUiState({ error: data.message || 'Failed to load orders.' });
+      return;
+    }
+
+    ordersLoadedOnce = true;
+    renderOrderHistory(Array.isArray(data) ? data : []);
+  } catch {
+    setOrdersUiState({ error: 'Cannot connect to server.' });
+  } finally {
+    const loadingEl = document.getElementById('ordersLoading');
+    if (loadingEl) loadingEl.style.display = 'none';
   }
 }
 

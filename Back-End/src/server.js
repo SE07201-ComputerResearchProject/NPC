@@ -29,6 +29,12 @@ app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
 // MongoDB Connection
 const mongoConnectionString = process.env.MONGODB_CONNECTION_STRING || 'mongodb://localhost:27017/npc';
+const mongooseOptions = {
+  maxPoolSize: Number(process.env.MONGO_MAX_POOL_SIZE) || 20,
+  minPoolSize: Number(process.env.MONGO_MIN_POOL_SIZE) || 5,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+};
 
 // Routes
 app.use('/api/users', userRoutes);
@@ -55,7 +61,7 @@ app.get('/', (req, res) => {
 
 // Start server only after MongoDB is connected
 const PORT = process.env.PORT || 3001;
-mongoose.connect(mongoConnectionString)
+mongoose.connect(mongoConnectionString, mongooseOptions)
 .then(async () => {
   console.log('✓ MongoDB connected');
   await seedComponentsIfNeeded(Component);

@@ -4,6 +4,10 @@ import { requireAdmin } from '../middleware/adminMiddleware.js';
 
 const router = express.Router();
 
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function normalizeImageUrls(imageUrls, imageUrl) {
   const fromArray = Array.isArray(imageUrls)
     ? imageUrls.map(item => String(item || '').trim()).filter(Boolean)
@@ -44,20 +48,39 @@ router.get('/', async (req, res) => {
   try {
     const { category, q } = req.query;
     const filter = {};
+    const queryText = String(q || '').trim();
 
     if (category && COMPONENT_CATEGORIES.includes(category)) {
       filter.category = category;
     }
 
-    if (q) {
+    if (queryText.length >= 2) {
+      filter.$text = { $search: queryText };
+    } else if (queryText) {
+      const safeQuery = escapeRegex(queryText);
       filter.$or = [
-        { name: { $regex: q, $options: 'i' } },
-        { brand: { $regex: q, $options: 'i' } },
-        { description: { $regex: q, $options: 'i' } },
+        { name: { $regex: safeQuery, $options: 'i' } },
+        { brand: { $regex: safeQuery, $options: 'i' } },
+        { description: { $regex: safeQuery, $options: 'i' } },
       ];
     }
 
-    const components = await Component.find(filter).sort({ category: 1, price: 1 });
+    let components;
+
+    if (filter.$text) {
+      components = await Component.aggregate([
+        { $match: filter },
+        { $addFields: { score: { $meta: 'textScore' } } },
+        { $sort: { score: -1, price: 1 } },
+        { $project: { __v: 0, score: 0 } },
+      ]);
+    } else {
+      components = await Component.find(filter)
+        .sort({ category: 1, price: 1 })
+        .select('-__v')
+        .lean();
+    }
+
     res.status(200).json(components);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch components', error: error.message });
@@ -66,7 +89,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const component = await Component.findById(req.params.id);
+    const component = await Component.findById(req.params.id).select('-__v').lean();
     if (!component) {
       return res.status(404).json({ message: 'Component not found' });
     }
@@ -102,7 +125,7 @@ router.post('/', requireAdmin, async (req, res) => {
       return res.status(400).json({ message: 'Invalid component category' });
     }
 
-    const exists = await Component.findOne({ category, name });
+    const exists = await Component.exists({ category, name });
     if (exists) {
       return res.status(409).json({ message: 'Component already exists in this category' });
     }
