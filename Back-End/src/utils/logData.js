@@ -12,4 +12,6 @@ export const DEFAULT_LOGS = [
   
     await LogModel.insertMany(DEFAULT_LOGS);
     console.log(`✓ Seeded ${DEFAULT_LOGS.length} logs`);
+    //
+    //
   }
