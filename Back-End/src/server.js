@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import userRoutes from './routes/userRoutes.js';
 import componentRoutes from './routes/componentRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
@@ -52,6 +53,70 @@ app.get('/api/config/public', (req, res) => {
     recaptchaSiteKey: process.env.RECAPTCHA_SITE_KEY || '',
     googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   });
+});
+
+// Gemini chat endpoint (server-side proxy)
+app.post('/api/gemini', async (req, res) => {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+  if (!geminiApiKey && !openaiApiKey) {
+    return res.status(500).json({ error: 'GEMINI_API_KEY or OPENAI_API_KEY is required.' });
+  }
+
+  const question = (req.body.question || '').toString().trim();
+  if (!question) {
+    return res.status(400).json({ error: 'Question is required.' });
+  }
+
+  try {
+    // If OpenAI key is available, use it as a fallback (works in this env and avoids Gemini TLS mismatch)
+    if (openaiApiKey) {
+      const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+          messages: [
+            { role: 'system', content: process.env.GEMINI_PROMPT || 'You are a helpful assistant.' },
+            { role: 'user', content: question }
+          ],
+          max_tokens: Number(process.env.OPENAI_MAX_TOKENS || 500),
+          temperature: Number(process.env.OPENAI_TEMPERATURE || 0.5),
+        }),
+      });
+
+      const openaiData = await openaiRes.json();
+      if (!openaiRes.ok) {
+        throw new Error(`OpenAI error: ${openaiData.error?.message || openaiRes.status}`);
+      }
+
+      return res.json({ answer: openaiData.choices?.[0]?.message?.content || '', raw: openaiData, provider: 'openai' });
+    }
+
+    // Otherwise use Gemini package
+    const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    const castKey = geminiApiKey;
+    const client = new GoogleGenerativeAI({ apiKey: castKey });
+    const model = client.getGenerativeModel({ model: modelName });
+    const chat = model.startChat({
+      history: [{ role: 'user', parts: [{ text: question }] }],
+    });
+
+    const result = await chat.sendMessage(question);
+    const answerText = result?.response?.text?.();
+
+    if (!answerText) {
+      return res.status(502).json({ error: 'Gemini model responded without answer', raw: result });
+    }
+
+    res.json({ answer: answerText, raw: result, provider: 'gemini' });
+  } catch (error) {
+    console.error('Gemini proxy error:', error);
+    res.status(500).json({ error: 'Failed to connect to Gemini', detail: error.message, stack: error.stack });
+  }
 });
 
 // Health check
