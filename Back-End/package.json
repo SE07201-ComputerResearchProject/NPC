@@ -20,7 +20,8 @@
     "nodemailer": "^8.0.4",
     "qrcode": "^1.5.4",
     "speakeasy": "^2.0.0",
-    "vnpay": "^2.4.4"
+    "vnpay": "^2.4.4",
+    "@google/genai": "^1.48.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"
