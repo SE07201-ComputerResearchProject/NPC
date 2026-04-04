@@ -15,6 +15,7 @@ import Component from './models/Component.js';
 import Log from './models/Log.js';
 import { seedComponentsIfNeeded } from './utils/componentData.js';
 import { seedLogsIfNeeded } from './utils/logData.js';
+import { GoogleGenAI } from '@google/genai';
 
 dotenv.config();
 
@@ -54,8 +55,7 @@ app.get('/api/config/public', (req, res) => {
   });
 });
 
-<<<<<<< Updated upstream
-=======
+
 async function handleChat(req, res) {
   const geminiApiKey = process.env.GEMINI_API_KEY;
   if (!geminiApiKey) {
@@ -99,7 +99,7 @@ res.json({ answer: answer.trim(), raw: result, provider: 'gemini' });
 
 app.post('/api/gemini', handleChat);
 
->>>>>>> Stashed changes
+
 // Health check
 app.get('/', (req, res) => {
   res.json({ message: 'E-Commerce API Server is running...' });
