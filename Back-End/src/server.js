@@ -15,6 +15,7 @@ import Component from './models/Component.js';
 import Log from './models/Log.js';
 import { seedComponentsIfNeeded } from './utils/componentData.js';
 import { seedLogsIfNeeded } from './utils/logData.js';
+import { GoogleGenAI } from '@google/genai';
 
 dotenv.config();
 
@@ -53,6 +54,51 @@ app.get('/api/config/public', (req, res) => {
     googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   });
 });
+
+
+async function handleChat(req, res) {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    return res.status(500).json({ error: 'GEMINI_API_KEY is required.' });
+  }
+
+  const question = (req.body.question || '').toString().trim();
+  if (!question) {
+    return res.status(400).json({ error: 'Question is required.' });
+  }
+
+  try {
+    const genAI = new GoogleGenAI({ apiKey: geminiApiKey });
+const result = await genAI.models.generateContent({
+  model: "gemini-2.5-flash",
+  contents: [{ text: question }],
+      config: {
+      systemInstruction: "You are a helpful assistant for an e-commerce website that sells computer parts. Answer the user's question based on the context of computer hardware, compatibility, and building PCs. Provide concise and accurate information to help the user make informed decisions about their purchases.",
+    },
+});
+
+let answer = 'No response from Gemini.';
+
+if (typeof result.text === 'string') {
+  answer = result.text;
+} else if (result.response?.text) {
+  answer = typeof result.response.text === 'function'
+    ? result.response.text()
+    : result.response.text;
+} else if (Array.isArray(result.output)) {
+  const maybe = result.output[0]?.content?.[0]?.text;
+  if (maybe) answer = maybe;
+}
+
+res.json({ answer: answer.trim(), raw: result, provider: 'gemini' });
+  } catch (error) {
+    console.error('Gemini proxy error:', error);
+    res.status(500).json({ error: 'Failed to connect to Gemini', detail: error.message, stack: error.stack });
+  }
+}
+
+app.post('/api/gemini', handleChat);
+
 
 // Health check
 app.get('/', (req, res) => {
