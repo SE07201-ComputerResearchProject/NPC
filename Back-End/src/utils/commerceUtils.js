@@ -29,6 +29,8 @@ export function normalizeComponentSnapshot(value, { allowQuantity = false } = {}
     brand: toSafeString(value.brand),
     price: Math.max(0, toSafeNumber(value.price, 0)),
     power: Math.max(0, toSafeNumber(value.power, 0)),
+    imageUrl: toSafeString(value.imageUrl),
+    description: toSafeString(value.description),
   };
 
   if (allowQuantity) {
@@ -88,6 +90,8 @@ export function mapComponentSnapshotForClient(snapshot) {
     brand: snapshot.brand || '',
     price: Number(snapshot.price || 0),
     power: Number(snapshot.power || 0),
+    imageUrl: snapshot.imageUrl || '',
+    description: snapshot.description || '',
     quantity: snapshot.quantity !== undefined ? Number(snapshot.quantity || 1) : undefined,
   };
 }

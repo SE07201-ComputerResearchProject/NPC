@@ -1,7 +1,7 @@
 // Dashboard functionality for PC Builder
 
-const PAYMENT_API_BASE_URL = 'http://localhost:3001/api/payments';
-const COMPATIBILITY_API_BASE_URL = 'http://localhost:3001/api/compatibility';
+const PAYMENT_API_BASE_URL = 'http://127.0.0.1:3001/api/payments';
+const COMPATIBILITY_API_BASE_URL = 'http://127.0.0.1:3001/api/compatibility';
 
 // track authentication state (false until user logs in)
 window.isLoggedIn = typeof getAuthState === 'function' ? getAuthState() : false;
@@ -30,20 +30,22 @@ let currentBuild = {
   fan: null
 };
 
-const COMPONENT_API_BASE_URL = 'http://localhost:3001/api/components';
-const componentsCache = {};
+const COMPONENT_API_BASE_URL = 'http://127.0.0.1:3001/api/components';
+// Stores items returned by the last fetchComponentsByCategory call (per category key)
+const selectorPageItems = {};
 const compatibilityState = {
   requestId: 0,
   debounceTimer: null,
 };
 
-async function fetchComponentsByCategory(categoryKey) {
-  if (componentsCache[categoryKey]) return componentsCache[categoryKey];
-  const res = await fetch(`${COMPONENT_API_BASE_URL}?category=${categoryKey}`);
+async function fetchComponentsByCategory(categoryKey, page = 1) {
+  const limit = selectorState.pageSize;
+  const res = await fetch(
+    `${COMPONENT_API_BASE_URL}?category=${encodeURIComponent(categoryKey)}&page=${page}&limit=${limit}`
+  );
   if (!res.ok) throw new Error('Failed to load components');
-  const data = await res.json();
-  componentsCache[categoryKey] = data;
-  return data;
+  // Returns { items, total, page, pages } because limit > 0
+  return res.json();
 }
 
 const selectorState = {
@@ -230,9 +232,11 @@ async function showComponentSelector(categoryKey, page = null) {
     <div class="modal-backdrop fade show"></div>
   `);
 
-  let categoryComponents;
+  const requestedPage = page === null ? getSelectorPage(categoryKey) : Math.max(1, Number(page) || 1);
+
+  let result;
   try {
-    categoryComponents = await fetchComponentsByCategory(categoryKey);
+    result = await fetchComponentsByCategory(categoryKey, requestedPage);
   } catch (err) {
     closeComponentSelector();
     showPopup('Cannot load components. Is the server running?');
@@ -241,16 +245,13 @@ async function showComponentSelector(categoryKey, page = null) {
 
   closeComponentSelector();
 
-  const totalItems = categoryComponents.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / selectorState.pageSize));
-  const requestedPage = page === null ? getSelectorPage(categoryKey) : page;
-  const currentPage = Math.min(Math.max(1, Number(requestedPage) || 1), totalPages);
-
+  const { items: pageItems, total: totalItems, page: currentPage, pages: totalPages } = result;
   setSelectorPage(categoryKey, currentPage);
+  // Store current page items so selectComponent() can look them up by relative index
+  selectorPageItems[categoryKey] = pageItems;
 
   const startIndex = (currentPage - 1) * selectorState.pageSize;
-  const endIndex = Math.min(startIndex + selectorState.pageSize, totalItems);
-  const pageItems = categoryComponents.slice(startIndex, endIndex);
+  const endIndex = startIndex + pageItems.length;
 
   let html = `<div class="modal fade show" id="componentModal" style="display:block" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
@@ -271,7 +272,6 @@ async function showComponentSelector(categoryKey, page = null) {
   }
 
   pageItems.forEach((component, index) => {
-    const absoluteIndex = startIndex + index;
     html += `
       <div class="col-md-6 mb-3">
         <div class="card">
@@ -280,7 +280,7 @@ async function showComponentSelector(categoryKey, page = null) {
             <p class="card-text text-muted mb-1" style="font-size:12px">${component.brand || ''}</p>
             <p class="card-text"><strong>${Number(component.price).toLocaleString()} VND</strong></p>
             <p class="card-text" style="font-size:12px;color:#666">Power: ${component.power || 0}W &nbsp;|&nbsp; Stock: ${component.stock || 0}</p>
-            <button class="btn btn-sm btn-primary" onclick="selectComponent('${categoryKey}', ${absoluteIndex})">Select</button>
+            <button class="btn btn-sm btn-primary" onclick="selectComponent('${categoryKey}', ${index})">Select</button>
           </div>
         </div>
       </div>
@@ -311,7 +311,7 @@ function closeComponentSelector() {
 }
 
 async function selectComponent(categoryKey, index) {
-  const items = componentsCache[categoryKey] || [];
+  const items = selectorPageItems[categoryKey] || [];
   const component = items[index];
   if (!component) return;
   currentBuild[categoryKey] = {
@@ -343,6 +343,24 @@ async function persistCurrentBuild() {
     showPopup(error.message || 'Cannot sync build right now.');
   }
 }
+
+// Realtime API for the AI chatbot widget — adds a component directly to currentBuild
+window.chatbotAddComponent = async function(component) {
+  if (!component || !component.category) return false;
+  currentBuild[component.category] = {
+    _id:      component._id,
+    category: component.category,
+    name:     component.name,
+    price:    component.price,
+    power:    component.power || 0,
+    brand:    component.brand || '',
+    imageUrl: component.imageUrl || '',
+  };
+  renderPartsList();
+  updateStats();
+  await persistCurrentBuild();
+  return true;
+};
 
 async function saveCurrentBuild() {
   if (!window.isLoggedIn) {
@@ -602,9 +620,14 @@ async function loadFeaturedPresetIfPresent() {
     for (const [category, partSpec] of Object.entries(preset.parts)) {
       if (!partSpec) continue;
       try {
-        const components = await fetchComponentsByCategory(category);
-        const matched = components.find(c => c.name === partSpec.name)
-          || components.find(c => c.name.toLowerCase().startsWith(partSpec.name.substring(0, 20).toLowerCase()));
+        const nameQ = encodeURIComponent(partSpec.name.substring(0, 60));
+        const res = await fetch(
+          `${COMPONENT_API_BASE_URL}?category=${encodeURIComponent(category)}&q=${nameQ}&limit=5`
+        );
+        const data = res.ok ? await res.json() : {};
+        const candidates = Array.isArray(data) ? data : (data.items || []);
+        const matched = candidates.find(c => c.name === partSpec.name)
+          || candidates.find(c => c.name.toLowerCase().startsWith(partSpec.name.substring(0, 20).toLowerCase()));
         if (matched) {
           currentBuild[category] = {
             _id: matched._id,
@@ -654,7 +677,7 @@ function updateHeaderDate() {
 }
 updateHeaderDate();
 
-// --- payment/checkout support ------------------------------------------------
+// --- checkout support ------------------------------------------------
 function handleCheckout() {
   const totalText = document.getElementById('totalPrice').textContent || '0';
   const total = parseInt(totalText.replace(/[^0-9]/g, ''), 10);
@@ -670,8 +693,43 @@ function handleCheckout() {
     return;
   }
 
-  // show payment options modal (login check occurs when selecting a method)
-  showPaymentModal(total);
+  // redirect to shopping-cart.html with build components transferred as cart items
+  redirectToShoppingCartWithBuild();
+}
+
+function redirectToShoppingCartWithBuild() {
+  try {
+    // Get the current build components
+    const buildComponents = currentBuild;
+    
+    // Convert non-null components into cart-compatible items
+    const cartItems = Object.values(buildComponents)
+      .filter(component => component !== null && component !== undefined)
+      .map(component => ({
+        _id: component._id || '',
+        category: component.category || '',
+        name: component.name || '',
+        brand: component.brand || '',
+        price: Number(component.price || 0),
+        power: Number(component.power || 0),
+        quantity: 1
+      }))
+      .filter(item => item._id && item.name);
+
+    if (cartItems.length === 0) {
+      showPopup('No components in your build to add to cart.');
+      return;
+    }
+
+    // Store build components in sessionStorage for shopping-cart to load
+    sessionStorage.setItem('buildCheckoutItems', JSON.stringify(cartItems));
+    
+    // Redirect to shopping cart page
+    window.location.href = 'shopping-cart.html';
+  } catch (error) {
+    console.error('Error redirecting to shopping cart:', error);
+    showPopup('Cannot redirect to shopping cart. Please try again.');
+  }
 }
 
 function showPaymentModal(amount) {
@@ -807,3 +865,174 @@ document.addEventListener('DOMContentLoaded', () => {
     saveBtn.addEventListener('click', saveCurrentBuild);
   }
 });
+
+// ── Pre-built PC Tab ──────────────────────────────────────────────────────────
+
+const FEATURED_BUILDS_API_URL = 'http://127.0.0.1:3001/api/featured-builds';
+
+let prebuiltLoaded = false;
+
+const TIER_LABELS = { high: 'High-End', mid: 'Mid-Range', budget: 'Budget' };
+const TIER_CLASSES = { high: 'tier-high', mid: 'tier-mid', budget: 'tier-budget' };
+
+function switchPartsTab(tab) {
+  const prebuiltPanel = document.getElementById('prebuiltPanel');
+  const customPanel   = document.getElementById('customPanel');
+  const tabPrebuilt   = document.getElementById('tabPrebuilt');
+  const tabCustom     = document.getElementById('tabCustom');
+  if (!prebuiltPanel || !customPanel) return;
+
+  if (tab === 'prebuilt') {
+    prebuiltPanel.style.display = '';
+    customPanel.style.display   = 'none';
+    tabPrebuilt.classList.add('active');
+    tabCustom.classList.remove('active');
+    if (!prebuiltLoaded) loadPrebuiltList();
+  } else {
+    prebuiltPanel.style.display = 'none';
+    customPanel.style.display   = '';
+    tabPrebuilt.classList.remove('active');
+    tabCustom.classList.add('active');
+  }
+}
+
+async function loadPrebuiltList() {
+  const listEl = document.getElementById('prebuiltList');
+  if (!listEl) return;
+
+  listEl.innerHTML = '<p class="prebuilt-loading">Loading pre-built PCs…</p>';
+
+  try {
+    const res = await fetch(FEATURED_BUILDS_API_URL);
+    if (!res.ok) throw new Error('Failed to fetch featured builds');
+    const builds = await res.json();
+    prebuiltLoaded = true;
+
+    if (!builds.length) {
+      listEl.innerHTML = '<p class="prebuilt-empty">No pre-built PCs available.</p>';
+      return;
+    }
+
+    listEl.innerHTML = builds.map(b => {
+      const tier      = b.tier || 'mid';
+      const tierLabel = TIER_LABELS[tier] || tier;
+      const tierClass = TIER_CLASSES[tier] || 'tier-mid';
+
+      // parts may be a plain object or Map serialized as object
+      const partsObj = b.parts && typeof b.parts === 'object' && !Array.isArray(b.parts) ? b.parts : {};
+      const partChips = Object.entries(partsObj)
+        .filter(([, p]) => p && p.name)
+        .map(([cat, p]) => `<span class="prebuilt-part-chip" title="${escapeHtml(cat)}">${escapeHtml(p.name)}</span>`)
+        .join('');
+
+      return `
+        <div class="prebuilt-card" id="prebuilt-card-${escapeHtml(b.presetId)}">
+          <div class="prebuilt-card-header">
+            <span class="prebuilt-tier ${escapeHtml(tierClass)}">${escapeHtml(tierLabel)}</span>
+            <strong class="prebuilt-name">${escapeHtml(b.name)}</strong>
+          </div>
+          <p class="prebuilt-tagline">${escapeHtml(b.tagline || '')}</p>
+          <div class="prebuilt-price prebuilt-est-price" id="prebuilt-price-${escapeHtml(b.presetId)}">${escapeHtml(b.estimatedPrice || '')}</div>
+          <div class="prebuilt-parts-summary" id="prebuilt-parts-${escapeHtml(b.presetId)}">${partChips}</div>
+          <div class="prebuilt-card-footer">
+            <button class="btn btn-sm btn-primary prebuilt-load-btn"
+                    id="prebuilt-btn-${escapeHtml(b.presetId)}"
+                    onclick="applyPrebuiltBuild('${escapeHtml(b.presetId)}')">
+              Load Build
+            </button>
+            <span class="prebuilt-missing-note" id="prebuilt-note-${escapeHtml(b.presetId)}" style="display:none"></span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch {
+    listEl.innerHTML = '<p class="prebuilt-empty">Cannot load pre-built PCs. Is the server running?</p>';
+  }
+}
+
+async function applyPrebuiltBuild(presetId) {
+  const btn  = document.getElementById(`prebuilt-btn-${presetId}`);
+  const note = document.getElementById(`prebuilt-note-${presetId}`);
+  const priceEl = document.getElementById(`prebuilt-price-${presetId}`);
+  const partsEl = document.getElementById(`prebuilt-parts-${presetId}`);
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Resolving parts…'; }
+  if (note) { note.style.display = 'none'; }
+
+  try {
+    // Single request: backend resolves all 9 parts in ONE MongoDB $or query
+    const res = await fetch(`${FEATURED_BUILDS_API_URL}/${encodeURIComponent(presetId)}/resolve`);
+    if (!res.ok) throw new Error('Preset not found');
+    const { preset, resolved, missing } = await res.json();
+
+    // Apply resolved components to currentBuild
+    const newBuild = {
+      case: null, cpu: null, motherboard: null, gpu: null,
+      ram: null, cooler: null, storage: null, psu: null, fan: null,
+    };
+    let actualPrice = 0;
+
+    for (const [category, comp] of Object.entries(resolved)) {
+      newBuild[category] = {
+        _id:      comp._id,
+        category: comp.category,
+        name:     comp.name,
+        price:    comp.price,
+        power:    comp.power || 0,
+        brand:    comp.brand || '',
+        imageUrl: comp.imageUrl || '',
+      };
+      actualPrice += Number(comp.price || 0);
+    }
+
+    Object.assign(currentBuild, newBuild);
+
+    if (preset.name) {
+      const buildNameEl = document.getElementById('buildName');
+      if (buildNameEl) buildNameEl.textContent = preset.name;
+      saveBuildName(preset.name).catch(() => {});
+    }
+
+    renderPartsList();
+    updateStats();
+    await persistCurrentBuild();
+
+    // Update card to show resolved state
+    if (priceEl && actualPrice > 0) {
+      priceEl.textContent = actualPrice.toLocaleString('vi-VN') + ' ₫';
+      priceEl.classList.remove('prebuilt-est-price');
+    }
+    if (partsEl) {
+      // Re-render chips with ✓ found / ✗ missing coloring
+      const CAT_ORDER = ['case','cpu','motherboard','gpu','ram','cooler','storage','psu','fan'];
+      const CAT_LABELS_SHORT = { case:'Case', cpu:'CPU', motherboard:'MB', gpu:'GPU', ram:'RAM', cooler:'Cooler', storage:'SSD', psu:'PSU', fan:'Fan' };
+      partsEl.innerHTML = CAT_ORDER.map(cat => {
+        const comp = resolved[cat];
+        if (comp) {
+          return `<span class="prebuilt-part-chip chip-found" title="${escapeHtml(comp.name)}">✓ ${escapeHtml(comp.name)}</span>`;
+        }
+        if (missing.includes(cat)) {
+          return `<span class="prebuilt-part-chip chip-missing" title="Not in catalog">✗ ${escapeHtml(CAT_LABELS_SHORT[cat] || cat)}</span>`;
+        }
+        return '';
+      }).join('');
+    }
+
+    switchPartsTab('custom');
+
+    if (missing.length) {
+      if (note) {
+        note.style.display = '';
+        note.textContent = `⚠ ${missing.length} part(s) not in catalog: ${missing.join(', ')}`;
+      }
+      showPopup(`"${preset.name}" loaded — ${missing.length} part(s) not found in catalog.`);
+    } else {
+      showPopup(`"${preset.name}" loaded successfully (${Object.keys(resolved).length}/9 parts)!`);
+    }
+
+    if (btn) { btn.textContent = '✓ Loaded'; btn.classList.replace('btn-primary', 'btn-success'); }
+  } catch {
+    showPopup('Cannot load this pre-built PC. Please try again.');
+    if (btn) { btn.disabled = false; btn.textContent = 'Load Build'; }
+  }
+}

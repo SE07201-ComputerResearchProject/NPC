@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import Cart from '../models/Cart.js';
 import Log from '../models/Log.js';
 import Order from '../models/Order.js';
@@ -33,11 +34,11 @@ function getFrontendBaseUrl() {
     }
   }
 
-  return 'http://localhost:3000';
+  return 'http://127.0.0.1:3000';
 }
 
 function getVnpayReturnUrl() {
-  return String(process.env.VNPAY_RETURN_URL || 'http://localhost:3001/api/payments/vnpay/return').trim();
+  return String(process.env.VNPAY_RETURN_URL || 'http://127.0.0.1:3001/api/payments/vnpay/return').trim();
 }
 
 function normalizeBasePath(value) {
@@ -90,10 +91,17 @@ async function writePaymentLog(user, activity) {
   }
 }
 
+function isValidOrderId(orderId) {
+  return mongoose.Types.ObjectId.isValid(orderId);
+}
+
 router.post('/vnpay/create', requireAuth, async (req, res) => {
   try {
     const orderId = String(req.body.orderId || '').trim();
     if (!orderId) return res.status(400).json({ message: 'orderId is required' });
+    if (!isValidOrderId(orderId)) {
+      return res.status(400).json({ message: 'Invalid order ID' });
+    }
 
     const order = await Order.findOne({ _id: orderId, user: req.currentUser.userId });
     if (!order) return res.status(404).json({ message: 'Order not found' });
@@ -187,6 +195,11 @@ router.get('/vnpay/return', async (req, res) => {
       console.error('Invalid VNPay signature');
       await writePaymentLog('system', `VNPay return rejected due to invalid signature for txnRef ${vnp_TxnRef || 'unknown'}`);
       return res.redirect(`${failedPageUrl}?orderId=${encodeURIComponent(orderId)}&paymentCode=INVALID_SIGNATURE&txnRef=${encodeURIComponent(vnp_TxnRef)}&reason=${encodeURIComponent('Invalid VNPay signature')}`);
+    }
+
+    if (!isValidOrderId(orderId)) {
+      await writePaymentLog('system', `VNPay return rejected due to invalid order ID for txnRef ${vnp_TxnRef || 'unknown'}`);
+      return res.redirect(`${failedPageUrl}?orderId=${encodeURIComponent(orderId)}&paymentCode=INVALID_ORDER_ID&txnRef=${encodeURIComponent(vnp_TxnRef)}&reason=${encodeURIComponent('Invalid order ID')}`);
     }
 
     if (vnp_ResponseCode === '00') {

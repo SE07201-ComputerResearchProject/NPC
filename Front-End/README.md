@@ -6,8 +6,8 @@ Sẽ tiếp tục: Auth Function, Account Information(Thông Tin User, Lưu thô
 
 > **Backend**
 > API và dữ liệu được cung cấp bởi một máy chủ Node.js ở thư mục gốc
-> (`server.js`). Truy cập `http://localhost:3000` sau khi chạy frontend; backend chạy tại `http://localhost:3001` để
+> (`server.js`). Truy cập `http://127.0.0.1:3000` sau khi chạy frontend; backend chạy tại `http://127.0.0.1:3001` để
 > xem giao diện. Các chi tiết thiết lập backend và cơ sở dữ liệu được
 > mô tả trong mục README của folder cha.
 
-Mở trình duyệt: http://localhost:3000
+Mở trình duyệt: http://127.0.0.1:3000

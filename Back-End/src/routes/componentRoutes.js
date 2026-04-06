@@ -46,9 +46,17 @@ router.get('/categories', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const { category, q } = req.query;
+    const { category, q, search } = req.query;
+    const queryText = String(q || search || '').trim();
+    const limit = Math.min(Math.max(0, parseInt(req.query.limit, 10) || 0), 500);
+    const page  = Math.max(1, parseInt(req.query.page,  10) || 1);
+    const isPaginated = limit > 0;
+
     const filter = {};
-    const queryText = String(q || '').trim();
+
+    // Lean list projection — strips heavy nested fields (specs, aiCompatibility, imageUrls,
+    // timestamps) that are only needed in the single-item detail view (GET /:id).
+    const LEAN_SELECT = '_id category name brand price power stock imageUrl description highlights';
 
     if (category && COMPONENT_CATEGORIES.includes(category)) {
       filter.category = category;
@@ -65,20 +73,56 @@ router.get('/', async (req, res) => {
       ];
     }
 
+    let total;
     let components;
 
     if (filter.$text) {
-      components = await Component.aggregate([
+      const leanProject = {
+        category: 1, name: 1, brand: 1, price: 1, power: 1,
+        stock: 1, imageUrl: 1, description: 1, highlights: 1,
+      };
+      const pipeline = [
         { $match: filter },
         { $addFields: { score: { $meta: 'textScore' } } },
         { $sort: { score: -1, price: 1 } },
-        { $project: { __v: 0, score: 0 } },
-      ]);
+        ...(isPaginated ? [{ $skip: (page - 1) * limit }, { $limit: limit }] : []),
+        { $project: { ...leanProject, score: 0 } },
+      ];
+      if (isPaginated) {
+        [total, components] = await Promise.all([
+          Component.countDocuments(filter),
+          Component.aggregate(pipeline),
+        ]);
+      } else {
+        components = await Component.aggregate(pipeline);
+      }
     } else {
-      components = await Component.find(filter)
-        .sort({ category: 1, price: 1 })
-        .select('-__v')
-        .lean();
+      if (isPaginated) {
+        [total, components] = await Promise.all([
+          Component.countDocuments(filter),
+          Component.find(filter)
+            .sort({ category: 1, price: 1 })
+            .select(LEAN_SELECT)
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .lean(),
+        ]);
+      } else {
+        components = await Component.find(filter)
+          .sort({ category: 1, price: 1 })
+          .select(LEAN_SELECT)
+          .lean();
+      }
+    }
+
+    if (isPaginated) {
+      return res.status(200).json({
+        items: components,
+        total,
+        page,
+        pages: Math.ceil(total / limit),
+        limit,
+      });
     }
 
     res.status(200).json(components);

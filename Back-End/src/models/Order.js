@@ -117,6 +117,28 @@ const orderSchema = new mongoose.Schema(
         default: null,
       },
     },
+    shippingAddress: {
+      street: {
+        type: String,
+        trim: true,
+        default: '',
+      },
+      city: {
+        type: String,
+        trim: true,
+        default: '',
+      },
+      state: {
+        type: String,
+        trim: true,
+        default: '',
+      },
+      zip: {
+        type: String,
+        trim: true,
+        default: '',
+      },
+    },
   },
   {
     timestamps: true,

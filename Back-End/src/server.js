@@ -16,6 +16,7 @@ import Log from './models/Log.js';
 import { seedComponentsIfNeeded } from './utils/componentData.js';
 import { seedLogsIfNeeded } from './utils/logData.js';
 import { GoogleGenAI } from '@google/genai';
+import { buildSystemPrompt } from './utils/geminiPrompt.js';
 
 dotenv.config();
 
@@ -23,8 +24,70 @@ if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is
 
 const app = express();
 
+function normalizeOrigin(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  try {
+    const parsed = new URL(raw);
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch {
+    return '';
+  }
+}
+
+function getAllowedOrigins() {
+  const configuredOrigins = [
+    ...String(process.env.CORS_ALLOWED_ORIGINS || '').split(','),
+    process.env.FRONTEND_URL,
+    process.env.FRONTEND_RETURN_URL,
+  ];
+
+  const uniqueOrigins = new Set(
+    configuredOrigins
+      .map((origin) => normalizeOrigin(origin))
+      .filter(Boolean)
+  );
+
+  if (uniqueOrigins.size === 0) {
+    uniqueOrigins.add('http://127.0.0.1:3000');
+  }
+
+  return Array.from(uniqueOrigins);
+}
+
+const allowedOrigins = getAllowedOrigins();
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  const normalizedOrigin = normalizeOrigin(origin);
+  return Boolean(normalizedOrigin) && allowedOrigins.includes(normalizedOrigin);
+}
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (isAllowedOrigin(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204,
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
+app.use((req, res, next) => {
+  const requestOrigin = req.headers.origin;
+  if (isAllowedOrigin(requestOrigin)) {
+    return next();
+  }
+
+  return res.status(403).json({ message: 'Origin not allowed by CORS policy' });
+});
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
@@ -56,6 +119,51 @@ app.get('/api/config/public', (req, res) => {
 });
 
 
+// ── Component inventory cache (5-minute TTL) ────────────────────────────────
+let _inventoryCache = null;
+let _inventoryCacheTime = 0;
+const INVENTORY_CACHE_TTL = 5 * 60 * 1000;
+
+async function getInventoryContext() {
+  const now = Date.now();
+  if (_inventoryCache && now - _inventoryCacheTime < INVENTORY_CACHE_TTL) {
+    return _inventoryCache;
+  }
+
+  const components = await Component.find({ stock: { $gt: 0 } })
+    .select('category name brand price power stock specs')
+    .lean();
+
+  const grouped = {};
+  for (const comp of components) {
+    if (!grouped[comp.category]) grouped[comp.category] = [];
+    grouped[comp.category].push(comp);
+  }
+
+  const lines = [];
+  for (const [category, items] of Object.entries(grouped)) {
+    lines.push(`[${category.toUpperCase()}]`);
+    for (const item of items) {
+      const specParts = item.specs
+        ? Object.entries(item.specs)
+            .filter(([, v]) => v !== null && v !== undefined && v !== '' && v !== false)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join(', ')
+        : '';
+      const price = Number(item.price).toLocaleString('vi-VN');
+      lines.push(
+        `  - ${item.name} | ${item.brand} | ${price}₫ | ${item.power}W | Stock: ${item.stock}` +
+        (specParts ? ` | ${specParts}` : '')
+      );
+    }
+    lines.push('');
+  }
+
+  _inventoryCache = lines.join('\n').trim();
+  _inventoryCacheTime = now;
+  return _inventoryCache;
+}
+
 async function handleChat(req, res) {
   const geminiApiKey = process.env.GEMINI_API_KEY;
   if (!geminiApiKey) {
@@ -68,32 +176,32 @@ async function handleChat(req, res) {
   }
 
   try {
+    const inventoryText = await getInventoryContext();
+    const systemInstruction = buildSystemPrompt(inventoryText);
+
     const genAI = new GoogleGenAI({ apiKey: geminiApiKey });
-const result = await genAI.models.generateContent({
-  model: "gemini-2.5-flash",
-  contents: [{ text: question }],
-      config: {
-      systemInstruction: "You are a helpful assistant for an e-commerce website that sells computer parts. Answer the user's question based on the context of computer hardware, compatibility, and building PCs. Provide concise and accurate information to help the user make informed decisions about their purchases.",
-    },
-});
+    const result = await genAI.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ text: question }],
+      config: { systemInstruction },
+    });
 
-let answer = 'No response from Gemini.';
+    let answer = 'No response from Gemini.';
+    if (typeof result.text === 'string') {
+      answer = result.text;
+    } else if (result.response?.text) {
+      answer = typeof result.response.text === 'function'
+        ? result.response.text()
+        : result.response.text;
+    } else if (Array.isArray(result.output)) {
+      const maybe = result.output[0]?.content?.[0]?.text;
+      if (maybe) answer = maybe;
+    }
 
-if (typeof result.text === 'string') {
-  answer = result.text;
-} else if (result.response?.text) {
-  answer = typeof result.response.text === 'function'
-    ? result.response.text()
-    : result.response.text;
-} else if (Array.isArray(result.output)) {
-  const maybe = result.output[0]?.content?.[0]?.text;
-  if (maybe) answer = maybe;
-}
-
-res.json({ answer: answer.trim(), raw: result, provider: 'gemini' });
+    res.json({ answer: answer.trim(), provider: 'gemini' });
   } catch (error) {
     console.error('Gemini proxy error:', error);
-    res.status(500).json({ error: 'Failed to connect to Gemini', detail: error.message, stack: error.stack });
+    res.status(500).json({ error: 'Failed to connect to Gemini', detail: error.message });
   }
 }
 

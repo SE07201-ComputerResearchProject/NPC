@@ -1680,3 +1680,228 @@ body.bg-dark .modal-content {
       display: none;
     }
 }
+
+/* ── Pre-built PC Tab ─────────────────────────────────────────────────────── */
+
+.parts-tab-strip {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.08);
+  padding-bottom: 0;
+}
+
+body.bg-dark .parts-tab-strip {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.parts-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  color: #6c757d;
+  background: transparent;
+  position: relative;
+  bottom: -2px;
+  border-bottom: 2px solid transparent;
+  transition: color 0.18s, border-color 0.18s;
+}
+
+.parts-tab svg {
+  width: 15px;
+  height: 15px;
+}
+
+.parts-tab:hover {
+  color: #0d6efd;
+}
+
+.parts-tab.active {
+  color: #0d6efd;
+  border-bottom-color: #0d6efd;
+}
+
+body.bg-dark .parts-tab {
+  color: #adb5bd;
+}
+
+body.bg-dark .parts-tab:hover,
+body.bg-dark .parts-tab.active {
+  color: #6ea8fe;
+  border-bottom-color: #6ea8fe;
+}
+
+/* Pre-built list container */
+.prebuilt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 65vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Loading / empty state */
+.prebuilt-loading,
+.prebuilt-empty {
+  text-align: center;
+  color: #6c757d;
+  font-size: 0.9rem;
+  padding: 32px 0;
+  margin: 0;
+}
+
+/* Pre-built card */
+.prebuilt-card {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.6);
+  transition: box-shadow 0.18s, border-color 0.18s;
+}
+
+.prebuilt-card:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  border-color: rgba(13, 110, 253, 0.3);
+}
+
+body.bg-dark .prebuilt-card {
+  background: rgba(50, 50, 50, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.bg-dark .prebuilt-card:hover {
+  border-color: rgba(110, 168, 254, 0.35);
+}
+
+.prebuilt-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.prebuilt-name {
+  font-size: 0.95rem;
+}
+
+/* Tier badges */
+.prebuilt-tier {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.prebuilt-tier.tier-high {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.prebuilt-tier.tier-mid {
+  background: #cfe2ff;
+  color: #084298;
+}
+
+.prebuilt-tier.tier-budget {
+  background: #d1e7dd;
+  color: #0a3622;
+}
+
+body.bg-dark .prebuilt-tier.tier-high  { background: #3d2e00; color: #ffc107; }
+body.bg-dark .prebuilt-tier.tier-mid   { background: #031633; color: #6ea8fe; }
+body.bg-dark .prebuilt-tier.tier-budget{ background: #051b11; color: #75b798; }
+
+.prebuilt-tagline {
+  font-size: 0.82rem;
+  color: #6c757d;
+  margin: 0 0 6px;
+  line-height: 1.4;
+}
+
+body.bg-dark .prebuilt-tagline { color: #adb5bd; }
+
+.prebuilt-price {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #198754;
+  margin-bottom: 8px;
+}
+
+body.bg-dark .prebuilt-price { color: #75b798; }
+
+.prebuilt-parts-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.prebuilt-part-chip {
+  font-size: 0.72rem;
+  padding: 2px 7px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.06);
+  color: #495057;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+body.bg-dark .prebuilt-part-chip {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ced4da;
+}
+
+/* Resolved state chips */
+.prebuilt-part-chip.chip-found {
+  background: #d1e7dd;
+  color: #0a3622;
+  max-width: 200px;
+}
+body.bg-dark .prebuilt-part-chip.chip-found {
+  background: #051b11;
+  color: #75b798;
+}
+.prebuilt-part-chip.chip-missing {
+  background: #f8d7da;
+  color: #842029;
+  text-decoration: line-through;
+}
+body.bg-dark .prebuilt-part-chip.chip-missing {
+  background: #2c0b0e;
+  color: #ea868f;
+}
+
+/* Estimated price label */
+.prebuilt-price.prebuilt-est-price::after {
+  content: ' (est.)';
+  font-weight: 400;
+  font-size: 0.78em;
+  opacity: 0.7;
+}
+
+/* Card footer row (button + warning note) */
+.prebuilt-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.prebuilt-missing-note {
+  font-size: 0.75rem;
+  color: #dc3545;
+}

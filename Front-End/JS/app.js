@@ -5,7 +5,7 @@ const background = document.querySelector('.background');
 const floatingMenu = document.querySelector('.floating-menu');
 let lastScrollY = window.scrollY;
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = 'http://127.0.0.1:3001/api';
 const CART_API_URL = `${API_BASE_URL}/carts/me`;
 const BUILD_API_URL = `${API_BASE_URL}/builds/me/current`;
 const ORDER_API_URL = `${API_BASE_URL}/orders`;
@@ -130,6 +130,8 @@ function normalizeBuildForState(build) {
       brand: part.brand || '',
       price: Number(part.price || 0),
       power: Number(part.power || 0),
+      imageUrl: part.imageUrl || '',
+      description: part.description || '',
     };
   });
 
@@ -235,11 +237,11 @@ async function persistBuildState() {
   return payload;
 }
 
-async function createCheckoutOrder(source) {
+async function createCheckoutOrder(source, shippingAddress) {
   return requestAuthJson(`${ORDER_API_URL}/checkout`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ source }),
+    body: JSON.stringify({ source, shippingAddress }),
   });
 }
 
@@ -251,6 +253,9 @@ window.hydrateCommerceState = async () => {
 window.awaitCommerceStateReady = awaitCommerceStateReady;
 window.requestAuthJson = requestAuthJson;
 window.createCheckoutOrder = createCheckoutOrder;
+window.getAuthToken = getAuthToken;
+window.getAuthHeaders = getAuthHeaders;
+window.showPopup = showPopup;
 
 function getProfile() {
   try {

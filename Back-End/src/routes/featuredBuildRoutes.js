@@ -1,6 +1,6 @@
 import express from 'express';
 import FeaturedBuild from '../models/FeaturedBuild.js';
-import { COMPONENT_CATEGORIES } from '../models/Component.js';
+import Component, { COMPONENT_CATEGORIES } from '../models/Component.js';
 import { requireAdmin } from '../middleware/adminMiddleware.js';
 
 const router = express.Router();
@@ -113,6 +113,63 @@ router.get('/', async (req, res) => {
     res.json(builds);
   } catch (err) {
     res.status(500).json({ message: 'Failed to load featured builds' });
+  }
+});
+
+// ──────────────────────────────────────────────
+//  GET /api/featured-builds/:presetId/resolve
+//  Resolves all parts in ONE DB query and returns
+//  matched components + list of missing categories
+// ──────────────────────────────────────────────
+router.get('/:presetId/resolve', async (req, res) => {
+  try {
+    const build = await FeaturedBuild.findOne({ presetId: req.params.presetId }).lean();
+    if (!build) return res.status(404).json({ message: 'Preset not found' });
+
+    // Mongoose Map → plain object
+    const partsObj = build.parts instanceof Map
+      ? Object.fromEntries(build.parts)
+      : (build.parts || {});
+
+    const entries = Object.entries(partsObj).filter(([, spec]) => spec?.name);
+
+    if (!entries.length) {
+      return res.json({
+        preset: { presetId: build.presetId, name: build.name, tagline: build.tagline, tier: build.tier, estimatedPrice: build.estimatedPrice },
+        resolved: {},
+        missing: [],
+      });
+    }
+
+    // Single compound query instead of N round-trips
+    const orConditions = entries.map(([category, spec]) => ({ category, name: spec.name }));
+    const found = await Component.find({ $or: orConditions })
+      .select('_id category name brand price power stock imageUrl')
+      .lean();
+
+    const resolved = {};
+    const missing  = [];
+
+    for (const [category, spec] of entries) {
+      const match = found.find(c => c.category === category && c.name === spec.name)
+                 ?? found.find(c => c.category === category);
+      if (match) resolved[category] = match;
+      else       missing.push(category);
+    }
+
+    res.json({
+      preset: {
+        presetId:       build.presetId,
+        name:           build.name,
+        tagline:        build.tagline,
+        tier:           build.tier,
+        estimatedPrice: build.estimatedPrice,
+      },
+      resolved,
+      missing,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to resolve featured build', error: err.message });
   }
 });
 

@@ -91,19 +91,31 @@
         </div>
       </div>
       <div class="dash-parts square-panel">
-        <h4>Parts List</h4>
-        <div class="parts-list" id="partsList">
-          <!-- Parts will be rendered here -->
+
+        <!-- Tab strip -->
+        <div class="parts-tab-strip">
+          <button class="parts-tab" id="tabPrebuilt" onclick="switchPartsTab('prebuilt')">
+            <i data-lucide="layout-list"></i> Pre-built PC
+          </button>
+          <button class="parts-tab active" id="tabCustom" onclick="switchPartsTab('custom')">
+            <i data-lucide="wrench"></i> Parts List
+          </button>
         </div>
-        <div class="additional-products">
-          <h5>Additional Products</h5>
-          <div class="additional-buttons">
-            <button class="btn btn-sm btn-outline-secondary">Thermal Compound</button>
-            <button class="btn btn-sm btn-outline-secondary">Operating System</button>
-            <button class="btn btn-sm btn-outline-secondary">Sound Card</button>
-            <button class="btn btn-sm btn-outline-secondary">Network Card</button>
+
+        <!-- Pre-built PC panel -->
+        <div id="prebuiltPanel" style="display:none">
+          <div id="prebuiltList" class="prebuilt-list">
+            <!-- Pre-built cards rendered here by JS -->
           </div>
         </div>
+
+        <!-- Custom build panel -->
+        <div id="customPanel">
+          <div class="parts-list" id="partsList">
+            <!-- Parts will be rendered here -->
+          </div>
+        </div>
+
       </div>
 
       <!-- div4: 2D Rig Illustration -->
@@ -184,7 +196,7 @@
       <span class="label">Build PC</span>
     </a>
 
-    <a href="#" class="menu-item" onclick="toggleComponentsMenu(event)">
+    <a href="products.html" class="menu-item" id="componentsMenuTrigger">
       <i data-lucide="cpu"></i>
       <span class="label">Components</span>
     </a>
@@ -214,8 +226,6 @@
   <script>
     lucide.createIcons();
   </script>
-  <!-- Animate JS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/typed.js/2.0.12/typed.min.js"></script>
   <!-- Custom JS -->
   <script src="JS/app.js"></script>

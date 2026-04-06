@@ -1,8 +1,8 @@
 // account.js - handle account profile page (sidebar layout)
 
-const ACCOUNT_USER_API_BASE_URL = 'http://localhost:3001/api/users';
+const ACCOUNT_USER_API_BASE_URL = 'http://127.0.0.1:3001/api/users';
 const CURRENT_USER_API_URL = `${ACCOUNT_USER_API_BASE_URL}/me`;
-const ACCOUNT_ORDER_API_URL = 'http://localhost:3001/api/orders/me';
+const ACCOUNT_ORDER_API_URL = 'http://127.0.0.1:3001/api/orders/me';
 const MAX_AVATAR_FILE_MB = 2;
 let ordersLoadedOnce = false;
 

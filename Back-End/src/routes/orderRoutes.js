@@ -73,6 +73,7 @@ router.get('/:id', requireAuth, validateOrderIdParam, loadOrderForCurrentUserOrA
 router.post('/checkout', requireAuth, validateCheckoutSource, async (req, res) => {
   try {
     const source = req.checkoutSource;
+    const shippingAddress = req.body.shippingAddress || {};
 
     let items = [];
     let buildName = '';
@@ -113,6 +114,12 @@ router.post('/checkout', requireAuth, validateCheckoutSource, async (req, res) =
       currency: 'VND',
       status: 'pending',
       orderInfo,
+      shippingAddress: {
+        street: shippingAddress.street || '',
+        city: shippingAddress.city || '',
+        state: shippingAddress.state || '',
+        zip: shippingAddress.zip || '',
+      },
     });
 
     return res.status(201).json({

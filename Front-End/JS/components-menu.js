@@ -1,13 +1,6 @@
-// Components popup menu
-function toggleComponentsMenu(event) {
-  event.preventDefault();
-  const existing = document.getElementById('componentsMenu');
-  if (existing) {
-    existing.remove();
-    const backdrop = document.querySelector('.components-backdrop');
-    if (backdrop) backdrop.remove();
-    return;
-  }
+// Components popup menu — shows on hover, navigates to products.html on click
+(function () {
+  let hideTimer = null;
 
   const categories = [
     { key: 'case', label: 'Case', icon: 'pc-case' },
@@ -18,41 +11,71 @@ function toggleComponentsMenu(event) {
     { key: 'storage', label: 'Storage', icon: 'hard-drive' },
     { key: 'psu', label: 'Power Supply', icon: 'zap' },
     { key: 'cooler', label: 'Cooler', icon: 'thermometer' },
-    { key: 'fan', label: 'Case Fan', icon: 'wind' }
+    { key: 'fan', label: 'Case Fan', icon: 'wind' },
   ];
 
-  const floatingMenu = document.querySelector('.floating-menu');
-  let html = '<div class="components-menu" id="componentsMenu">';
-  categories.forEach(cat => {
-    html += `<a href=\"products.html?category=${cat.key}\" class=\"components-item\">` +
-            `<i data-lucide=\"${cat.icon}\"></i><span>${cat.label}</span></a>`;
-  });
-  html += '</div>';
+  function buildMenu() {
+    if (document.getElementById('componentsMenu')) return;
 
-  document.body.insertAdjacentHTML('beforeend', html);
-  const menuEl = document.getElementById('componentsMenu');
-  if (window.lucide && typeof window.lucide.createIcons === 'function') {
-    window.lucide.createIcons();
+    let html = '<div class="components-menu" id="componentsMenu">';
+    categories.forEach(cat => {
+      html += `<a href="products.html?category=${cat.key}" class="components-item">` +
+              `<i data-lucide="${cat.icon}"></i><span>${cat.label}</span></a>`;
+    });
+    html += '</div>';
+
+    document.body.insertAdjacentHTML('beforeend', html);
+    const menuEl = document.getElementById('componentsMenu');
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+
+    // Keep menu open while hovering over it
+    menuEl.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+    menuEl.addEventListener('mouseleave', scheduleHide);
   }
 
-  // position popup above the clicked icon rather than the whole bar
-  if (menuEl) {
-    const trigger = event.currentTarget;
+  function positionMenu(trigger) {
+    const menuEl = document.getElementById('componentsMenu');
+    if (!menuEl) return;
+
     const rect = trigger.getBoundingClientRect();
-    // use fixed positioning so it stays tied to viewport
     menuEl.style.position = 'fixed';
-    // compute centred x then clamp to viewport edges
-    let left = rect.left + rect.width/2 - menuEl.offsetWidth/2;
+
+    let left = rect.left + rect.width / 2 - menuEl.offsetWidth / 2;
     left = Math.max(8, Math.min(left, window.innerWidth - menuEl.offsetWidth - 8));
     menuEl.style.left = left + 'px';
-    // position above the trigger and avoid going off the top
+
     let top = rect.top - menuEl.offsetHeight - 8;
     top = Math.max(8, top);
     menuEl.style.top = top + 'px';
   }
 
-  const backdrop = document.createElement('div');
-  backdrop.className = 'components-backdrop';
-  backdrop.addEventListener('click', toggleComponentsMenu);
-  document.body.appendChild(backdrop);
-}
+  function showMenu(trigger) {
+    clearTimeout(hideTimer);
+    buildMenu();
+    positionMenu(trigger);
+  }
+
+  function scheduleHide() {
+    hideTimer = setTimeout(() => {
+      const menuEl = document.getElementById('componentsMenu');
+      if (menuEl) menuEl.remove();
+    }, 150);
+  }
+
+  function init() {
+    const trigger = document.getElementById('componentsMenuTrigger');
+    if (!trigger) return;
+
+    trigger.addEventListener('mouseenter', () => showMenu(trigger));
+    trigger.addEventListener('mouseleave', scheduleHide);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();

@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  const FEATURED_BUILDS_API = 'http://localhost:3001/api/featured-builds';
+  const FEATURED_BUILDS_API = 'http://127.0.0.1:3001/api/featured-builds';
 
   // ──────────────────────────────────────────────────────────────
   //  Preloader

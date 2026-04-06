@@ -1,4 +1,4 @@
-const COMPONENT_API_BASE_URL = 'http://localhost:3001/api/components';
+const COMPONENT_API_BASE_URL = 'http://127.0.0.1:3001/api/components';
 
 const searchParams = new URLSearchParams(window.location.search);
 const initialCategory = searchParams.get('category') || 'all';
@@ -797,9 +797,20 @@ function renderComponents() {
   });
 
   gridEl.querySelectorAll('[data-view-more]').forEach(button => {
-    button.addEventListener('click', () => {
-      const component = pageItemsMap.get(button.dataset.viewMore);
-      openProductDetailsModal(component);
+    button.addEventListener('click', async () => {
+      const id = button.dataset.viewMore;
+      try {
+        // Fetch the full component document (includes specs, imageUrls, highlights, description)
+        const res = await fetch(`${COMPONENT_API_BASE_URL}/${id}`);
+        if (res.ok) {
+          openProductDetailsModal(await res.json());
+        } else {
+          // Fallback to lean data already in memory
+          openProductDetailsModal(pageItemsMap.get(id));
+        }
+      } catch {
+        openProductDetailsModal(pageItemsMap.get(id));
+      }
     });
   });
 
