@@ -255,6 +255,16 @@ window.requestAuthJson = requestAuthJson;
 window.createCheckoutOrder = createCheckoutOrder;
 window.getAuthToken = getAuthToken;
 window.getAuthHeaders = getAuthHeaders;
+window.getBuild = getBuild;
+window.saveBuild = saveBuild;
+window.getBuildName = getBuildName;
+window.saveBuildName = saveBuildName;
+window.getCart = getCart;
+window.saveCart = saveCart;
+window.addToCart = addToCart;
+window.removeFromCart = removeFromCart;
+window.updateCartQuantity = updateCartQuantity;
+window.clearCart = clearCart;
 window.showPopup = showPopup;
 
 function getProfile() {
