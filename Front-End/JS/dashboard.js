@@ -593,6 +593,18 @@ async function loadBuildNameFromApiState() {
   }
 }
 
+function syncDashboardWithCommerceState(detail = {}) {
+  currentBuild = typeof getBuild === 'function' ? getBuild() : currentBuild;
+
+  const buildNameEl = document.getElementById('buildName');
+  if (buildNameEl && typeof getBuildName === 'function') {
+    buildNameEl.textContent = detail.buildName || getBuildName() || 'New Build';
+  }
+
+  renderPartsList();
+  updateStats();
+}
+
 async function loadFeaturedPresetIfPresent() {
   try {
     const presetJson = sessionStorage.getItem('featuredBuildPreset');
@@ -806,4 +818,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (saveBtn) {
     saveBtn.addEventListener('click', saveCurrentBuild);
   }
+
+  window.addEventListener('npc:build-changed', event => {
+    syncDashboardWithCommerceState(event.detail || {});
+  });
 });

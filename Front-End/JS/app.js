@@ -29,6 +29,16 @@ const commerceState = {
   buildName: 'New Build',
 };
 
+function emitBuildStateChange(source = 'unknown') {
+  window.dispatchEvent(new CustomEvent('npc:build-changed', {
+    detail: {
+      source,
+      build: cloneStateValue(commerceState.build),
+      buildName: commerceState.buildName || 'New Build',
+    },
+  }));
+}
+
 // Auth/profile/theme state helpers remain in localStorage.
 function getAuthState() {
   // TODO: query server/session
@@ -166,6 +176,7 @@ function resetCommerceState() {
   commerceState.cart = [];
   commerceState.build = createEmptyBuildState();
   commerceState.buildName = 'New Build';
+  emitBuildStateChange('reset');
 }
 
 async function hydrateCommerceState() {
@@ -175,6 +186,7 @@ async function hydrateCommerceState() {
     commerceState.cart = [];
     commerceState.build = readGuestBuildFromStorage();
     commerceState.buildName = readGuestBuildNameFromStorage();
+    emitBuildStateChange('hydrate-guest');
     return cloneStateValue(commerceState);
   }
 
@@ -186,6 +198,7 @@ async function hydrateCommerceState() {
   commerceState.cart = normalizeCartItemsForState(cartPayload?.items || []);
   commerceState.build = normalizeBuildForState(buildPayload?.parts || {});
   commerceState.buildName = String(buildPayload?.name || 'New Build').trim() || 'New Build';
+  emitBuildStateChange('hydrate-auth');
 
   return cloneStateValue(commerceState);
 }
@@ -218,6 +231,7 @@ async function persistCartState() {
 async function persistBuildState() {
   if (!getAuthToken()) {
     persistGuestBuildState();
+    emitBuildStateChange('persist-guest');
     return { persisted: false, build: { name: getBuildName(), parts: getBuild() } };
   }
 
@@ -232,6 +246,7 @@ async function persistBuildState() {
 
   commerceState.build = normalizeBuildForState(payload?.build?.parts || commerceState.build);
   commerceState.buildName = String(payload?.build?.name || commerceState.buildName || 'New Build').trim() || 'New Build';
+  emitBuildStateChange('persist-auth');
   return payload;
 }
 
@@ -251,6 +266,14 @@ window.hydrateCommerceState = async () => {
 window.awaitCommerceStateReady = awaitCommerceStateReady;
 window.requestAuthJson = requestAuthJson;
 window.createCheckoutOrder = createCheckoutOrder;
+window.getBuild = getBuild;
+window.saveBuild = saveBuild;
+window.getBuildName = getBuildName;
+window.saveBuildName = saveBuildName;
+window.getCart = getCart;
+window.saveCart = saveCart;
+window.addToCart = addToCart;
+window.showPopup = showPopup;
 
 function getProfile() {
   try {

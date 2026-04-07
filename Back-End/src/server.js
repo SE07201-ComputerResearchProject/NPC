@@ -13,6 +13,7 @@ import compatibilityRoutes from './routes/compatibilityRoutes.js';
 import featuredBuildRoutes, { seedFeaturedBuildsIfNeeded } from './routes/featuredBuildRoutes.js';
 import Component from './models/Component.js';
 import Log from './models/Log.js';
+import { GEMINI_SYSTEM_PROMPT } from './config/geminiSystemPrompt.js';
 import { seedComponentsIfNeeded } from './utils/componentData.js';
 import { seedLogsIfNeeded } from './utils/logData.js';
 import { GoogleGenAI } from "@google/genai";
@@ -67,10 +68,13 @@ async function handleChat(req, res) {
 
   try {
     const genAI = new GoogleGenAI({ apiKey: geminiApiKey });
-const result = await genAI.models.generateContent({
-  model: "gemini-2.5-flash",
-  contents: [{ text: question }]
-});
+    const systemPrompt = process.env.GEMINI_SYSTEM_PROMPT?.trim() || GEMINI_SYSTEM_PROMPT;
+    const fullPrompt = `${systemPrompt}\n\nCâu hỏi của người dùng:\n${question}`;
+
+    const result = await genAI.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ text: fullPrompt }],
+    });
 
 let answer = 'No response from Gemini.';
 
