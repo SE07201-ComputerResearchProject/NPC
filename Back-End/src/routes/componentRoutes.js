@@ -8,6 +8,33 @@ function escapeRegex(value) {
   return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function buildSearchFilter(queryText) {
+  const normalized = String(queryText || '').trim();
+  if (!normalized) return null;
+
+  const terms = normalized
+    .split(/\s+/)
+    .map(term => term.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+
+  if (!terms.length) return null;
+
+  return {
+    $and: terms.map(term => {
+      const pattern = { $regex: escapeRegex(term), $options: 'i' };
+      return {
+        $or: [
+          { name: pattern },
+          { brand: pattern },
+          { description: pattern },
+          { highlights: pattern },
+        ],
+      };
+    }),
+  };
+}
+
 function normalizeImageUrls(imageUrls, imageUrl) {
   const fromArray = Array.isArray(imageUrls)
     ? imageUrls.map(item => String(item || '').trim()).filter(Boolean)
@@ -62,57 +89,31 @@ router.get('/', async (req, res) => {
       filter.category = category;
     }
 
-    if (queryText.length >= 2) {
-      filter.$text = { $search: queryText };
-    } else if (queryText) {
-      const safeQuery = escapeRegex(queryText);
-      filter.$or = [
-        { name: { $regex: safeQuery, $options: 'i' } },
-        { brand: { $regex: safeQuery, $options: 'i' } },
-        { description: { $regex: safeQuery, $options: 'i' } },
-      ];
+    if (queryText) {
+      const searchFilter = buildSearchFilter(queryText);
+      if (searchFilter) {
+        Object.assign(filter, searchFilter);
+      }
     }
 
     let total;
     let components;
 
-    if (filter.$text) {
-      const leanProject = {
-        category: 1, name: 1, brand: 1, price: 1, power: 1,
-        stock: 1, imageUrl: 1, description: 1, highlights: 1,
-      };
-      const pipeline = [
-        { $match: filter },
-        { $addFields: { score: { $meta: 'textScore' } } },
-        { $sort: { score: -1, price: 1 } },
-        ...(isPaginated ? [{ $skip: (page - 1) * limit }, { $limit: limit }] : []),
-        { $project: { ...leanProject, score: 0 } },
-      ];
-      if (isPaginated) {
-        [total, components] = await Promise.all([
-          Component.countDocuments(filter),
-          Component.aggregate(pipeline),
-        ]);
-      } else {
-        components = await Component.aggregate(pipeline);
-      }
-    } else {
-      if (isPaginated) {
-        [total, components] = await Promise.all([
-          Component.countDocuments(filter),
-          Component.find(filter)
-            .sort({ category: 1, price: 1 })
-            .select(LEAN_SELECT)
-            .skip((page - 1) * limit)
-            .limit(limit)
-            .lean(),
-        ]);
-      } else {
-        components = await Component.find(filter)
+    if (isPaginated) {
+      [total, components] = await Promise.all([
+        Component.countDocuments(filter),
+        Component.find(filter)
           .sort({ category: 1, price: 1 })
           .select(LEAN_SELECT)
-          .lean();
-      }
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .lean(),
+      ]);
+    } else {
+      components = await Component.find(filter)
+        .sort({ category: 1, price: 1 })
+        .select(LEAN_SELECT)
+        .lean();
     }
 
     if (isPaginated) {

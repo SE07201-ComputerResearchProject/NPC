@@ -45,6 +45,64 @@
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
+  function normalizeCatalogText(value) {
+    return String(value ?? '')
+      .toLowerCase()
+      .replace(/\*\*/g, '')
+      .replace(/[`"']/g, '')
+      .replace(/\([^)]*\)/g, ' ')
+      .replace(/\[[^\]]*\]/g, ' ')
+      .replace(/\b(cpu|gpu|ram|psu|ssd|hdd|case|cooler|fan|motherboard|mainboard)\s*:\s*/g, ' ')
+      .replace(/^[\s\-_*•#]+/, '')
+      .replace(/^[0-9]+[.)\-:\s]+/, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function cleanSuggestedProductName(value) {
+    return String(value ?? '')
+      .replace(/^[\s\-_*•#]+/, '')
+      .replace(/^[0-9]+[.)\-:\s]+/, '')
+      .replace(/^\[[^\]]+\]\s*/, '')
+      .replace(/^(cpu|gpu|ram|psu|ssd|hdd|case|cooler|fan|motherboard|mainboard)\s*:\s*/i, '')
+      .replace(/\*\*/g, '')
+      .trim();
+  }
+
+  function buildSearchVariants(name) {
+    const cleaned = cleanSuggestedProductName(name);
+    const withoutParens = cleaned.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+    const tokens = normalizeCatalogText(cleaned).split(' ').filter(Boolean);
+    const variants = [
+      cleaned,
+      withoutParens,
+      tokens.slice(0, 6).join(' '),
+      tokens.slice(0, 4).join(' '),
+      tokens.slice(0, 3).join(' '),
+    ];
+
+    return [...new Set(variants.map(item => String(item || '').trim()).filter(item => item.length >= 3))];
+  }
+
+  function scoreComponentMatch(component, requestedName) {
+    const target = normalizeCatalogText(requestedName);
+    const candidate = normalizeCatalogText(component?.name || '');
+    if (!target || !candidate) return -1;
+
+    if (candidate === target) return 100;
+    if (candidate.startsWith(target) || target.startsWith(candidate)) return 90;
+    if (candidate.includes(target) || target.includes(candidate)) return 80;
+
+    const targetTokens = target.split(' ').filter(Boolean);
+    const candidateTokens = candidate.split(' ').filter(Boolean);
+    const overlap = targetTokens.filter(token => candidateTokens.includes(token)).length;
+    if (!overlap) return -1;
+
+    const coverage = overlap / Math.max(targetTokens.length, candidateTokens.length);
+    return Math.round(coverage * 70);
+  }
+
   // Render markdown-ish text into a .cb-bubble element
   function renderMarkdown(text) {
     const el = document.createElement('div');
@@ -70,7 +128,7 @@
     text.split('\n').forEach(line => {
       const parts = line.split('|').map(s => s.trim());
       if (parts.length >= 2) {
-        const name = parts[0].replace(/^[\-\*•]+\s*/, '').replace(/\*\*/g,'').trim();
+        const name = cleanSuggestedProductName(parts[0]);
         if (name.length > 3 && name.length < 120 && /[a-zA-Z0-9]/.test(name)) {
           results.push(name);
         }
@@ -81,14 +139,34 @@
 
   // Search component by name from the API
   async function resolveComponent(name) {
-    const encodedName = encodeURIComponent(name.substring(0, 60));
-    const res = await fetch(`${COMP_API_URL}?search=${encodedName}&limit=1`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const items = Array.isArray(data) ? data : (data.components || data.items || []);
-    if (!items.length) return null;
-    // prefer exact or closest match
-    return items.find(c => c.name.toLowerCase().includes(name.substring(0,15).toLowerCase())) || items[0];
+    const variants = buildSearchVariants(name);
+    const candidates = [];
+    const seenIds = new Set();
+
+    for (const variant of variants) {
+      const encodedName = encodeURIComponent(variant.substring(0, 80));
+      const res = await fetch(`${COMP_API_URL}?search=${encodedName}&limit=12`);
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const items = Array.isArray(data) ? data : (data.components || data.items || []);
+      items.forEach(item => {
+        const id = String(item?._id || '');
+        if (!id || seenIds.has(id)) return;
+        seenIds.add(id);
+        candidates.push(item);
+      });
+
+      const exact = candidates.find(item => scoreComponentMatch(item, name) >= 100);
+      if (exact) return exact;
+    }
+
+    const ranked = candidates
+      .map(item => ({ item, score: scoreComponentMatch(item, name) }))
+      .filter(entry => entry.score >= 50)
+      .sort((a, b) => b.score - a.score || Number(b.item?.stock || 0) - Number(a.item?.stock || 0));
+
+    return ranked[0]?.item || null;
   }
 
   // Add a component to the build (works on any page via app.js globals)

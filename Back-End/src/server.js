@@ -119,19 +119,10 @@ app.get('/api/config/public', (req, res) => {
 });
 
 
-// ── Component inventory cache (5-minute TTL) ────────────────────────────────
-let _inventoryCache = null;
-let _inventoryCacheTime = 0;
-const INVENTORY_CACHE_TTL = 5 * 60 * 1000;
-
 async function getInventoryContext() {
-  const now = Date.now();
-  if (_inventoryCache && now - _inventoryCacheTime < INVENTORY_CACHE_TTL) {
-    return _inventoryCache;
-  }
-
   const components = await Component.find({ stock: { $gt: 0 } })
     .select('category name brand price power stock specs')
+    .sort({ category: 1, name: 1 })
     .lean();
 
   const grouped = {};
@@ -159,9 +150,7 @@ async function getInventoryContext() {
     lines.push('');
   }
 
-  _inventoryCache = lines.join('\n').trim();
-  _inventoryCacheTime = now;
-  return _inventoryCache;
+  return lines.join('\n').trim();
 }
 
 async function handleChat(req, res) {

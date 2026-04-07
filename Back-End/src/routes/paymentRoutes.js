@@ -95,6 +95,42 @@ function isValidOrderId(orderId) {
   return mongoose.Types.ObjectId.isValid(orderId);
 }
 
+async function markOrderPaymentFailed(orderId, {
+  responseCode = 'FAILED',
+  txnRef = '',
+  provider = 'vnpay',
+  reason = '',
+} = {}) {
+  if (!isValidOrderId(orderId)) {
+    return null;
+  }
+
+  const order = await Order.findById(orderId);
+  if (!order) {
+    return null;
+  }
+
+  const returnedAt = new Date();
+  order.status = 'failed';
+  order.payment = {
+    ...(order.payment || {}),
+    provider: provider || order.payment?.provider || 'vnpay',
+    txnRef: txnRef || order.payment?.txnRef || '',
+    responseCode,
+    returnedAt,
+  };
+  await order.save();
+
+  const userEmail = await resolveOrderUserEmail(order);
+  const details = reason ? ` (${reason})` : '';
+  await writePaymentLog(
+    userEmail,
+    `VNPay payment failed for order ${orderId} with response code ${responseCode}${details}`
+  );
+
+  return order;
+}
+
 router.post('/vnpay/create', requireAuth, async (req, res) => {
   try {
     const orderId = String(req.body.orderId || '').trim();
@@ -193,6 +229,11 @@ router.get('/vnpay/return', async (req, res) => {
 
     if (!verify.isSuccess) {
       console.error('Invalid VNPay signature');
+      await markOrderPaymentFailed(orderId, {
+        responseCode: 'INVALID_SIGNATURE',
+        txnRef: vnp_TxnRef,
+        reason: 'Invalid VNPay signature',
+      });
       await writePaymentLog('system', `VNPay return rejected due to invalid signature for txnRef ${vnp_TxnRef || 'unknown'}`);
       return res.redirect(`${failedPageUrl}?orderId=${encodeURIComponent(orderId)}&paymentCode=INVALID_SIGNATURE&txnRef=${encodeURIComponent(vnp_TxnRef)}&reason=${encodeURIComponent('Invalid VNPay signature')}`);
     }
@@ -227,25 +268,22 @@ router.get('/vnpay/return', async (req, res) => {
       }
       return res.redirect(`${successPageUrl}?orderId=${encodeURIComponent(orderId)}&paymentCode=${encodeURIComponent(vnp_ResponseCode)}&txnRef=${encodeURIComponent(vnp_TxnRef)}`);
     } else {
-      const order = await Order.findById(orderId);
-      if (order) {
-        const userEmail = await resolveOrderUserEmail(order);
-        order.status = 'failed';
-        order.payment = {
-          ...(order.payment || {}),
-          responseCode: vnp_ResponseCode,
-          returnedAt: new Date(),
-        };
-        await order.save();
-        await writePaymentLog(
-          userEmail,
-          `VNPay payment failed for order ${orderId} with response code ${vnp_ResponseCode}`
-        );
-      }
+      await markOrderPaymentFailed(orderId, {
+        responseCode: vnp_ResponseCode,
+        txnRef: vnp_TxnRef,
+        reason: 'Payment was declined or cancelled',
+      });
       return res.redirect(`${failedPageUrl}?orderId=${encodeURIComponent(orderId)}&paymentCode=${encodeURIComponent(vnp_ResponseCode)}&txnRef=${encodeURIComponent(vnp_TxnRef)}&reason=${encodeURIComponent('Payment was declined or cancelled')}`);
     }
   } catch (error) {
     console.error('VNPay return error:', error);
+    const vnp_TxnRef = String(req.query.vnp_TxnRef || '');
+    const orderId = vnp_TxnRef ? vnp_TxnRef.split('_')[0] : '';
+    await markOrderPaymentFailed(orderId, {
+      responseCode: 'ERROR',
+      txnRef: vnp_TxnRef,
+      reason: error.message || 'Unhandled payment return error',
+    });
     await writePaymentLog('system', `VNPay return handler error: ${error.message}`);
     return res.redirect(`${getFrontendPageUrl('payment-failed.html')}?paymentCode=ERROR&reason=${encodeURIComponent(error.message || 'Unhandled payment return error')}`);
   }
