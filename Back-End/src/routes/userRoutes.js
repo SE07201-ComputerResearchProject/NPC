@@ -529,7 +529,6 @@ router.post('/login', async (req, res) => {
           });
         }
         const { otp, hash } = generateEmailOtp();
-        await sendOtpEmail(user.email, otp);
         user.emailMfa = {
           ...(user.emailMfa?.toObject ? user.emailMfa.toObject() : (user.emailMfa || {})),
           pendingOtp: hash,
@@ -539,6 +538,9 @@ router.post('/login', async (req, res) => {
         };
         user.updatedAt = new Date();
         await user.save();
+        sendOtpEmail(user.email, otp).catch((error) => {
+          console.error('Failed to send login email OTP:', error.message);
+        });
         Log.create({ user: user.email, activity: 'Login email OTP sent' }).catch(() => {});
         return res.status(202).json({
           message: 'A 6-digit verification code has been sent to your email.',
@@ -772,8 +774,6 @@ router.post('/mfa/email/send-code', requireAuth, async (req, res) => {
 
     const { otp, hash } = generateEmailOtp();
 
-    await sendOtpEmail(user.email, otp);
-
     user.emailMfa = {
       ...(user.emailMfa?.toObject ? user.emailMfa.toObject() : (user.emailMfa || {})),
       pendingOtp: hash,
@@ -783,6 +783,10 @@ router.post('/mfa/email/send-code', requireAuth, async (req, res) => {
     };
     user.updatedAt = new Date();
     await user.save();
+
+    sendOtpEmail(user.email, otp).catch((error) => {
+      console.error('Failed to send account email OTP:', error.message);
+    });
 
     return res.status(200).json({ message: 'Verification code sent to your email.' });
   } catch (error) {
@@ -889,6 +893,44 @@ router.get('/', requireAdmin, async (req, res) => {
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch users', error: error.message });
+  }
+});
+
+router.post('/', requireAdmin, async (req, res) => {
+  try {
+    const { username, email, password, fullName, dateOfBirth, address } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!username || !normalizedEmail || !password) {
+      return res.status(400).json({ message: 'Please provide username, email, and password' });
+    }
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already registered' });
+    }
+
+    const user = new User({
+      username,
+      email: normalizedEmail,
+      password,
+      fullName: fullName || '',
+      dateOfBirth: dateOfBirth || null,
+      address: address || { street: '', city: '', state: '', zip: '' },
+      provider: 'local',
+      role: 'user',
+    });
+
+    await user.save();
+    Log.create({ user: req.currentUser?.email || 'admin', activity: `Admin created user: ${normalizedEmail}` }).catch(() => {});
+
+    return res.status(201).json({
+      message: 'User created successfully',
+      user: serializeUserForClient(user),
+    });
+  } catch (error) {
+    console.error('Admin create user error:', error);
+    return res.status(500).json({ message: 'Failed to create user', error: error.message });
   }
 });
 

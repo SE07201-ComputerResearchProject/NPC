@@ -15,6 +15,7 @@ import Component from './models/Component.js';
 import Log from './models/Log.js';
 import { seedComponentsIfNeeded } from './utils/componentData.js';
 import { seedLogsIfNeeded } from './utils/logData.js';
+import { warmUpEmailTransport } from './utils/emailUtils.js';
 import { GoogleGenAI } from '@google/genai';
 import { buildSystemPrompt } from './utils/geminiPrompt.js';
 
@@ -214,6 +215,7 @@ mongoose.connect(mongoConnectionString, mongooseOptions)
   app.listen(PORT, async () => {
     console.log(`✓ Server running on port ${PORT}`);
     console.log(`Ready to process requests...`);
+    void warmUpEmailTransport();
   });
 })
 .catch(err => console.error('✗ MongoDB connection error:', err.message));

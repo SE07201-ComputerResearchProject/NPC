@@ -6,6 +6,12 @@ function getTransporter() {
   if (!_transporter) {
     _transporter = nodemailer.createTransport({
       service: 'gmail',
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 100,
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -13,6 +19,22 @@ function getTransporter() {
     });
   }
   return _transporter;
+}
+
+export async function warmUpEmailTransport() {
+  const user = String(process.env.EMAIL_USER || '').trim();
+  const pass = String(process.env.EMAIL_PASS || '').trim();
+  if (!user || !pass) {
+    return false;
+  }
+
+  try {
+    await getTransporter().verify();
+    return true;
+  } catch (error) {
+    console.warn('Email transport warm-up failed:', error.message);
+    return false;
+  }
 }
 
 export async function sendOtpEmail(toEmail, otp) {

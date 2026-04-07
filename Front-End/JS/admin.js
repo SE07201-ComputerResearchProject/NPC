@@ -980,7 +980,7 @@ async function submitUserForm(event) {
 
     setStatus(el.userStatus, 'Creating user...', 'info');
     try {
-      await requestJson(`${USER_API_BASE}/register`, {
+      await requestJson(USER_API_BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
