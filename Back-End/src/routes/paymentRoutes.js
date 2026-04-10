@@ -1,12 +1,12 @@
+import crypto from 'crypto';
 import express from 'express';
 import mongoose from 'mongoose';
+import path from 'path';
 import Cart from '../models/Cart.js';
 import Log from '../models/Log.js';
 import Order from '../models/Order.js';
 import User from '../models/User.js';
 import { requireAuth } from '../middleware/adminMiddleware.js';
-import { VNPay, ignoreLogger, ProductCode, VnpLocale, dateFormat } from 'vnpay';
-import path from 'path';
 
 const router = express.Router();
 
@@ -35,10 +35,6 @@ function getFrontendBaseUrl() {
   }
 
   return 'http://127.0.0.1:3000';
-}
-
-function getVnpayReturnUrl() {
-  return String(process.env.VNPAY_RETURN_URL || 'http://127.0.0.1:3001/api/payments/vnpay/return').trim();
 }
 
 function normalizeBasePath(value) {
@@ -72,6 +68,126 @@ function getFrontendPageUrl(pageName) {
   return `${getFrontendBaseUrl()}${getFrontendBasePath()}/${pageName}`;
 }
 
+function getMoMoConfig() {
+  return {
+    partnerCode: String(process.env.MOMO_PARTNER_CODE || '').trim(),
+    accessKey: String(process.env.MOMO_ACCESS_KEY || '').trim(),
+    secretKey: String(process.env.MOMO_SECRET_KEY || '').trim(),
+    endpoint: String(process.env.MOMO_ENDPOINT || 'https://test-payment.momo.vn/v2/gateway/api/create').trim(),
+    requestType: String(process.env.MOMO_REQUEST_TYPE || 'captureWallet').trim(),
+    redirectUrl: String(process.env.MOMO_REDIRECT_URL || 'http://127.0.0.1:3001/api/payments/momo/return').trim(),
+    ipnUrl: String(process.env.MOMO_IPN_URL || 'http://127.0.0.1:3001/api/payments/momo/ipn').trim(),
+  };
+}
+
+function assertMoMoConfig() {
+  const config = getMoMoConfig();
+  if (!config.partnerCode || !config.accessKey || !config.secretKey) {
+    throw new Error('Missing MoMo configuration. Set MOMO_PARTNER_CODE, MOMO_ACCESS_KEY, and MOMO_SECRET_KEY.');
+  }
+
+  return config;
+}
+
+function signMoMoPayload(rawSignature, secretKey) {
+  return crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
+}
+
+function timingSafeEqual(a, b) {
+  const left = Buffer.from(String(a || ''), 'utf8');
+  const right = Buffer.from(String(b || ''), 'utf8');
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(left, right);
+}
+
+function buildMoMoCreateSignature({
+  accessKey,
+  amount,
+  extraData,
+  ipnUrl,
+  orderId,
+  orderInfo,
+  partnerCode,
+  redirectUrl,
+  requestId,
+  requestType,
+}) {
+  return [
+    `accessKey=${accessKey}`,
+    `amount=${amount}`,
+    `extraData=${extraData}`,
+    `ipnUrl=${ipnUrl}`,
+    `orderId=${orderId}`,
+    `orderInfo=${orderInfo}`,
+    `partnerCode=${partnerCode}`,
+    `redirectUrl=${redirectUrl}`,
+    `requestId=${requestId}`,
+    `requestType=${requestType}`,
+  ].join('&');
+}
+
+function buildMoMoCallbackSignature(payload) {
+  return [
+    `amount=${String(payload.amount || '')}`,
+    `extraData=${String(payload.extraData || '')}`,
+    `message=${String(payload.message || '')}`,
+    `orderId=${String(payload.orderId || '')}`,
+    `orderInfo=${String(payload.orderInfo || '')}`,
+    `orderType=${String(payload.orderType || '')}`,
+    `partnerCode=${String(payload.partnerCode || '')}`,
+    `payType=${String(payload.payType || '')}`,
+    `requestId=${String(payload.requestId || '')}`,
+    `responseTime=${String(payload.responseTime || '')}`,
+    `resultCode=${String(payload.resultCode || '')}`,
+    `transId=${String(payload.transId || '')}`,
+  ].join('&');
+}
+
+function verifyMoMoCallbackSignature(payload, secretKey) {
+  const providedSignature = String(payload.signature || '').trim();
+  if (!providedSignature) {
+    return false;
+  }
+
+  const rawSignature = buildMoMoCallbackSignature(payload);
+  const expectedSignature = signMoMoPayload(rawSignature, secretKey);
+  return timingSafeEqual(expectedSignature, providedSignature);
+}
+
+function extractInternalOrderId(paymentOrderId, extraData) {
+  const rawOrderId = String(paymentOrderId || '').trim();
+  if (rawOrderId.includes('_')) {
+    return rawOrderId.split('_')[0];
+  }
+
+  const encodedExtraData = String(extraData || '').trim();
+  if (!encodedExtraData) {
+    return rawOrderId;
+  }
+
+  try {
+    const decoded = JSON.parse(Buffer.from(encodedExtraData, 'base64').toString('utf8'));
+    return String(decoded?.internalOrderId || rawOrderId).trim();
+  } catch {
+    return rawOrderId;
+  }
+}
+
+function buildReturnUrl(pageUrl, params) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== null && value !== undefined && value !== '') {
+      query.set(key, String(value));
+    }
+  }
+
+  const queryString = query.toString();
+  return queryString ? `${pageUrl}?${queryString}` : pageUrl;
+}
+
 async function resolveOrderUserEmail(order) {
   if (!order?.user) return 'unknown-user';
 
@@ -98,7 +214,7 @@ function isValidOrderId(orderId) {
 async function markOrderPaymentFailed(orderId, {
   responseCode = 'FAILED',
   txnRef = '',
-  provider = 'vnpay',
+  provider = 'momo',
   reason = '',
 } = {}) {
   if (!isValidOrderId(orderId)) {
@@ -110,14 +226,23 @@ async function markOrderPaymentFailed(orderId, {
     return null;
   }
 
-  const returnedAt = new Date();
+  const nextTxnRef = txnRef || order.payment?.txnRef || '';
+  const alreadyFailed =
+    order.status === 'failed' &&
+    String(order.payment?.responseCode || '') === String(responseCode) &&
+    String(order.payment?.txnRef || '') === String(nextTxnRef);
+
+  if (alreadyFailed) {
+    return order;
+  }
+
   order.status = 'failed';
   order.payment = {
     ...(order.payment || {}),
-    provider: provider || order.payment?.provider || 'vnpay',
-    txnRef: txnRef || order.payment?.txnRef || '',
+    provider: provider || order.payment?.provider || 'momo',
+    txnRef: nextTxnRef,
     responseCode,
-    returnedAt,
+    returnedAt: new Date(),
   };
   await order.save();
 
@@ -125,14 +250,64 @@ async function markOrderPaymentFailed(orderId, {
   const details = reason ? ` (${reason})` : '';
   await writePaymentLog(
     userEmail,
-    `VNPay payment failed for order ${orderId} with response code ${responseCode}${details}`
+    `MoMo payment failed for order ${orderId} with response code ${responseCode}${details}`
   );
 
   return order;
 }
 
-router.post('/vnpay/create', requireAuth, async (req, res) => {
+async function markOrderPaymentPaid(orderId, {
+  responseCode = '0',
+  txnRef = '',
+  provider = 'momo',
+} = {}) {
+  if (!isValidOrderId(orderId)) {
+    return null;
+  }
+
+  const order = await Order.findById(orderId);
+  if (!order) {
+    return null;
+  }
+
+  const nextTxnRef = txnRef || order.payment?.txnRef || '';
+  const alreadyPaid =
+    order.status === 'paid' &&
+    String(order.payment?.responseCode || '') === String(responseCode) &&
+    String(order.payment?.txnRef || '') === String(nextTxnRef);
+
+  if (alreadyPaid) {
+    return order;
+  }
+
+  const wasPaid = order.status === 'paid';
+  order.status = 'paid';
+  order.payment = {
+    ...(order.payment || {}),
+    provider: provider || order.payment?.provider || 'momo',
+    txnRef: nextTxnRef,
+    responseCode,
+    paidAt: order.payment?.paidAt || new Date(),
+    returnedAt: new Date(),
+  };
+  await order.save();
+
+  const userEmail = await resolveOrderUserEmail(order);
+  await writePaymentLog(
+    userEmail,
+    `MoMo payment succeeded for order ${orderId} with txnRef ${nextTxnRef}`
+  );
+
+  if (!wasPaid && order.source === 'cart') {
+    await Cart.findOneAndUpdate({ user: order.user }, { items: [] }, { upsert: true });
+  }
+
+  return order;
+}
+
+router.post('/momo/create', requireAuth, async (req, res) => {
   try {
+    const config = assertMoMoConfig();
     const orderId = String(req.body.orderId || '').trim();
     if (!orderId) return res.status(400).json({ message: 'orderId is required' });
     if (!isValidOrderId(orderId)) {
@@ -142,51 +317,73 @@ router.post('/vnpay/create', requireAuth, async (req, res) => {
     const order = await Order.findOne({ _id: orderId, user: req.currentUser.userId });
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
-    const amountValue = Number(order.totalAmount || 0);
+    const amountValue = Math.round(Number(order.totalAmount || 0));
     if (!Number.isFinite(amountValue) || amountValue <= 0) {
       return res.status(400).json({ message: 'Invalid payment amount' });
     }
 
-    // Xử lý IP gọn gàng nhất
-    let ipAddr = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
-    ipAddr = ipAddr.toString().split(',')[0].trim().replace('::ffff:', '');
-    if (ipAddr === '::1' || !ipAddr) ipAddr = '127.0.0.1';
+    const requestId = generatePayID();
+    const momoOrderId = `${orderId}_${generatePayID()}`;
+    const orderInfo = String(order.orderInfo || req.body.orderInfo || `Thanh toan don hang ${orderId}`).trim();
+    const extraData = Buffer.from(
+      JSON.stringify({
+        internalOrderId: orderId,
+        source: order.source || '',
+      })
+    ).toString('base64');
 
-    // VIỆC QUAN TRỌNG: Loại bỏ hoàn toàn dấu cách (space) trong OrderInfo
-    const safeOrderInfo = `ThanhToanDonHang_${orderId}`.replace(/[^a-zA-Z0-9_]/g, "");
-
-    // Khởi tạo thư viện với SECRET KEY CHUẨN
-    const vnpay = new VNPay({
-      tmnCode: 'R44LG29E',
-      secureSecret: 'KCQ84UBEE1XCJILCGK47N5YF5A6W3N6T',
-      testMode: true,
-      hashAlgorithm: 'SHA512',
-      enableLog: true,
-      loggerFn: ignoreLogger,
+    const rawSignature = buildMoMoCreateSignature({
+      accessKey: config.accessKey,
+      amount: String(amountValue),
+      extraData,
+      ipnUrl: config.ipnUrl,
+      orderId: momoOrderId,
+      orderInfo,
+      partnerCode: config.partnerCode,
+      redirectUrl: config.redirectUrl,
+      requestId,
+      requestType: config.requestType,
     });
 
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const txnRef = `${orderId}_${generatePayID()}`;
+    const signature = signMoMoPayload(rawSignature, config.secretKey);
+    const payload = {
+      partnerCode: config.partnerCode,
+      partnerName: 'NPC',
+      storeId: 'NPCStore',
+      requestId,
+      amount: String(amountValue),
+      orderId: momoOrderId,
+      orderInfo,
+      redirectUrl: config.redirectUrl,
+      ipnUrl: config.ipnUrl,
+      lang: 'vi',
+      requestType: config.requestType,
+      autoCapture: true,
+      extraData,
+      signature,
+    };
 
-    // Tạo URL
-    const vnpayResponse = vnpay.buildPaymentUrl({
-      vnp_Amount: Math.round(amountValue), // Thư viện sẽ tự nhân 100 ngầm
-      vnp_IpAddr: ipAddr,
-      vnp_TxnRef: txnRef,
-      vnp_OrderInfo: safeOrderInfo,
-      vnp_OrderType: ProductCode.Other,
-      vnp_ReturnUrl: getVnpayReturnUrl(),
-      vnp_Locale: VnpLocale.VN,
-      vnp_CreateDate: dateFormat(new Date()),
-      vnp_ExpireDate: dateFormat(tomorrow),
+    const momoResponse = await fetch(config.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
 
-    // Cập nhật DB
+    const responseData = await momoResponse.json().catch(() => ({}));
+    if (!momoResponse.ok || Number(responseData?.resultCode) !== 0 || !responseData?.payUrl) {
+      const errorMessage = responseData?.message || 'Failed to create MoMo payment URL';
+      await writePaymentLog(
+        String(req.currentUser?.email || 'unknown-user'),
+        `MoMo create request failed for order ${orderId}: ${errorMessage}`
+      );
+      return res.status(502).json({ message: errorMessage, detail: responseData });
+    }
+
     order.payment = {
       ...(order.payment || {}),
-      provider: 'vnpay',
-      txnRef: txnRef,
+      provider: 'momo',
+      txnRef: momoOrderId,
+      responseCode: '',
       requestedAt: new Date(),
     };
     order.status = 'pending';
@@ -194,98 +391,134 @@ router.post('/vnpay/create', requireAuth, async (req, res) => {
 
     await writePaymentLog(
       String(req.currentUser?.email || 'unknown-user'),
-      `VNPay payment initiated for order ${orderId} with txnRef ${txnRef}`
+      `MoMo payment initiated for order ${orderId} with txnRef ${momoOrderId}`
     );
 
     res.status(200).json({
-      message: 'Create VNPay payment URL successfully',
-      metadata: vnpayResponse,
+      message: 'Create MoMo payment URL successfully',
+      metadata: responseData.payUrl,
+      provider: 'momo',
     });
   } catch (error) {
-    console.error('VNPay create error:', error);
-    res.status(500).json({ message: 'Failed to create VNPay URL', error: error.message });
+    console.error('MoMo create error:', error);
+    res.status(500).json({ message: 'Failed to create MoMo URL', error: error.message });
   }
 });
 
-router.get('/vnpay/return', async (req, res) => {
+router.get('/momo/return', async (req, res) => {
+  const successPageUrl = getFrontendPageUrl('payment-success.html');
+  const failedPageUrl = getFrontendPageUrl('payment-failed.html');
+
   try {
-    const successPageUrl = getFrontendPageUrl('payment-success.html');
-    const failedPageUrl = getFrontendPageUrl('payment-failed.html');
-    
-    // Khởi tạo thư viện giống hệt hàm create
-    const vnpay = new VNPay({
-      tmnCode: 'R44LG29E',
-      secureSecret: 'KCQ84UBEE1XCJILCGK47N5YF5A6W3N6T',
-      testMode: true,
-      hashAlgorithm: 'SHA512',
-      enableLog: true,
-      loggerFn: ignoreLogger,
-    });
+    const config = assertMoMoConfig();
+    const paymentOrderId = String(req.query.orderId || '').trim();
+    const internalOrderId = extractInternalOrderId(paymentOrderId, req.query.extraData);
+    const paymentCode = String(req.query.resultCode || '99');
+    const reason = String(req.query.message || '').trim();
 
-    const verify = vnpay.verifyReturnUrl(req.query);
-    const vnp_TxnRef = String(req.query.vnp_TxnRef || '');
-    const vnp_ResponseCode = String(req.query.vnp_ResponseCode || '99');
-    const orderId = vnp_TxnRef ? vnp_TxnRef.split('_')[0] : '';
-
-    if (!verify.isSuccess) {
-      console.error('Invalid VNPay signature');
-      await markOrderPaymentFailed(orderId, {
+    if (!verifyMoMoCallbackSignature(req.query, config.secretKey)) {
+      await markOrderPaymentFailed(internalOrderId, {
         responseCode: 'INVALID_SIGNATURE',
-        txnRef: vnp_TxnRef,
-        reason: 'Invalid VNPay signature',
+        txnRef: paymentOrderId,
+        reason: 'Invalid MoMo signature',
       });
-      await writePaymentLog('system', `VNPay return rejected due to invalid signature for txnRef ${vnp_TxnRef || 'unknown'}`);
-      return res.redirect(`${failedPageUrl}?orderId=${encodeURIComponent(orderId)}&paymentCode=INVALID_SIGNATURE&txnRef=${encodeURIComponent(vnp_TxnRef)}&reason=${encodeURIComponent('Invalid VNPay signature')}`);
+      await writePaymentLog('system', `MoMo return rejected due to invalid signature for txnRef ${paymentOrderId || 'unknown'}`);
+      return res.redirect(buildReturnUrl(failedPageUrl, {
+        orderId: internalOrderId,
+        paymentCode: 'INVALID_SIGNATURE',
+        txnRef: paymentOrderId,
+        reason: 'Invalid MoMo signature',
+      }));
     }
 
-    if (!isValidOrderId(orderId)) {
-      await writePaymentLog('system', `VNPay return rejected due to invalid order ID for txnRef ${vnp_TxnRef || 'unknown'}`);
-      return res.redirect(`${failedPageUrl}?orderId=${encodeURIComponent(orderId)}&paymentCode=INVALID_ORDER_ID&txnRef=${encodeURIComponent(vnp_TxnRef)}&reason=${encodeURIComponent('Invalid order ID')}`);
+    if (!isValidOrderId(internalOrderId)) {
+      await writePaymentLog('system', `MoMo return rejected due to invalid order ID for txnRef ${paymentOrderId || 'unknown'}`);
+      return res.redirect(buildReturnUrl(failedPageUrl, {
+        orderId: internalOrderId,
+        paymentCode: 'INVALID_ORDER_ID',
+        txnRef: paymentOrderId,
+        reason: 'Invalid order ID',
+      }));
     }
 
-    if (vnp_ResponseCode === '00') {
-      const order = await Order.findById(orderId);
-      if (order) {
-        const userEmail = await resolveOrderUserEmail(order);
-        order.status = 'paid';
-        order.payment = {
-          ...(order.payment || {}),
-          provider: 'vnpay',
-          responseCode: vnp_ResponseCode,
-          paidAt: new Date(),
-          returnedAt: new Date(),
-        };
-        await order.save();
-
-        await writePaymentLog(
-          userEmail,
-          `VNPay payment succeeded for order ${orderId} with txnRef ${vnp_TxnRef}`
-        );
-
-        if (order.source === 'cart') {
-          await Cart.findOneAndUpdate({ user: order.user }, { items: [] }, { upsert: true });
-        }
-      }
-      return res.redirect(`${successPageUrl}?orderId=${encodeURIComponent(orderId)}&paymentCode=${encodeURIComponent(vnp_ResponseCode)}&txnRef=${encodeURIComponent(vnp_TxnRef)}`);
-    } else {
-      await markOrderPaymentFailed(orderId, {
-        responseCode: vnp_ResponseCode,
-        txnRef: vnp_TxnRef,
-        reason: 'Payment was declined or cancelled',
+    if (paymentCode === '0') {
+      await markOrderPaymentPaid(internalOrderId, {
+        responseCode: paymentCode,
+        txnRef: paymentOrderId,
       });
-      return res.redirect(`${failedPageUrl}?orderId=${encodeURIComponent(orderId)}&paymentCode=${encodeURIComponent(vnp_ResponseCode)}&txnRef=${encodeURIComponent(vnp_TxnRef)}&reason=${encodeURIComponent('Payment was declined or cancelled')}`);
+      return res.redirect(buildReturnUrl(successPageUrl, {
+        orderId: internalOrderId,
+        paymentCode,
+        txnRef: paymentOrderId,
+      }));
     }
+
+    await markOrderPaymentFailed(internalOrderId, {
+      responseCode: paymentCode,
+      txnRef: paymentOrderId,
+      reason: reason || 'Payment was declined or cancelled',
+    });
+    return res.redirect(buildReturnUrl(failedPageUrl, {
+      orderId: internalOrderId,
+      paymentCode,
+      txnRef: paymentOrderId,
+      reason: reason || 'Payment was declined or cancelled',
+    }));
   } catch (error) {
-    console.error('VNPay return error:', error);
-    const vnp_TxnRef = String(req.query.vnp_TxnRef || '');
-    const orderId = vnp_TxnRef ? vnp_TxnRef.split('_')[0] : '';
-    await markOrderPaymentFailed(orderId, {
+    console.error('MoMo return error:', error);
+    const paymentOrderId = String(req.query.orderId || '').trim();
+    const internalOrderId = extractInternalOrderId(paymentOrderId, req.query.extraData);
+    await markOrderPaymentFailed(internalOrderId, {
       responseCode: 'ERROR',
-      txnRef: vnp_TxnRef,
+      txnRef: paymentOrderId,
       reason: error.message || 'Unhandled payment return error',
     });
-    await writePaymentLog('system', `VNPay return handler error: ${error.message}`);
-    return res.redirect(`${getFrontendPageUrl('payment-failed.html')}?paymentCode=ERROR&reason=${encodeURIComponent(error.message || 'Unhandled payment return error')}`);
+    await writePaymentLog('system', `MoMo return handler error: ${error.message}`);
+    return res.redirect(buildReturnUrl(failedPageUrl, {
+      orderId: internalOrderId,
+      paymentCode: 'ERROR',
+      txnRef: paymentOrderId,
+      reason: error.message || 'Unhandled payment return error',
+    }));
+  }
+});
+
+router.post('/momo/ipn', async (req, res) => {
+  try {
+    const config = assertMoMoConfig();
+    const paymentOrderId = String(req.body.orderId || '').trim();
+    const internalOrderId = extractInternalOrderId(paymentOrderId, req.body.extraData);
+    const paymentCode = String(req.body.resultCode || '99');
+    const reason = String(req.body.message || '').trim();
+
+    if (!verifyMoMoCallbackSignature(req.body, config.secretKey)) {
+      await writePaymentLog('system', `MoMo IPN rejected due to invalid signature for txnRef ${paymentOrderId || 'unknown'}`);
+      return res.status(400).json({ resultCode: 97, message: 'Invalid signature' });
+    }
+
+    if (!isValidOrderId(internalOrderId)) {
+      await writePaymentLog('system', `MoMo IPN rejected due to invalid order ID for txnRef ${paymentOrderId || 'unknown'}`);
+      return res.status(400).json({ resultCode: 99, message: 'Invalid order ID' });
+    }
+
+    if (paymentCode === '0') {
+      await markOrderPaymentPaid(internalOrderId, {
+        responseCode: paymentCode,
+        txnRef: paymentOrderId,
+      });
+    } else {
+      await markOrderPaymentFailed(internalOrderId, {
+        responseCode: paymentCode,
+        txnRef: paymentOrderId,
+        reason: reason || 'Payment was declined or cancelled',
+      });
+    }
+
+    return res.status(200).json({ resultCode: 0, message: 'Success' });
+  } catch (error) {
+    console.error('MoMo IPN error:', error);
+    await writePaymentLog('system', `MoMo IPN handler error: ${error.message}`);
+    return res.status(500).json({ resultCode: 99, message: error.message || 'Internal server error' });
   }
 });
 

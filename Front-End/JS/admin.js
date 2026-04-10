@@ -726,7 +726,7 @@ function isSuspiciousLog(log) {
 function getLogCategory(log) {
   const content = `${log?.activity || ''} ${log?.user || ''}`.toLowerCase();
 
-  if (/(payment|vnpay|txnref|order)/i.test(content)) {
+  if (/(payment|vnpay|momo|txnref|order)/i.test(content)) {
     return 'payment';
   }
 

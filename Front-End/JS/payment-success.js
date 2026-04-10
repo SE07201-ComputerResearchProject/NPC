@@ -83,7 +83,7 @@ function renderFallbackState() {
   setText('paymentOrderId', orderId);
   setText('paymentTxnRef', txnRef);
   setText('paymentCode', paymentCode);
-  setText('paymentPaidAt', 'Confirmed by VNPay');
+  setText('paymentPaidAt', 'Confirmed by MoMo');
   setText('paymentSource', 'Online payment');
   setText('paymentTotal', 'Loaded after login');
   renderItems([]);

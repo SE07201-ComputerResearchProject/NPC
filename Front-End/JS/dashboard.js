@@ -762,7 +762,7 @@ function showPaymentModal(amount) {
   content.className = 'auth-content';
   content.innerHTML = `
     <p>Total: ${amount.toLocaleString()} VND</p>
-    <button class="btn btn-primary w-100 mb-2" id="payVnpay">VNPay</button>
+    <button class="btn btn-primary w-100 mb-2" id="payMomo">MoMo</button>
     <button class="btn btn-secondary w-100 mb-2" id="payPaypal">PayPal</button>
   `;
 
@@ -784,7 +784,7 @@ function showPaymentModal(amount) {
     closePaymentModal();
   });
 
-  document.getElementById('payVnpay').addEventListener('click', async () => {
+  document.getElementById('payMomo').addEventListener('click', async () => {
     if (!window.isLoggedIn) {
       closePaymentModal();
       toggleAuthPopup(new Event('click'));
@@ -792,20 +792,20 @@ function showPaymentModal(amount) {
       return;
     }
 
-    const payVnpayBtn = document.getElementById('payVnpay');
-    if (payVnpayBtn) {
-      payVnpayBtn.disabled = true;
-      payVnpayBtn.textContent = 'Creating payment...';
+    const payMomoBtn = document.getElementById('payMomo');
+    if (payMomoBtn) {
+      payMomoBtn.disabled = true;
+      payMomoBtn.textContent = 'Creating payment...';
     }
 
     try {
-      await startVnpayPayment(amount);
+      await startMomoPayment(amount);
     } catch (error) {
-      if (payVnpayBtn) {
-        payVnpayBtn.disabled = false;
-        payVnpayBtn.textContent = 'VNPay';
+      if (payMomoBtn) {
+        payMomoBtn.disabled = false;
+        payMomoBtn.textContent = 'MoMo';
       }
-      showPopup(error.message || 'Cannot connect to VNPay API right now.');
+      showPopup(error.message || 'Cannot connect to MoMo API right now.');
     }
   });
 }
@@ -820,7 +820,7 @@ function closePaymentModal() {
   }
 }
 
-async function startVnpayPayment(amount) {
+async function startMomoPayment(amount) {
   // Always sync currentBuild to the server before creating the checkout order.
   // This covers cases where currentBuild was populated without being persisted
   // (e.g. featured preset load, post-login rehydration).
@@ -834,7 +834,7 @@ async function startVnpayPayment(amount) {
 
   const buildName = (typeof getBuildName === 'function' && getBuildName()) || 'New Build';
 
-  const response = await fetch(`${PAYMENT_API_BASE_URL}/vnpay/create`, {
+  const response = await fetch(`${PAYMENT_API_BASE_URL}/momo/create`, {
     method: 'POST',
     headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({
@@ -847,7 +847,7 @@ async function startVnpayPayment(amount) {
 
   const data = await response.json();
   if (!response.ok || !data.metadata) {
-    throw new Error(data.message || 'Cannot create VNPay payment URL');
+    throw new Error(data.message || 'Cannot create MoMo payment URL');
   }
 
   window.location.href = data.metadata;
