@@ -3396,6 +3396,50 @@ body.bg-dark .cart-empty {
   color: #6c757d;
 }
 
+.checkout-momo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #d22f89 0%, #b81f77 100%);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 10px 20px rgba(184, 31, 119, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.checkout-momo-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 24px rgba(184, 31, 119, 0.38);
+  filter: brightness(1.03);
+  color: #fff;
+}
+
+.checkout-momo-btn:focus-visible {
+  outline: 3px solid rgba(210, 47, 137, 0.35);
+  outline-offset: 2px;
+}
+
+.checkout-momo-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.momo-logo-image {
+  width: 38px;
+  height: auto;
+  display: block;
+}
+
+body.bg-dark .checkout-momo-btn {
+  background: linear-gradient(135deg, #de3d97 0%, #bf257e 100%);
+}
+
 @media (max-width: 1080px) {
   .cart-layout {
     grid-template-columns: 1fr;
@@ -3415,6 +3459,10 @@ body.bg-dark .cart-empty {
 
   .cart-item-qty {
     max-width: 140px;
+  }
+
+  .checkout-momo-btn {
+    font-size: 0.95rem;
   }
 }
 
