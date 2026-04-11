@@ -237,11 +237,11 @@ async function persistBuildState() {
   return payload;
 }
 
-async function createCheckoutOrder(source, shippingAddress) {
+async function createCheckoutOrder(source, shippingAddress, voucherCode = '') {
   return requestAuthJson(`${ORDER_API_URL}/checkout`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ source, shippingAddress }),
+    body: JSON.stringify({ source, shippingAddress, voucherCode }),
   });
 }
 

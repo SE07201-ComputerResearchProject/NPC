@@ -1,4 +1,6 @@
 const PAYMENT_API_BASE_URL = 'http://127.0.0.1:3001/api/payments';
+const VOUCHER_API_BASE_URL = 'http://127.0.0.1:3001/api/vouchers';
+let appliedVoucher = null;
 
 function formatCurrency(value) {
   return `${Number(value || 0).toLocaleString()} VND`;
@@ -16,6 +18,27 @@ function getCartTotals(items) {
     shipping: 0,
     total: subtotal,
   };
+}
+
+function setVoucherStatus(message, type = 'info') {
+  const statusEl = document.getElementById('voucherStatus');
+  if (!statusEl) return;
+  statusEl.textContent = message;
+  statusEl.classList.remove('ok', 'error', 'info');
+  statusEl.classList.add(type);
+}
+
+function clearAppliedVoucher(options = {}) {
+  const { silent = false, message = '' } = options;
+  appliedVoucher = null;
+  if (!silent) {
+    setVoucherStatus(message || 'Voucher has been removed.', 'info');
+  }
+}
+
+function getVoucherDiscountForSubtotal(subtotal) {
+  if (!appliedVoucher) return 0;
+  return Math.min(Math.max(0, Number(appliedVoucher.discountAmount || 0)), Math.max(0, Number(subtotal || 0)));
 }
 
 function buildCartItemMarkup(item) {
@@ -45,6 +68,7 @@ function renderCart() {
   if (!container) return;
 
   if (items.length === 0) {
+    clearAppliedVoucher({ silent: true });
     container.innerHTML = `
       <div class="cart-empty">
         <h3>Your cart is empty</h3>
@@ -57,16 +81,73 @@ function renderCart() {
   }
 
   const totals = getCartTotals(items);
+  const discountAmount = getVoucherDiscountForSubtotal(totals.subtotal);
+  const finalTotal = Math.max(0, totals.total - discountAmount);
   document.getElementById('summaryItems').textContent = String(totals.totalItems);
   document.getElementById('summarySubtotal').textContent = formatCurrency(totals.subtotal);
   document.getElementById('summaryShipping').textContent = formatCurrency(totals.shipping);
-  document.getElementById('summaryTotal').textContent = formatCurrency(totals.total);
+  document.getElementById('summaryDiscount').textContent = `-${formatCurrency(discountAmount)}`;
+  document.getElementById('summaryTotal').textContent = formatCurrency(finalTotal);
+}
+
+async function applyVoucherCode() {
+  const input = document.getElementById('voucherCodeInput');
+  const code = String(input?.value || '').trim();
+  if (!code) {
+    clearAppliedVoucher({ message: 'Please enter a voucher code.' });
+    renderCart();
+    return;
+  }
+
+  if (!getAuthToken()) {
+    setVoucherStatus('Please log in to apply a voucher.', 'error');
+    return;
+  }
+
+  if (!getCart().length) {
+    setVoucherStatus('Your cart is empty.', 'error');
+    return;
+  }
+
+  setVoucherStatus('Applying voucher...', 'info');
+
+  try {
+    const response = await fetch(`${VOUCHER_API_BASE_URL}/validate-cart`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ code }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.message || 'Voucher is invalid or expired');
+    }
+
+    appliedVoucher = {
+      code: String(payload?.voucher?.code || '').trim(),
+      discountPercent: Number(payload?.voucher?.discountPercent || 0),
+      maxDiscount: Number(payload?.voucher?.maxDiscount || 0),
+      discountAmount: Number(payload?.totals?.discountAmount || 0),
+    };
+
+    renderCart();
+    setVoucherStatus(
+      `Applied ${appliedVoucher.code}: -${formatCurrency(appliedVoucher.discountAmount)} (${appliedVoucher.discountPercent}% up to ${formatCurrency(appliedVoucher.maxDiscount)}).`,
+      'ok'
+    );
+  } catch (error) {
+    clearAppliedVoucher({ message: error.message || 'Cannot apply voucher right now.' });
+    renderCart();
+    setVoucherStatus(error.message || 'Cannot apply voucher right now.', 'error');
+  }
 }
 
 function bindCartEvents() {
   const container = document.getElementById('cartItemsContainer');
   const clearBtn = document.getElementById('clearCartBtn');
   const checkoutBtn = document.getElementById('checkoutCartBtn');
+  const applyVoucherBtn = document.getElementById('applyVoucherBtn');
+  const voucherCodeInput = document.getElementById('voucherCodeInput');
 
   if (container) {
     container.addEventListener('click', async event => {
@@ -76,6 +157,7 @@ function bindCartEvents() {
       const id = removeBtn.dataset.id;
       try {
         await removeFromCart(id);
+        clearAppliedVoucher({ message: 'Voucher removed because cart changed.' });
         renderCart();
         showPopup('Item removed from cart');
       } catch (error) {
@@ -91,6 +173,7 @@ function bindCartEvents() {
       const nextQty = Math.max(1, Number(qtyInput.value) || 1);
       try {
         await updateCartQuantity(id, nextQty);
+        clearAppliedVoucher({ message: 'Voucher removed because cart changed.' });
         renderCart();
       } catch (error) {
         showPopup(error.message || 'Cannot update quantity right now.');
@@ -106,6 +189,7 @@ function bindCartEvents() {
 
       try {
         await clearCart();
+        clearAppliedVoucher({ silent: true });
         renderCart();
         showPopup('Cart cleared');
       } catch (error) {
@@ -116,6 +200,19 @@ function bindCartEvents() {
 
   if (checkoutBtn) {
     checkoutBtn.addEventListener('click', handleCheckout);
+  }
+
+  if (applyVoucherBtn) {
+    applyVoucherBtn.addEventListener('click', applyVoucherCode);
+  }
+
+  if (voucherCodeInput) {
+    voucherCodeInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        applyVoucherCode();
+      }
+    });
   }
 }
 
@@ -145,7 +242,7 @@ async function handleCheckout() {
       return; // User cancelled
     }
 
-    const orderPayload = await createCheckoutOrder('cart', shippingAddress);
+    const orderPayload = await createCheckoutOrder('cart', shippingAddress, appliedVoucher?.code || '');
     const orderId = orderPayload?.order?.id;
     if (!orderId) {
       showPopup('Cannot create order from cart.');

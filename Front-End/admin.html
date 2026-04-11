@@ -105,6 +105,10 @@
                 <span class="admin-side-nav-label">Data Analyst</span>
                 <span class="admin-side-nav-meta">Revenue, sold units, top products, status breakdown</span>
               </button>
+              <button class="admin-side-nav-btn" type="button" id="openVoucherGeneratorModalBtn">
+                <span class="admin-side-nav-label">Voucher Model</span>
+                <span class="admin-side-nav-meta">Create vouchers and open voucher manager modal</span>
+              </button>
             </div>
           </section>
         </div>
@@ -540,6 +544,151 @@
       </div>
         </section>
     </section>
+
+    <div class="modal fade" id="voucherGeneratorModal" tabindex="-1" aria-labelledby="voucherGeneratorLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="voucherGeneratorLabel">Voucher Generator</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <section class="crud-form mb-3">
+              <div class="panel-head">
+                <h3>Create Voucher</h3>
+                <button id="reloadVouchersBtn" type="button" class="btn btn-outline-primary btn-sm">Reload Vouchers</button>
+              </div>
+              <form id="voucherForm" class="row g-2">
+                <div class="col-md-3">
+                  <label for="voucherCode" class="form-label">Voucher Code (optional)</label>
+                  <input id="voucherCode" class="form-control" placeholder="AUTO if empty" />
+                </div>
+                <div class="col-md-2">
+                  <label for="voucherDiscountPercent" class="form-label">Discount %</label>
+                  <input id="voucherDiscountPercent" type="number" min="1" max="100" class="form-control" required />
+                </div>
+                <div class="col-md-3">
+                  <label for="voucherMaxDiscount" class="form-label">Max Discount (VND)</label>
+                  <input id="voucherMaxDiscount" type="number" min="0" class="form-control" required />
+                </div>
+                <div class="col-md-2">
+                  <label for="voucherMaxUses" class="form-label">Max Uses (0 = unlimited)</label>
+                  <input id="voucherMaxUses" type="number" min="0" class="form-control" value="0" />
+                </div>
+                <div class="col-md-2">
+                  <label for="voucherExpiresAt" class="form-label">Expires At</label>
+                  <input id="voucherExpiresAt" type="datetime-local" class="form-control" />
+                </div>
+                <div class="col-12">
+                  <button id="voucherSubmitBtn" type="submit" class="btn btn-primary">Generate Voucher</button>
+                </div>
+              </form>
+              <div id="voucherAdminStatus" class="status-box" role="status" aria-live="polite"></div>
+
+              <div class="table-wrap mt-2">
+                <table class="table table-hover align-middle" id="vouchersTable">
+                  <thead>
+                    <tr>
+                      <th>Code</th>
+                      <th>Discount</th>
+                      <th>Max Discount</th>
+                      <th>Uses</th>
+                      <th>Categories</th>
+                      <th>Expires</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="manageVoucherModal" tabindex="-1" aria-labelledby="manageVoucherLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="manageVoucherLabel">Manage Voucher</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="voucherEditForm" class="row g-2">
+              <input type="hidden" id="voucherEditId" />
+              <div class="col-md-6">
+                <label for="voucherEditCode" class="form-label">Code</label>
+                <input id="voucherEditCode" type="text" class="form-control" disabled />
+              </div>
+              <div class="col-md-3">
+                <label for="voucherEditDiscountPercent" class="form-label">Discount %</label>
+                <input id="voucherEditDiscountPercent" type="number" min="1" max="100" class="form-control" required />
+              </div>
+              <div class="col-md-3">
+                <label for="voucherEditMaxDiscount" class="form-label">Max Discount (VND)</label>
+                <input id="voucherEditMaxDiscount" type="number" min="0" class="form-control" required />
+              </div>
+              <div class="col-md-6">
+                <label for="voucherEditMaxUses" class="form-label">Max Uses (0 = unlimited)</label>
+                <input id="voucherEditMaxUses" type="number" min="0" class="form-control" />
+              </div>
+              <div class="col-md-6">
+                <label for="voucherEditExpiresAt" class="form-label">Expires At</label>
+                <input id="voucherEditExpiresAt" type="datetime-local" class="form-control" />
+              </div>
+              <div class="col-12">
+                <label class="form-label">Applicable Categories (empty = all)</label>
+                <div class="category-checkboxes">
+                  <div class="form-check">
+                    <input class="form-check-input voucher-category-check" type="checkbox" value="case" id="voucherCat_case" />
+                    <label class="form-check-label" for="voucherCat_case">Case</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input voucher-category-check" type="checkbox" value="cpu" id="voucherCat_cpu" />
+                    <label class="form-check-label" for="voucherCat_cpu">CPU</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input voucher-category-check" type="checkbox" value="motherboard" id="voucherCat_mb" />
+                    <label class="form-check-label" for="voucherCat_mb">Motherboard</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input voucher-category-check" type="checkbox" value="gpu" id="voucherCat_gpu" />
+                    <label class="form-check-label" for="voucherCat_gpu">GPU</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input voucher-category-check" type="checkbox" value="ram" id="voucherCat_ram" />
+                    <label class="form-check-label" for="voucherCat_ram">RAM</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input voucher-category-check" type="checkbox" value="storage" id="voucherCat_storage" />
+                    <label class="form-check-label" for="voucherCat_storage">Storage</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input voucher-category-check" type="checkbox" value="psu" id="voucherCat_psu" />
+                    <label class="form-check-label" for="voucherCat_psu">PSU</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input voucher-category-check" type="checkbox" value="cooler" id="voucherCat_cooler" />
+                    <label class="form-check-label" for="voucherCat_cooler">Cooler</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input voucher-category-check" type="checkbox" value="fan" id="voucherCat_fan" />
+                    <label class="form-check-label" for="voucherCat_fan">Fan</label>
+                  </div>
+                </div>
+              </div>
+            </form>
+            <div id="voucherEditStatus" class="status-box mt-2" role="status" aria-live="polite"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button id="voucherSaveBtn" type="button" class="btn btn-primary">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </main>
 
   <div class="floating-menu">

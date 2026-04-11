@@ -67,9 +67,22 @@
           <span>Shipping</span>
           <strong id="summaryShipping">0 VND</strong>
         </div>
+        <div class="summary-row">
+          <span>Voucher Discount</span>
+          <strong id="summaryDiscount">-0 VND</strong>
+        </div>
         <div class="summary-row total">
           <span>Total</span>
           <strong id="summaryTotal">0 VND</strong>
+        </div>
+
+        <div class="voucher-input-wrap mt-3">
+          <label for="voucherCodeInput" class="form-label mb-1">Apply Voucher</label>
+          <div class="input-group">
+            <input id="voucherCodeInput" class="form-control" placeholder="Enter voucher code" autocomplete="off" />
+            <button id="applyVoucherBtn" type="button" class="btn btn-outline-secondary">Apply</button>
+          </div>
+          <small id="voucherStatus" class="voucher-status-text" role="status" aria-live="polite"></small>
         </div>
 
         <button id="checkoutCartBtn" class="btn w-100 mt-3 checkout-momo-btn">

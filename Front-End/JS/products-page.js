@@ -720,7 +720,6 @@ function renderComponents() {
     <article class="product-card">
       <div class="product-card-top">
         <span class="product-category">${CATEGORY_LABELS[component.category] || component.category}</span>
-        <span class="product-stock">Stock: ${component.stock}</span>
       </div>
       <h3>${component.name}</h3>
       <p class="product-brand">${component.brand || 'Generic'}</p>

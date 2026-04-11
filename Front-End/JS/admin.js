@@ -4,6 +4,7 @@ const PRODUCT_API_BASE = `${API_BASE}/components`;
 const LOG_API_BASE = `${API_BASE}/logs`;
 const FEATURED_BUILD_API_BASE = `${API_BASE}/featured-builds`;
 const ORDER_API_BASE = `${API_BASE}/orders`;
+const VOUCHER_API_BASE = `${API_BASE}/vouchers`;
 
 const PRODUCT_CATEGORIES = [
   'case',
@@ -25,6 +26,7 @@ const state = {
   logs: [],
   featuredBuilds: [],
   orders: [],
+  vouchers: [],
   activeOrderId: null,
   editingUserId: null,
   editingProductId: null,
@@ -171,6 +173,30 @@ const el = {
   orderStatus: document.getElementById('orderStatus'),
   orderDetailPanel: document.getElementById('orderDetailPanel'),
   orderDetailContent: document.getElementById('orderDetailContent'),
+  voucherForm: document.getElementById('voucherForm'),
+  voucherCode: document.getElementById('voucherCode'),
+  voucherDiscountPercent: document.getElementById('voucherDiscountPercent'),
+  voucherMaxDiscount: document.getElementById('voucherMaxDiscount'),
+  voucherMaxUses: document.getElementById('voucherMaxUses'),
+  voucherExpiresAt: document.getElementById('voucherExpiresAt'),
+  voucherSubmitBtn: document.getElementById('voucherSubmitBtn'),
+  reloadVouchersBtn: document.getElementById('reloadVouchersBtn'),
+  voucherAdminStatus: document.getElementById('voucherAdminStatus'),
+  vouchersTableBody: document.querySelector('#vouchersTable tbody'),
+  openVoucherGeneratorModalBtn: document.getElementById('openVoucherGeneratorModalBtn'),
+  voucherGeneratorModal: document.getElementById('voucherGeneratorModal'),
+  
+  manageVoucherModal: document.getElementById('manageVoucherModal'),
+  voucherEditForm: document.getElementById('voucherEditForm'),
+  voucherEditId: document.getElementById('voucherEditId'),
+  voucherEditCode: document.getElementById('voucherEditCode'),
+  voucherEditDiscountPercent: document.getElementById('voucherEditDiscountPercent'),
+  voucherEditMaxDiscount: document.getElementById('voucherEditMaxDiscount'),
+  voucherEditMaxUses: document.getElementById('voucherEditMaxUses'),
+  voucherEditExpiresAt: document.getElementById('voucherEditExpiresAt'),
+  voucherSaveBtn: document.getElementById('voucherSaveBtn'),
+  voucherEditStatus: document.getElementById('voucherEditStatus'),
+  voucherCategoryCheckboxes: document.querySelectorAll('.voucher-category-check'),
 
   reloadAnalyticsBtn: document.getElementById('reloadAnalyticsBtn'),
   analyticsRevenueValue: document.getElementById('analyticsRevenueValue'),
@@ -589,6 +615,300 @@ function filterOrders() {
   if (el.orderStatus) {
     setStatus(el.orderStatus, `Showing ${filtered.length}/${state.orders.length} order(s).`, 'ok');
   }
+}
+
+function renderVouchersTable(vouchers) {
+  if (!el.vouchersTableBody) return;
+
+  if (!vouchers.length) {
+    el.vouchersTableBody.innerHTML = '<tr><td colspan="8" class="empty-state">No vouchers found.</td></tr>';
+    return;
+  }
+
+  el.vouchersTableBody.innerHTML = vouchers
+    .map(voucher => {
+      const code = escapeHtml(String(voucher?.code || '-'));
+      const discountPercent = Number(voucher?.discountPercent || 0);
+      const maxDiscount = escapeHtml(formatMoney(voucher?.maxDiscount || 0));
+      const usedCount = Number(voucher?.usedCount || 0);
+      const maxUses = Number(voucher?.maxUses || 0);
+      const useLabel = maxUses > 0 ? `${usedCount}/${maxUses}` : `${usedCount}/unlimited`;
+      const expiresLabel = voucher?.expiresAt ? escapeHtml(formatDateTime(voucher.expiresAt)) : '-';
+      const active = Boolean(voucher?.isActive);
+      const statusLabel = active ? 'ACTIVE' : 'DISABLED';
+      const statusClass = active ? 'paid' : 'failed';
+      const categories = Array.isArray(voucher?.categories) && voucher.categories.length > 0 
+        ? escapeHtml(voucher.categories.join(', '))
+        : 'All';
+      const toggleBtnText = active ? 'Disable' : 'Enable';
+      const voucherId = escapeHtml(String(voucher?.id || ''));
+
+      return `
+        <tr>
+          <td><strong>${code}</strong></td>
+          <td>${discountPercent}%</td>
+          <td>${maxDiscount}</td>
+          <td>${escapeHtml(useLabel)}</td>
+          <td><small>${categories}</small></td>
+          <td>${expiresLabel}</td>
+          <td><span class="order-status-badge ${statusClass}">${statusLabel}</span></td>
+          <td>
+            <button class="btn btn-sm btn-outline-secondary voucher-edit-btn" data-voucher-id="${voucherId}" title="Edit">Edit</button>
+            <button class="btn btn-sm btn-outline-warning voucher-toggle-btn" data-voucher-id="${voucherId}" title="Toggle">${toggleBtnText}</button>
+            <button class="btn btn-sm btn-outline-danger voucher-delete-btn" data-voucher-id="${voucherId}" title="Delete">Delete</button>
+          </td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  document.querySelectorAll('.voucher-edit-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const voucherId = btn.getAttribute('data-voucher-id');
+      openManageVoucherModal(voucherId);
+    });
+  });
+
+  document.querySelectorAll('.voucher-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const voucherId = btn.getAttribute('data-voucher-id');
+      toggleVoucherStatus(voucherId);
+    });
+  });
+
+  document.querySelectorAll('.voucher-delete-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const voucherId = btn.getAttribute('data-voucher-id');
+      deleteVoucher(voucherId);
+    });
+  });
+}
+
+function readVoucherForm() {
+  return {
+    code: String(el.voucherCode?.value || '').trim(),
+    discountPercent: Number(el.voucherDiscountPercent?.value || 0),
+    maxDiscount: Number(el.voucherMaxDiscount?.value || 0),
+    maxUses: Math.max(0, Number(el.voucherMaxUses?.value || 0)),
+    expiresAt: String(el.voucherExpiresAt?.value || '').trim(),
+  };
+}
+
+function clearVoucherForm() {
+  if (!el.voucherForm) return;
+  el.voucherForm.reset();
+  if (el.voucherMaxUses) {
+    el.voucherMaxUses.value = '0';
+  }
+}
+
+async function loadVouchers() {
+  if (!el.voucherAdminStatus) return;
+
+  setStatus(el.voucherAdminStatus, 'Loading vouchers...', 'info');
+  try {
+    const vouchers = await requestJson(`${VOUCHER_API_BASE}/admin/list`);
+    state.vouchers = Array.isArray(vouchers) ? vouchers : [];
+    renderVouchersTable(state.vouchers);
+    setStatus(el.voucherAdminStatus, `Loaded ${state.vouchers.length} voucher(s).`, 'ok');
+  } catch (error) {
+    if (isMissingRouteError(error)) {
+      setStatus(el.voucherAdminStatus, 'Voucher API route is not available yet.', 'info');
+      renderVouchersTable([]);
+      return;
+    }
+
+    setStatus(el.voucherAdminStatus, toErrorMessage(error, 'Failed to load vouchers.'), 'error');
+    renderVouchersTable([]);
+  }
+}
+
+async function submitVoucherForm(event) {
+  event.preventDefault();
+
+  const payload = readVoucherForm();
+  if (!payload.discountPercent || payload.discountPercent < 1 || payload.discountPercent > 100) {
+    setStatus(el.voucherAdminStatus, 'Discount percent must be between 1 and 100.', 'error');
+    return;
+  }
+
+  if (!Number.isFinite(payload.maxDiscount) || payload.maxDiscount < 0) {
+    setStatus(el.voucherAdminStatus, 'Max discount must be >= 0.', 'error');
+    return;
+  }
+
+  setStatus(el.voucherAdminStatus, 'Generating voucher...', 'info');
+  try {
+    await requestJson(`${VOUCHER_API_BASE}/admin/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: payload.code,
+        discountPercent: payload.discountPercent,
+        maxDiscount: payload.maxDiscount,
+        maxUses: payload.maxUses,
+        expiresAt: payload.expiresAt || null,
+      }),
+    });
+
+    clearVoucherForm();
+    await loadVouchers();
+    setStatus(el.voucherAdminStatus, 'Voucher generated successfully.', 'ok');
+  } catch (error) {
+    setStatus(el.voucherAdminStatus, toErrorMessage(error, 'Failed to generate voucher.'), 'error');
+  }
+}
+
+function getVoucherEditFormData() {
+  const categories = Array.from(el.voucherCategoryCheckboxes || [])
+    .filter(checkbox => checkbox.checked)
+    .map(checkbox => checkbox.value);
+  
+  return {
+    discountPercent: Number(el.voucherEditDiscountPercent?.value || 0),
+    maxDiscount: Number(el.voucherEditMaxDiscount?.value || 0),
+    maxUses: Math.max(0, Number(el.voucherEditMaxUses?.value || 0)),
+    expiresAt: String(el.voucherEditExpiresAt?.value || '').trim(),
+    categories,
+  };
+}
+
+function clearVoucherEditForm() {
+  if (!el.voucherEditForm) return;
+  el.voucherEditForm.reset();
+  if (el.voucherEditMaxUses) {
+    el.voucherEditMaxUses.value = '0';
+  }
+  el.voucherCategoryCheckboxes?.forEach(checkbox => {
+    checkbox.checked = false;
+  });
+}
+
+function openManageVoucherModal(voucherId) {
+  const voucher = state.vouchers.find(v => String(v.id) === String(voucherId));
+  if (!voucher) {
+    alert('Voucher not found');
+    return;
+  }
+
+  el.voucherEditId.value = voucher.id;
+  el.voucherEditCode.value = voucher.code;
+  el.voucherEditDiscountPercent.value = voucher.discountPercent;
+  el.voucherEditMaxDiscount.value = voucher.maxDiscount;
+  el.voucherEditMaxUses.value = voucher.maxUses;
+  
+  if (voucher.expiresAt) {
+    const date = new Date(voucher.expiresAt);
+    if (!Number.isNaN(date.getTime())) {
+      el.voucherEditExpiresAt.value = date.toISOString().slice(0, 16);
+    }
+  }
+
+  el.voucherCategoryCheckboxes?.forEach(checkbox => {
+    checkbox.checked = Array.isArray(voucher.categories) && voucher.categories.includes(checkbox.value);
+  });
+
+  setStatus(el.voucherEditStatus, '', 'ok');
+  
+  const modal = new bootstrap.Modal(el.manageVoucherModal);
+  modal.show();
+}
+
+async function saveVoucherChanges() {
+  const voucherId = el.voucherEditId.value;
+  if (!voucherId) {
+    setStatus(el.voucherEditStatus, 'Voucher ID is missing', 'error');
+    return;
+  }
+
+  const payload = getVoucherEditFormData();
+  if (!payload.discountPercent || payload.discountPercent < 1 || payload.discountPercent > 100) {
+    setStatus(el.voucherEditStatus, 'Discount percent must be between 1 and 100.', 'error');
+    return;
+  }
+
+  if (!Number.isFinite(payload.maxDiscount) || payload.maxDiscount < 0) {
+    setStatus(el.voucherEditStatus, 'Max discount must be >= 0.', 'error');
+    return;
+  }
+
+  setStatus(el.voucherEditStatus, 'Saving voucher...', 'info');
+  try {
+    await requestJson(`${VOUCHER_API_BASE}/admin/${voucherId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        discountPercent: payload.discountPercent,
+        maxDiscount: payload.maxDiscount,
+        maxUses: payload.maxUses,
+        expiresAt: payload.expiresAt || null,
+        categories: payload.categories,
+      }),
+    });
+
+    const modal = bootstrap.Modal.getInstance(el.manageVoucherModal);
+    if (modal) modal.hide();
+    
+    await loadVouchers();
+    setStatus(el.voucherAdminStatus, 'Voucher updated successfully.', 'ok');
+  } catch (error) {
+    setStatus(el.voucherEditStatus, toErrorMessage(error, 'Failed to update voucher.'), 'error');
+  }
+}
+
+async function toggleVoucherStatus(voucherId) {
+  if (!confirm('Are you sure you want to toggle this voucher status?')) {
+    return;
+  }
+
+  try {
+    await requestJson(`${VOUCHER_API_BASE}/admin/${voucherId}/toggle`, {
+      method: 'PUT',
+    });
+
+    await loadVouchers();
+    setStatus(el.voucherAdminStatus, 'Voucher status toggled successfully.', 'ok');
+  } catch (error) {
+    setStatus(el.voucherAdminStatus, toErrorMessage(error, 'Failed to toggle voucher status.'), 'error');
+  }
+}
+
+async function deleteVoucher(voucherId) {
+  if (!confirm('Are you sure you want to delete this voucher? This action cannot be undone.')) {
+    return;
+  }
+
+  try {
+    await requestJson(`${VOUCHER_API_BASE}/admin/${voucherId}`, {
+      method: 'DELETE',
+    });
+
+    const manageModal = bootstrap.Modal.getInstance(el.manageVoucherModal);
+    if (manageModal && String(el.voucherEditId?.value || '') === String(voucherId)) {
+      manageModal.hide();
+    }
+
+    await loadVouchers();
+    setStatus(el.voucherAdminStatus, 'Voucher deleted successfully.', 'ok');
+  } catch (error) {
+    setStatus(el.voucherAdminStatus, toErrorMessage(error, 'Failed to delete voucher.'), 'error');
+  }
+}
+
+async function openVoucherGeneratorModal() {
+  if (!el.voucherGeneratorModal) return;
+
+  try {
+    await loadVouchers();
+  } catch (error) {
+    // keep modal open even if load fails; status is already set by loadVouchers
+  }
+
+  const modal = new bootstrap.Modal(el.voucherGeneratorModal);
+  modal.show();
 }
 
 function renderAnalyticsList(target, rows, emptyMessage) {
@@ -1722,6 +2042,19 @@ function bindEvents() {
     el.reloadAnalyticsBtn.addEventListener('click', renderAnalytics);
   }
 
+  if (el.voucherForm) {
+    el.voucherForm.addEventListener('submit', submitVoucherForm);
+  }
+  if (el.reloadVouchersBtn) {
+    el.reloadVouchersBtn.addEventListener('click', loadVouchers);
+  }
+  if (el.voucherSaveBtn) {
+    el.voucherSaveBtn.addEventListener('click', saveVoucherChanges);
+  }
+  if (el.openVoucherGeneratorModalBtn) {
+    el.openVoucherGeneratorModalBtn.addEventListener('click', openVoucherGeneratorModal);
+  }
+
   el.adminNavButtons.forEach(button => {
     button.addEventListener('click', () => {
       const target = button.dataset.adminTarget;
@@ -1761,7 +2094,7 @@ async function init() {
   renderOrderDetailPanel(null);
 
   setStatus(el.globalStatus, 'Admin page ready.', 'info');
-  await Promise.all([loadUsers(), loadProducts(), loadFeaturedBuilds(), loadLogs(), loadOrders()]);
+  await Promise.all([loadUsers(), loadProducts(), loadFeaturedBuilds(), loadLogs(), loadOrders(), loadVouchers()]);
 }
 
 init();

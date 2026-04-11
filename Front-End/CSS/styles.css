@@ -3396,6 +3396,29 @@ body.bg-dark .cart-empty {
   color: #6c757d;
 }
 
+.voucher-input-wrap {
+  display: grid;
+  gap: 6px;
+}
+
+.voucher-status-text {
+  min-height: 18px;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.voucher-status-text.ok {
+  color: #198754;
+}
+
+.voucher-status-text.error {
+  color: #dc3545;
+}
+
+body.bg-dark .voucher-status-text {
+  color: #adb5bd;
+}
+
 .checkout-momo-btn {
   display: inline-flex;
   align-items: center;

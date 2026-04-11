@@ -6,6 +6,7 @@ import Cart from '../models/Cart.js';
 import Log from '../models/Log.js';
 import Order from '../models/Order.js';
 import User from '../models/User.js';
+import Voucher from '../models/Voucher.js';
 import { requireAuth } from '../middleware/adminMiddleware.js';
 
 const router = express.Router();
@@ -297,6 +298,15 @@ async function markOrderPaymentPaid(orderId, {
     userEmail,
     `MoMo payment succeeded for order ${orderId} with txnRef ${nextTxnRef}`
   );
+
+  if (!wasPaid) {
+    const voucherCode = String(order?.voucher?.code || '').trim().toUpperCase();
+    if (voucherCode) {
+      await Voucher.updateOne({ code: voucherCode }, { $inc: { usedCount: 1 } }).catch(() => {
+        // Voucher usage tracking is non-critical for payment completion.
+      });
+    }
+  }
 
   if (!wasPaid && order.source === 'cart') {
     await Cart.findOneAndUpdate({ user: order.user }, { items: [] }, { upsert: true });

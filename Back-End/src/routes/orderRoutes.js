@@ -1,12 +1,45 @@
 import express from 'express';
 import Build from '../models/Build.js';
 import Cart from '../models/Cart.js';
+import Component from '../models/Component.js';
 import Order from '../models/Order.js';
+import Voucher from '../models/Voucher.js';
 import { requireAdmin, requireAuth } from '../middleware/adminMiddleware.js';
 import { loadOrderForCurrentUserOrAdmin, validateCheckoutSource, validateOrderIdParam } from '../middleware/commerceMiddleware.js';
 import { buildPartsToItems, calculateItemsTotal, hasAnyBuildParts } from '../utils/commerceUtils.js';
 
 const router = express.Router();
+
+function normalizeVoucherCode(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
+function isVoucherUsableNow(voucher, now = new Date()) {
+  if (!voucher || !voucher.isActive) return false;
+
+  if (voucher.startsAt && new Date(voucher.startsAt).getTime() > now.getTime()) {
+    return false;
+  }
+
+  if (voucher.expiresAt && new Date(voucher.expiresAt).getTime() < now.getTime()) {
+    return false;
+  }
+
+  if (Number(voucher.maxUses || 0) > 0 && Number(voucher.usedCount || 0) >= Number(voucher.maxUses || 0)) {
+    return false;
+  }
+
+  return true;
+}
+
+function computeVoucherDiscount(subtotal, voucher) {
+  const safeSubtotal = Math.max(0, Number(subtotal || 0));
+  const percent = Math.max(0, Number(voucher?.discountPercent || 0));
+  const maxDiscount = Math.max(0, Number(voucher?.maxDiscount || 0));
+
+  const rawDiscount = Math.round((safeSubtotal * percent) / 100);
+  return Math.min(rawDiscount, maxDiscount, safeSubtotal);
+}
 
 function serializeOrder(order) {
   return {
@@ -15,6 +48,17 @@ function serializeOrder(order) {
     buildName: order.buildName || '',
     items: order.items || [],
     totalAmount: order.totalAmount || 0,
+    pricing: {
+      subtotal: Number(order?.pricing?.subtotal || order.totalAmount || 0),
+      shipping: Number(order?.pricing?.shipping || 0),
+      discountAmount: Number(order?.pricing?.discountAmount || 0),
+    },
+    voucher: {
+      code: String(order?.voucher?.code || ''),
+      discountPercent: Number(order?.voucher?.discountPercent || 0),
+      maxDiscount: Number(order?.voucher?.maxDiscount || 0),
+      discountAmount: Number(order?.voucher?.discountAmount || 0),
+    },
     currency: order.currency || 'VND',
     status: order.status,
     orderInfo: order.orderInfo || '',
@@ -35,6 +79,34 @@ function serializeAdminOrder(order) {
       role: order.user?.role || '',
     },
   };
+}
+
+async function getCartItemCategories(userId) {
+  const cart = await Cart.findOne({ user: userId }).lean();
+  if (!Array.isArray(cart?.items)) return [];
+  
+  const components = await Promise.all(
+    cart.items
+      .filter(item => item.type === 'component' && item.componentId)
+      .map(item => Component.findById(item.componentId).select('category').lean())
+  );
+  
+  const categories = new Set();
+  components.forEach(comp => {
+    if (comp?.category) categories.add(comp.category);
+  });
+  
+  return Array.from(categories);
+}
+
+function isVoucherApplicableToCategories(voucherCategories, cartCategories) {
+  if (!Array.isArray(voucherCategories) || voucherCategories.length === 0) {
+    return true;
+  }
+  if (!Array.isArray(cartCategories) || cartCategories.length === 0) {
+    return false;
+  }
+  return cartCategories.some(cat => voucherCategories.includes(cat));
 }
 
 router.get('/admin/list', requireAdmin, async (req, res) => {
@@ -74,6 +146,7 @@ router.post('/checkout', requireAuth, validateCheckoutSource, async (req, res) =
   try {
     const source = req.checkoutSource;
     const shippingAddress = req.body.shippingAddress || {};
+    const voucherCode = normalizeVoucherCode(req.body.voucherCode);
 
     let items = [];
     let buildName = '';
@@ -96,10 +169,40 @@ router.post('/checkout', requireAuth, validateCheckoutSource, async (req, res) =
       buildName = build?.name || 'New Build';
     }
 
-    const totalAmount = calculateItemsTotal(items);
-    if (!totalAmount || totalAmount <= 0) {
+    const subtotal = calculateItemsTotal(items);
+    if (!subtotal || subtotal <= 0) {
       return res.status(400).json({ message: 'Invalid order total' });
     }
+
+    let discountAmount = 0;
+    let voucherSnapshot = {
+      code: '',
+      discountPercent: 0,
+      maxDiscount: 0,
+      discountAmount: 0,
+    };
+
+    if (source === 'cart' && voucherCode) {
+      const voucher = await Voucher.findOne({ code: voucherCode }).lean();
+      if (!isVoucherUsableNow(voucher)) {
+        return res.status(400).json({ message: 'Voucher is invalid or expired' });
+      }
+
+      const cartCategories = await getCartItemCategories(req.currentUser.userId);
+      if (!isVoucherApplicableToCategories(voucher.categories, cartCategories)) {
+        return res.status(400).json({ message: 'Voucher does not apply to items in your cart' });
+      }
+
+      discountAmount = computeVoucherDiscount(subtotal, voucher);
+      voucherSnapshot = {
+        code: voucher.code,
+        discountPercent: Number(voucher.discountPercent || 0),
+        maxDiscount: Number(voucher.maxDiscount || 0),
+        discountAmount,
+      };
+    }
+
+    const totalAmount = Math.max(0, subtotal - discountAmount);
 
     const orderInfo = source === 'build'
       ? `Payment for build ${buildName || 'New Build'}`
@@ -111,6 +214,12 @@ router.post('/checkout', requireAuth, validateCheckoutSource, async (req, res) =
       buildName,
       items,
       totalAmount,
+      pricing: {
+        subtotal,
+        shipping: 0,
+        discountAmount,
+      },
+      voucher: voucherSnapshot,
       currency: 'VND',
       status: 'pending',
       orderInfo,

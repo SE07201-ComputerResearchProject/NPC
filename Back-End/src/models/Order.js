@@ -71,6 +71,46 @@ const orderSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    pricing: {
+      subtotal: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      shipping: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      discountAmount: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+    },
+    voucher: {
+      code: {
+        type: String,
+        default: '',
+        trim: true,
+        uppercase: true,
+      },
+      discountPercent: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      maxDiscount: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      discountAmount: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+    },
     currency: {
       type: String,
       default: 'VND',
